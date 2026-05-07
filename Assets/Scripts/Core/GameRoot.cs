@@ -1,4 +1,5 @@
 using System.Collections;
+using KingCardsSpire.Controllers;
 using KingCardsSpire.Core.Events;
 using KingCardsSpire.Managers;
 using UnityEngine;
@@ -48,6 +49,8 @@ namespace KingCardsSpire.Core
             SceneFlowManager.Instance.InitializeFlow();
             GameManager.Instance.InitializeGame();
             BattleManager.Instance.InitializeBattle();
+
+            ServiceLocator.Register(new BattleController());
 
             var cfg = ConfigManager.Instance;
             Debug.Log(

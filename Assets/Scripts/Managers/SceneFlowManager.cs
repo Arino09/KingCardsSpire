@@ -1,6 +1,5 @@
 using System.Collections;
 using KingCardsSpire.Core;
-using KingCardsSpire.Core.Singleton;
 using KingCardsSpire.Models;
 using UnityEngine;
 using UnityEngine.AddressableAssets;

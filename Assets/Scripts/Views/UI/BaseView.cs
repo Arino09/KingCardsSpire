@@ -13,6 +13,8 @@ namespace KingCardsSpire.Views.UI
 
         public UIPanelId PanelId => panelId;
 
+        protected void SetPanelId(UIPanelId id) => panelId = id;
+
         public virtual void Initialize() { }
 
         public virtual void Dispose() { }

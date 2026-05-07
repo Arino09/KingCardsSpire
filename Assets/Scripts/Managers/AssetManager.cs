@@ -2,7 +2,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using KingCardsSpire.Core;
-using KingCardsSpire.Core.Singleton;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
@@ -40,7 +39,7 @@ namespace KingCardsSpire.Managers
             _initialized = true;
         }
 
-        public IEnumerator LoadAssetsAsync<T>(string label, Action<IList<T>> onComplete) where T : Object
+        public IEnumerator LoadAssetsAsync<T>(string label, Action<IList<T>> onComplete) where T : UnityEngine.Object
         {
             var handle = Addressables.LoadAssetsAsync<T>(label, null);
             yield return handle;

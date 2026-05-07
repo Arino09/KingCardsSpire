@@ -2,7 +2,6 @@ using System.Collections;
 using System.Collections.Generic;
 using KingCardsSpire.Configs;
 using KingCardsSpire.Core;
-using KingCardsSpire.Core.Singleton;
 using UnityEngine;
 
 namespace KingCardsSpire.Managers

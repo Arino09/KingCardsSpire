@@ -1,3 +1,5 @@
+using KingCardsSpire.Core.Battle;
+
 namespace KingCardsSpire.Core.Events
 {
     public readonly struct GameBootedEvent : IEvent { }
@@ -30,7 +32,25 @@ namespace KingCardsSpire.Core.Events
 
     public readonly struct BattleStartedEvent : IEvent { }
 
-    public readonly struct BattleEndedEvent : IEvent { }
+    public readonly struct BattleStateChangedEvent : IEvent { }
+
+    public readonly struct BattleRoundResolvedEvent : IEvent
+    {
+        public readonly string Summary;
+        public BattleRoundResolvedEvent(string summary) => Summary = summary;
+    }
+
+    public readonly struct BattleEndedEvent : IEvent
+    {
+        public readonly bool PlayerVictory;
+        public readonly BattleEndReason Reason;
+
+        public BattleEndedEvent(bool playerVictory, BattleEndReason reason)
+        {
+            PlayerVictory = playerVictory;
+            Reason = reason;
+        }
+    }
 
     public readonly struct WeatherChangedEvent : IEvent { }
 

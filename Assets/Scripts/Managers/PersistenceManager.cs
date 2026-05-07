@@ -1,7 +1,6 @@
 using System.IO;
 using KingCardsSpire.Core;
 using KingCardsSpire.Core.Events;
-using KingCardsSpire.Core.Singleton;
 using KingCardsSpire.Models;
 using UnityEngine;
 

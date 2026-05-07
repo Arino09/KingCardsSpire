@@ -1,7 +1,6 @@
 using System;
 using KingCardsSpire.Core;
 using KingCardsSpire.Core.Events;
-using KingCardsSpire.Core.Singleton;
 
 namespace KingCardsSpire.Managers
 {

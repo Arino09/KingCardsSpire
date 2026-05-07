@@ -1,5 +1,4 @@
 using KingCardsSpire.Core;
-using KingCardsSpire.Core.Singleton;
 using UnityEngine;
 
 namespace KingCardsSpire.Managers

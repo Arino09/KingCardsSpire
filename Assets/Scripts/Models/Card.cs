@@ -14,5 +14,9 @@ namespace KingCardsSpire.Models
         public CardType Type;
         public string EffectDesc;
         public bool IsUnique;
+
+        /// <summary>仅对战运行时用于区分同 Id 多实例（不参与存档序列化）。</summary>
+        [NonSerialized]
+        public string BattleInstanceId;
     }
 }

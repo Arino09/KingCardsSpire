@@ -1,10 +1,10 @@
 using System.Collections;
 using System.Collections.Generic;
 using KingCardsSpire.Core;
-using KingCardsSpire.Core.Singleton;
 using KingCardsSpire.Models;
 using KingCardsSpire.Views.UI;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 namespace KingCardsSpire.Managers
 {
@@ -31,6 +31,21 @@ namespace KingCardsSpire.Managers
             var canvasGo = new GameObject("UIRoot");
             canvasGo.transform.SetParent(transform, false);
             _uiRoot = canvasGo.transform;
+            EnsureEventSystem(transform);
+        }
+
+        /// <summary>
+        /// uGUI 点击依赖全局 EventSystem；场景未放置时使用此处生成的实例。
+        /// </summary>
+        static void EnsureEventSystem(Transform uiSystemsParent)
+        {
+            if (FindObjectOfType<EventSystem>() != null)
+                return;
+
+            var go = new GameObject("EventSystem");
+            go.transform.SetParent(uiSystemsParent, false);
+            go.AddComponent<EventSystem>();
+            go.AddComponent<StandaloneInputModule>();
         }
 
         public IEnumerator OpenAsync(UIPanelId panelId)
