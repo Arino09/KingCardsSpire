@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using KingCardsSpire.Configs;
 using KingCardsSpire.Core;
 using KingCardsSpire.Core.Battle;
 using KingCardsSpire.Core.Events;
@@ -11,26 +12,27 @@ namespace KingCardsSpire.Managers
 {
     public sealed class BattleManager : PersistentMonoSingleton<BattleManager>
     {
-        enum Phase
+        private enum Phase
         {
             Idle,
             InBattle
         }
 
-        Phase _phase = Phase.Idle;
+        private Phase _phase = Phase.Idle;
 
-        readonly List<Card> _playerHand = new();
-        readonly List<Card> _enemyHand = new();
-        readonly List<Card> _playerDiscard = new();
-        readonly List<Card> _enemyDiscard = new();
-        readonly List<string> _historyLines = new();
+        private readonly List<Card> _playerHand = new();
+        private readonly List<Card> _enemyHand = new();
+        private readonly List<Card> _playerDiscard = new();
+        private readonly List<Card> _enemyDiscard = new();
+        private readonly List<string> _historyLines = new();
 
-        WeatherType _weather;
-        bool _noRoundLimit;
-        int _maxRounds;
-        int _roundsCompleted;
-        string _lastPlayerInstanceId;
-        string _lastEnemyInstanceId;
+        private WeatherType _weather;
+        private bool _noRoundLimit;
+        private int _maxRounds;
+        private int _roundsCompleted;
+        private string _lastPlayerInstanceId;
+        private string _lastEnemyInstanceId;
+        private bool _isBossBattle;
 
         public BattleState CurrentBattle { get; private set; } = new();
 
@@ -51,28 +53,30 @@ namespace KingCardsSpire.Managers
         public void InitializeBattle() { }
 
         /// <summary>使用当前玩家状态开局；手牌为空时使用内置测试卡组。</summary>
-        public void StartBattleFromPlayerState()
+        /// <param name="vsBoss">true 时使用当前塔层配置的敌方卡组。</param>
+        public void StartBattleFromPlayerState(bool vsBoss = false)
         {
             var game = GameManager.Instance;
             var player = game != null ? game.PlayerState : null;
 
             var playerCards = BuildPlayerDeck(player);
-            var enemyCards = BuildDefaultEnemyDeck();
+            var enemyCards = vsBoss ? BuildBossDeckFromTowerOrFallback() : BuildDefaultEnemyDeck();
 
             StartBattleInternal(playerCards, enemyCards, player?.CurrentWeather ?? WeatherType.WarmWind,
-                player?.XRayCount ?? 1);
+                player?.XRayCount ?? 1, vsBoss);
         }
 
         public void StartBattle(IReadOnlyList<Card> playerDeck, IReadOnlyList<Card> enemyDeck,
-            WeatherType weather, int xRayCount)
+            WeatherType weather, int xRayCount, bool isBossBattle = false)
         {
-            StartBattleInternal(playerDeck, enemyDeck, weather, xRayCount);
+            StartBattleInternal(playerDeck, enemyDeck, weather, xRayCount, isBossBattle);
         }
 
-        void StartBattleInternal(IReadOnlyList<Card> playerDeck, IReadOnlyList<Card> enemyDeck,
-            WeatherType weather, int xRayCount)
+        private void StartBattleInternal(IReadOnlyList<Card> playerDeck, IReadOnlyList<Card> enemyDeck,
+            WeatherType weather, int xRayCount, bool isBossBattle)
         {
             ResetRuntime();
+            _isBossBattle = isBossBattle;
 
             foreach (var c in playerDeck)
                 _playerHand.Add(CloneForBattle(c));
@@ -135,7 +139,46 @@ namespace KingCardsSpire.Managers
             EventManager.Instance?.Publish(new BattleStateChangedEvent());
         }
 
-        Card PickEnemyCard()
+        private List<Card> BuildBossDeckFromTowerOrFallback()
+        {
+            var gm = GameManager.Instance;
+            var cfg = ConfigManager.Instance;
+            var floor = gm != null ? gm.PlayerState.CurrentFloor : 1;
+            if (cfg != null && cfg.TryGetTowerFloor(floor, out var entry))
+            {
+                var ids = entry.EnemyDeckCardIds;
+                if (ids != null && ids.Length > 0)
+                {
+                    var list = new List<Card>();
+                    foreach (var id in ids)
+                    {
+                        if (string.IsNullOrEmpty(id))
+                            continue;
+                        if (cfg.TryGetCard(id, out var cc))
+                            list.Add(CardFromConfig(cc));
+                    }
+
+                    if (list.Count > 0)
+                        return list;
+                }
+            }
+
+            return BuildDefaultEnemyDeck();
+        }
+
+        private static Card CardFromConfig(CardConfig cc)
+        {
+            return new Card
+            {
+                Id = cc.Id,
+                Name = cc.DisplayName,
+                Level = cc.Level,
+                Type = cc.Type,
+                IsUnique = cc.IsUnique
+            };
+        }
+
+        private Card PickEnemyCard()
         {
             if (_enemyHand.Count == 0)
                 return null;
@@ -159,7 +202,7 @@ namespace KingCardsSpire.Managers
             return _enemyHand[pick];
         }
 
-        void ResolveRound(int playerHandIndex, Card playerCard, Card enemyCard)
+        private void ResolveRound(int playerHandIndex, Card playerCard, Card enemyCard)
         {
             var enemyIdx = _enemyHand.IndexOf(enemyCard);
             if (enemyIdx < 0)
@@ -204,7 +247,7 @@ namespace KingCardsSpire.Managers
             TryEndByRoundLimit();
         }
 
-        bool TryEndByHandEmpty()
+        private bool TryEndByHandEmpty()
         {
             if (_playerHand.Count == 0 && _enemyHand.Count == 0)
             {
@@ -227,7 +270,7 @@ namespace KingCardsSpire.Managers
             return false;
         }
 
-        bool TryEndByRoundLimit()
+        private bool TryEndByRoundLimit()
         {
             if (_noRoundLimit)
                 return false;
@@ -251,16 +294,18 @@ namespace KingCardsSpire.Managers
             return true;
         }
 
-        void FinishBattle(bool playerVictory, BattleEndReason reason)
+        private void FinishBattle(bool playerVictory, BattleEndReason reason)
         {
             _phase = Phase.Idle;
-            Debug.Log($"[BattleManager] 战斗结束 己方{(playerVictory ? "胜" : "败")} 原因={reason}");
+            var boss = _isBossBattle;
+            Debug.Log(
+                $"[BattleManager] 战斗结束 己方{(playerVictory ? "胜" : "败")} 原因={reason} BOSS战={boss}");
             SyncBattleState();
-            EventManager.Instance?.Publish(new BattleEndedEvent(playerVictory, reason));
+            EventManager.Instance?.Publish(new BattleEndedEvent(playerVictory, reason, boss));
             EventManager.Instance?.Publish(new BattleStateChangedEvent());
         }
 
-        static bool IsLegalPlay(Card card, IReadOnlyList<Card> hand, string lastInstanceId)
+        private static bool IsLegalPlay(Card card, IReadOnlyList<Card> hand, string lastInstanceId)
         {
             if (hand.Count <= 1)
                 return true;
@@ -269,7 +314,7 @@ namespace KingCardsSpire.Managers
             return card.BattleInstanceId != lastInstanceId;
         }
 
-        static void MoveCardAtToDiscard(List<Card> hand, int index, List<Card> discard)
+        private static void MoveCardAtToDiscard(List<Card> hand, int index, List<Card> discard)
         {
             if (index < 0 || index >= hand.Count)
                 return;
@@ -277,7 +322,7 @@ namespace KingCardsSpire.Managers
             hand.RemoveAt(index);
         }
 
-        void ApplyXRay(int count)
+        private void ApplyXRay(int count)
         {
             if (count <= 0 || _enemyHand.Count == 0)
             {
@@ -300,7 +345,7 @@ namespace KingCardsSpire.Managers
             CurrentBattle.EnemyVisible = visible;
         }
 
-        void SyncBattleState()
+        private void SyncBattleState()
         {
             CurrentBattle.PlayerHand = _playerHand.ToArray();
             CurrentBattle.EnemyHand = _enemyHand.ToArray();
@@ -313,7 +358,7 @@ namespace KingCardsSpire.Managers
             CurrentBattle.TurnHistory = _historyLines.ToArray();
         }
 
-        void ResetRuntime()
+        private void ResetRuntime()
         {
             _playerHand.Clear();
             _enemyHand.Clear();
@@ -323,10 +368,11 @@ namespace KingCardsSpire.Managers
             _roundsCompleted = 0;
             _lastPlayerInstanceId = null;
             _lastEnemyInstanceId = null;
+            _isBossBattle = false;
             CurrentBattle = new BattleState();
         }
 
-        static Card CloneForBattle(Card template)
+        private static Card CloneForBattle(Card template)
         {
             return new Card
             {
@@ -340,7 +386,7 @@ namespace KingCardsSpire.Managers
             };
         }
 
-        static List<Card> BuildPlayerDeck(PlayerData player)
+        private static List<Card> BuildPlayerDeck(PlayerData player)
         {
             if (player?.HandCards != null && player.HandCards.Length > 0)
                 return new List<Card>(player.HandCards);
@@ -349,7 +395,7 @@ namespace KingCardsSpire.Managers
             return BuildDefaultPlayerDeck();
         }
 
-        static List<Card> BuildDefaultPlayerDeck()
+        private static List<Card> BuildDefaultPlayerDeck()
         {
             return new List<Card>
             {
@@ -360,7 +406,7 @@ namespace KingCardsSpire.Managers
             };
         }
 
-        static List<Card> BuildDefaultEnemyDeck()
+        private static List<Card> BuildDefaultEnemyDeck()
         {
             return new List<Card>
             {
@@ -371,7 +417,7 @@ namespace KingCardsSpire.Managers
             };
         }
 
-        static Card NewRuntimeCard(string id, string name, float level) =>
+        private static Card NewRuntimeCard(string id, string name, float level) =>
             new Card
             {
                 Id = id,

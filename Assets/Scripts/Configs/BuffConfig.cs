@@ -6,12 +6,12 @@ namespace KingCardsSpire.Configs
     [CreateAssetMenu(fileName = "BuffConfig", menuName = "KingCardsSpire/Configs/Buff", order = 1)]
     public class BuffConfig : ScriptableObject
     {
-        [SerializeField] string id;
-        [SerializeField] BuffId buffId;
-        [SerializeField] string displayName;
-        [TextArea] [SerializeField] string description;
-        [SerializeField] float effectParamA;
-        [SerializeField] float effectParamB;
+        [SerializeField] private string id;
+        [SerializeField] private BuffId buffId;
+        [SerializeField] private string displayName;
+        [TextArea] [SerializeField] private string description;
+        [SerializeField] private float effectParamA;
+        [SerializeField] private float effectParamB;
 
         public string Id => id;
         public BuffId BuffId => buffId;

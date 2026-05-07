@@ -1,3 +1,14 @@
+---
+AIGC:
+    ContentProducer: Minimax Agent AI
+    ContentPropagator: Minimax Agent AI
+    Label: AIGC
+    ProduceID: 2d4416a413b705600de011a99105817f
+    PropagateID: 2d4416a413b705600de011a99105817f
+    ReservedCode1: 304502210083badda94a018bb677ccc9060f364d9db9eeafbe85b381e2d3ef114895d58b7d02204387d8764ac8f5ce52de361bc430c67af7326bc2eccbfaa417d98dadecafd602
+    ReservedCode2: 3045022100b16b9514fc9c1fd1fe69a9beeddeac18bf2d45d908efef867a2f666269092efd022032e15053634bb6679c79ee70c32f0a9f854014111736e4737d76fb080aaba47b
+---
+
 # 机核 - 塔防卡牌对战游戏开发计划
 
 ## 项目概述
@@ -5,7 +16,7 @@
 - **项目名称**: 机核
 - **项目类型**: 单机卡牌对战 + Roguelike + 塔爬层机制
 - **目标平台**: PC (后续可扩展至移动端)
-- **版本**: V1.8
+- **版本**: V1.9
 - **核心玩法**: 以"斗兽棋"为基础的卡牌对战 + 7层塔爬层挑战
 
 ---
@@ -27,7 +38,12 @@
 直到: 通关7层(胜利) 或 资金归0(失败) 或 超过3天/层(失败)
 ```
 
-### 1.2 每日行动菜单
+### 1.2 驻守者奖励机制
+- 通关驻守者(BOSS)时，根据**剩余天数**获得卡牌奖励
+- 奖励选项: 5选1 (可选择金币或其他卡牌)
+- 机制: 剩余天数越多，奖励越丰厚
+
+### 1.3 每日行动菜单
 | 行动 | 效果 | 消耗 |
 |------|------|------|
 | 挑战BOSS | 进入卡牌对战 | 免费 |
@@ -82,12 +98,13 @@
 - **效果**: 战斗开始前可预览敌人部分手牌
 
 #### 2.2.5 回合上限
-- 每场对战有最大回合数限制，为双方手牌数之和 / 2 （向下取整）
+- **计算公式**: 上限回合数 = (己方初始卡牌数 + 敌方初始卡牌数) / 2
 - 达到上限时，总手牌等级低的一方获胜
-- **天气"暖风"**: 移除回合上限
+- **天气"暖风"**: 移除本局回合上限
 
 #### 2.2.6 胜利奖励
 - 战胜后可选获得敌人1张卡牌(国王/平民除外)
+- 通关驻守者时额外获得基于剩余天数的卡牌奖励(5选1)
 
 #### 2.2.7 限制规则
 - 不能连续两次出同一张牌
@@ -346,7 +363,7 @@ class BattleState {
     List<Card> playerVisible;  // 敌人可见的我方卡牌
     List<Card> enemyVisible;   // 我方可见的敌人卡牌
     int round;
-    int maxRound;
+    int maxRound;             // 回合上限 = (playerHand.Count + enemyHand.Count) / 2
 }
 ```
 
@@ -358,6 +375,7 @@ class BattleState {
 
 ### 8.4 关键算法
 - **等级比较**: 根据斗兽棋规则实现比较逻辑
+- **回合上限计算**: `maxRound = (playerHand.Count + enemyHand.Count) / 2`
 - **天气效果**: 实时修改卡牌等级计算
 - **透视系统**: 对战开始时随机暴露X张敌人牌
 
@@ -378,10 +396,11 @@ class BattleState {
 - [x] 透视功能
 
 ### Phase 3: 塔系统
-- [ ] 7层结构
-- [ ] BOSS配置
-- [ ] 时间/天数限制
-- [ ] 天气系统
+- [x] 7层结构（`GameConfig.TowerFloors`、`TowerConfig` 七层表、`EnterNextFloor`/通关判定）
+- [x] BOSS配置（`TowerFloorEntry` 敌方卡组、`StartBattleFromPlayerState(vsBoss)`）
+- [x] 时间/天数限制（`FloorDay`、`AdvanceDay`、超时 `GameOverEvent`、金币归零失败）
+- [x] 驻守者奖励机制（`BossRewardPicker` + `BossRewardOfferedEvent`，选项占位）
+- [x] 天气系统（战斗内烈日/冰雹/暖风已在 `CardBattleRules`/`BattleManager`；每日 `RollDailyWeather`；雨季增收走 `GameManager.AddGold`）
 
 ### Phase 4: 经济系统
 - [ ] 商店界面
@@ -411,8 +430,10 @@ class BattleState {
 - [ ] 敌人AI具体算法
 - [ ] 出牌交谈文本(部分为空)
 - [ ] 结局分支设计
+- [ ] 驻守者奖励卡牌池配置
+- [ ] 奖励选择界面设计
 
 ---
 
-*文档版本: V1.8*
-*最后更新: 2026.5.7*
+*文档版本: V2.0*
+*最后更新: 2026.5.8*

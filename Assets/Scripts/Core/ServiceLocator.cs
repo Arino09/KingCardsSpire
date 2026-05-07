@@ -8,7 +8,7 @@ namespace KingCardsSpire.Core
     /// </summary>
     public static class ServiceLocator
     {
-        static readonly Dictionary<Type, object> Services = new();
+        private static readonly Dictionary<Type, object> Services = new();
 
         public static void Register<T>(T service) where T : class
         {

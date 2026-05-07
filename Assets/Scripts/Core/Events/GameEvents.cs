@@ -1,4 +1,5 @@
 using KingCardsSpire.Core.Battle;
+using KingCardsSpire.Models;
 
 namespace KingCardsSpire.Core.Events
 {
@@ -44,15 +45,41 @@ namespace KingCardsSpire.Core.Events
     {
         public readonly bool PlayerVictory;
         public readonly BattleEndReason Reason;
+        public readonly bool IsBossBattle;
 
-        public BattleEndedEvent(bool playerVictory, BattleEndReason reason)
+        public BattleEndedEvent(bool playerVictory, BattleEndReason reason, bool isBossBattle = false)
         {
             PlayerVictory = playerVictory;
             Reason = reason;
+            IsBossBattle = isBossBattle;
         }
     }
 
-    public readonly struct WeatherChangedEvent : IEvent { }
+    public readonly struct WeatherChangedEvent : IEvent
+    {
+        public readonly WeatherType Weather;
+        public WeatherChangedEvent(WeatherType weather) => Weather = weather;
+    }
+
+    public readonly struct GameOverEvent : IEvent
+    {
+        public readonly string Reason;
+        public GameOverEvent(string reason) => Reason = reason;
+    }
+
+    public readonly struct GameVictoryEvent : IEvent { }
+
+    public readonly struct BossRewardOfferedEvent : IEvent
+    {
+        public readonly int FloorIndex;
+        public readonly BossRewardOption[] Options;
+
+        public BossRewardOfferedEvent(int floorIndex, BossRewardOption[] options)
+        {
+            FloorIndex = floorIndex;
+            Options = options;
+        }
+    }
 
     public readonly struct SaveLoadedEvent : IEvent { }
 

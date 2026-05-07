@@ -10,6 +10,7 @@ namespace KingCardsSpire.Core
         public const string ConfigWeather = "config_weather";
         public const string ConfigShop = "config_shop";
         public const string ConfigGame = "config_game";
+        public const string ConfigTower = "config_tower";
 
         public const string UiPanel = "ui_panel";
         public const string AudioBgm = "audio_bgm";

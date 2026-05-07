@@ -8,12 +8,12 @@ namespace KingCardsSpire.Managers
 {
     public sealed class PersistenceManager : PersistentMonoSingleton<PersistenceManager>
     {
-        const int DefaultSlot = 0;
-        const string SaveFileName = "save.json";
+        private const int DefaultSlot = 0;
+        private const string SaveFileName = "save.json";
 
-        string SaveDirectory => Path.Combine(Application.persistentDataPath, "Saves");
+        private string SaveDirectory => Path.Combine(Application.persistentDataPath, "Saves");
 
-        string SavePath(int slot = DefaultSlot) => Path.Combine(SaveDirectory, $"slot_{slot}_{SaveFileName}");
+        private string SavePath(int slot = DefaultSlot) => Path.Combine(SaveDirectory, $"slot_{slot}_{SaveFileName}");
 
         protected override void Awake()
         {

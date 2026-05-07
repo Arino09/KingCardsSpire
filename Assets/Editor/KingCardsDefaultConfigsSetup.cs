@@ -16,27 +16,35 @@ namespace KingCardsSpire.Editor
     [InitializeOnLoad]
     public static class KingCardsDefaultConfigsSetup
     {
-        const string BootstrapDir = "Assets/GameAssets/Configs/Bootstrap";
-        const string MarkerAsset = BootstrapDir + "/GameConfig_Default.asset";
+        private const string BootstrapDir = "Assets/GameAssets/Configs/Bootstrap";
+        private const string MarkerAsset = BootstrapDir + "/GameConfig_Default.asset";
+        private const string TowerMarkerAsset = BootstrapDir + "/Tower_Default.asset";
 
         static KingCardsDefaultConfigsSetup()
         {
             EditorApplication.delayCall += EnsureBootstrapConfigsExist;
         }
 
-        static void EnsureBootstrapConfigsExist()
+        private static void EnsureBootstrapConfigsExist()
         {
             if (EditorApplication.isPlayingOrWillChangePlaymode)
                 return;
 
-            if (File.Exists(MarkerAsset))
-                return;
-
             try
             {
-                CreateBootstrapConfigsAndRegister();
-                AssetDatabase.Refresh();
-                Debug.Log("[KingCards] 已生成占位配置并注册 Addressables（Configs / 标签 config_*）。");
+                if (!File.Exists(MarkerAsset))
+                {
+                    CreateBootstrapConfigsAndRegister();
+                    AssetDatabase.Refresh();
+                    Debug.Log("[KingCards] 已生成占位配置并注册 Addressables（Configs / 标签 config_*）。");
+                }
+                else if (!File.Exists(TowerMarkerAsset))
+                {
+                    EnsureDirectory(BootstrapDir);
+                    SaveTowerConfig();
+                    AssetDatabase.Refresh();
+                    Debug.Log("[KingCards] 已补全 Tower_Default 占位配置。");
+                }
             }
             catch (System.Exception ex)
             {
@@ -52,7 +60,7 @@ namespace KingCardsSpire.Editor
             AssetDatabase.SaveAssets();
         }
 
-        static void CreateBootstrapConfigsAndRegister()
+        private static void CreateBootstrapConfigsAndRegister()
         {
             EnsureDirectory(BootstrapDir);
 
@@ -62,11 +70,12 @@ namespace KingCardsSpire.Editor
             SaveBuffConfig();
             SaveWeatherConfig();
             SaveShopConfig();
+            SaveTowerConfig();
 
             AssetDatabase.SaveAssets();
         }
 
-        static void EnsureDirectory(string path)
+        private static void EnsureDirectory(string path)
         {
             if (AssetDatabase.IsValidFolder(path))
                 return;
@@ -84,7 +93,7 @@ namespace KingCardsSpire.Editor
             }
         }
 
-        static void SaveGameConfig()
+        private static void SaveGameConfig()
         {
             var path = $"{BootstrapDir}/GameConfig_Default.asset";
             var asset = ScriptableObject.CreateInstance<GameConfig>();
@@ -100,7 +109,7 @@ namespace KingCardsSpire.Editor
             RegisterConfigsEntry(path, AddressableLabels.ConfigGame);
         }
 
-        static void SaveCardConfig(string fileName, string id, string displayName, float level)
+        private static void SaveCardConfig(string fileName, string id, string displayName, float level)
         {
             var path = $"{BootstrapDir}/{fileName}";
             var asset = ScriptableObject.CreateInstance<CardConfig>();
@@ -118,7 +127,7 @@ namespace KingCardsSpire.Editor
             RegisterConfigsEntry(path, AddressableLabels.ConfigCard);
         }
 
-        static void SaveBuffConfig()
+        private static void SaveBuffConfig()
         {
             var path = $"{BootstrapDir}/Buff_Placeholder.asset";
             var asset = ScriptableObject.CreateInstance<BuffConfig>();
@@ -135,7 +144,7 @@ namespace KingCardsSpire.Editor
             RegisterConfigsEntry(path, AddressableLabels.ConfigBuff);
         }
 
-        static void SaveWeatherConfig()
+        private static void SaveWeatherConfig()
         {
             var path = $"{BootstrapDir}/Weather_WarmWind.asset";
             var asset = ScriptableObject.CreateInstance<WeatherConfig>();
@@ -151,7 +160,7 @@ namespace KingCardsSpire.Editor
             RegisterConfigsEntry(path, AddressableLabels.ConfigWeather);
         }
 
-        static void SaveShopConfig()
+        private static void SaveShopConfig()
         {
             var path = $"{BootstrapDir}/Shop_Default.asset";
             var asset = ScriptableObject.CreateInstance<ShopConfig>();
@@ -163,14 +172,45 @@ namespace KingCardsSpire.Editor
             RegisterConfigsEntry(path, AddressableLabels.ConfigShop);
         }
 
-        static void ApplySerialized(ScriptableObject asset, System.Action<SerializedObject> fill)
+        private static void SaveTowerConfig()
+        {
+            var path = $"{BootstrapDir}/Tower_Default.asset";
+            var asset = ScriptableObject.CreateInstance<TowerConfig>();
+            ApplySerialized(asset, so =>
+            {
+                so.FindProperty("id").stringValue = "default";
+                var floorsProp = so.FindProperty("floors");
+                floorsProp.arraySize = 7;
+                for (var i = 0; i < 7; i++)
+                {
+                    var floorEl = floorsProp.GetArrayElementAtIndex(i);
+                    floorEl.FindPropertyRelative("bossId").stringValue = $"floor_{i + 1}_boss";
+                    var deck = floorEl.FindPropertyRelative("enemyDeckCardIds");
+                    deck.arraySize = 2;
+                    deck.GetArrayElementAtIndex(0).stringValue = WellKnownCardIds.King;
+                    deck.GetArrayElementAtIndex(1).stringValue = WellKnownCardIds.Commoner;
+                    var npc = floorEl.FindPropertyRelative("npcIds");
+                    npc.arraySize = 1;
+                    npc.GetArrayElementAtIndex(0).stringValue = $"npc_floor_{i + 1}";
+                    var pool = floorEl.FindPropertyRelative("rewardCardPoolIds");
+                    pool.arraySize = 2;
+                    pool.GetArrayElementAtIndex(0).stringValue = WellKnownCardIds.King;
+                    pool.GetArrayElementAtIndex(1).stringValue = WellKnownCardIds.Commoner;
+                    floorEl.FindPropertyRelative("goldBonusPerSpareDay").intValue = 5;
+                }
+            });
+            AssetDatabase.CreateAsset(asset, path);
+            RegisterConfigsEntry(path, AddressableLabels.ConfigTower);
+        }
+
+        private static void ApplySerialized(ScriptableObject asset, System.Action<SerializedObject> fill)
         {
             var so = new SerializedObject(asset);
             fill(so);
             so.ApplyModifiedPropertiesWithoutUndo();
         }
 
-        static void RegisterConfigsEntry(string assetPath, string label)
+        private static void RegisterConfigsEntry(string assetPath, string label)
         {
             var settings = AddressableAssetSettingsDefaultObject.Settings;
             if (settings == null)

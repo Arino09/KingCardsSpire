@@ -6,11 +6,11 @@ namespace KingCardsSpire.Configs
     [CreateAssetMenu(fileName = "WeatherConfig", menuName = "KingCardsSpire/Configs/Weather", order = 2)]
     public class WeatherConfig : ScriptableObject
     {
-        [SerializeField] string id;
-        [SerializeField] WeatherType weatherType;
-        [SerializeField] string displayName;
-        [TextArea] [SerializeField] string description;
-        [SerializeField] float modifier;
+        [SerializeField] private string id;
+        [SerializeField] private WeatherType weatherType;
+        [SerializeField] private string displayName;
+        [TextArea] [SerializeField] private string description;
+        [SerializeField] private float modifier;
 
         public string Id => id;
         public WeatherType WeatherType => weatherType;

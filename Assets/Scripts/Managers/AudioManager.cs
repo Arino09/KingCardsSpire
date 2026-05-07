@@ -5,8 +5,8 @@ namespace KingCardsSpire.Managers
 {
     public sealed class AudioManager : PersistentMonoSingleton<AudioManager>
     {
-        AudioSource _bgm;
-        AudioSource _sfx;
+        private AudioSource _bgm;
+        private AudioSource _sfx;
 
         protected override void Awake()
         {

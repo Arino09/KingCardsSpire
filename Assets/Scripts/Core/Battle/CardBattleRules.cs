@@ -10,7 +10,7 @@ namespace KingCardsSpire.Core.Battle
     /// </summary>
     public static class CardBattleRules
     {
-        const float Epsilon = 0.001f;
+        private const float Epsilon = 0.001f;
 
         public static bool IsKing(Card c) =>
             c != null && string.Equals(c.Id, WellKnownCardIds.King, StringComparison.OrdinalIgnoreCase);
@@ -97,11 +97,11 @@ namespace KingCardsSpire.Core.Battle
         }
 
         /// <summary>非平民的「纯 1 级」用于国王克制例外。</summary>
-        static bool IsPlainLevelOne(float effectiveLevel) => Approx(effectiveLevel, 1f);
+        private static bool IsPlainLevelOne(float effectiveLevel) => Approx(effectiveLevel, 1f);
 
-        static bool Approx(float a, float b) => Mathf.Abs(a - b) < Epsilon;
+        private static bool Approx(float a, float b) => Mathf.Abs(a - b) < Epsilon;
 
-        static bool HasHalfStepFraction(float lv)
+        private static bool HasHalfStepFraction(float lv)
         {
             var frac = Mathf.Abs(lv - Mathf.Floor(lv));
             if (frac > 0.5f + Epsilon)

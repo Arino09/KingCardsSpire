@@ -14,16 +14,16 @@ namespace KingCardsSpire.Editor
     [InitializeOnLoad]
     public static class KingCardsBattlePanelAddressablesSetup
     {
-        const string PrefabPath = "Assets/GameAssets/UI/Panel_Battle.prefab";
-        const string Address = "UI/Panel_Battle";
-        const string Label = "ui_panel";
+        private const string PrefabPath = "Assets/GameAssets/UI/Panel_Battle.prefab";
+        private const string Address = "UI/Panel_Battle";
+        private const string Label = "ui_panel";
 
         static KingCardsBattlePanelAddressablesSetup()
         {
             EditorApplication.delayCall += RunOnce;
         }
 
-        static void RunOnce()
+        private static void RunOnce()
         {
             if (EditorApplication.isPlayingOrWillChangePlaymode)
                 return;
@@ -38,7 +38,7 @@ namespace KingCardsSpire.Editor
             RegisterIfNeeded();
         }
 
-        static bool EnsurePrefab()
+        private static bool EnsurePrefab()
         {
             if (File.Exists(PrefabPath))
                 return true;
@@ -55,7 +55,7 @@ namespace KingCardsSpire.Editor
             return true;
         }
 
-        static void RegisterIfNeeded()
+        private static void RegisterIfNeeded()
         {
             var settings = AddressableAssetSettingsDefaultObject.Settings;
             if (settings == null)

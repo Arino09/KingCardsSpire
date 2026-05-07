@@ -13,8 +13,8 @@ namespace KingCardsSpire.Managers
     /// </summary>
     public sealed class AssetManager : PersistentMonoSingleton<AssetManager>
     {
-        bool _initialized;
-        readonly List<AsyncOperationHandle> _tracked = new();
+        private bool _initialized;
+        private readonly List<AsyncOperationHandle> _tracked = new();
 
         protected override void Awake()
         {

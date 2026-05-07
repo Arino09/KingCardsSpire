@@ -1,5 +1,6 @@
 using System.Collections;
 using KingCardsSpire.Controllers;
+using KingCardsSpire.Core;
 using KingCardsSpire.Core.Events;
 using KingCardsSpire.Managers;
 using UnityEngine;
@@ -12,9 +13,9 @@ namespace KingCardsSpire.Core
     [DefaultExecutionOrder(-1000)]
     public class GameRoot : MonoBehaviour
     {
-        static bool s_runtimeBootCompleted;
+        private static bool s_runtimeBootCompleted;
 
-        void Awake()
+        private void Awake()
         {
             if (EventManager.Instance != null)
                 return;
@@ -32,7 +33,7 @@ namespace KingCardsSpire.Core
             systems.AddComponent<BattleManager>();
         }
 
-        IEnumerator Start()
+        private IEnumerator Start()
         {
             if (s_runtimeBootCompleted)
                 yield break;
@@ -51,10 +52,11 @@ namespace KingCardsSpire.Core
             BattleManager.Instance.InitializeBattle();
 
             ServiceLocator.Register(new BattleController());
+            ServiceLocator.Register(new DailyController(EventManager.Instance, GameManager.Instance));
 
             var cfg = ConfigManager.Instance;
             Debug.Log(
-                $"[GameRoot] all managers initialized. Configs loaded: {cfg.CardCount} cards / {cfg.BuffCount} buffs / {cfg.WeatherCount} weathers / {cfg.ShopConfigCount} shop rows / game configs: {cfg.GameConfigCount}");
+                $"[GameRoot] all managers initialized. Configs loaded: {cfg.CardCount} cards / {cfg.BuffCount} buffs / {cfg.WeatherCount} weathers / {cfg.ShopConfigCount} shop rows / game configs: {cfg.GameConfigCount} / tower rows: {cfg.TowerConfigCount}");
 
             EventManager.Instance.Publish(new GameBootedEvent());
             s_runtimeBootCompleted = true;

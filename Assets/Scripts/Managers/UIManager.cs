@@ -10,9 +10,9 @@ namespace KingCardsSpire.Managers
 {
     public sealed class UIManager : PersistentMonoSingleton<UIManager>
     {
-        readonly Stack<BaseView> _stack = new();
-        readonly Dictionary<UIPanelId, BaseView> _active = new();
-        Transform _uiRoot;
+        private readonly Stack<BaseView> _stack = new();
+        private readonly Dictionary<UIPanelId, BaseView> _active = new();
+        private Transform _uiRoot;
 
         protected override void Awake()
         {
@@ -37,7 +37,7 @@ namespace KingCardsSpire.Managers
         /// <summary>
         /// uGUI 点击依赖全局 EventSystem；场景未放置时使用此处生成的实例。
         /// </summary>
-        static void EnsureEventSystem(Transform uiSystemsParent)
+        private static void EnsureEventSystem(Transform uiSystemsParent)
         {
             if (FindObjectOfType<EventSystem>() != null)
                 return;

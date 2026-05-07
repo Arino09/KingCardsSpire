@@ -2,7 +2,7 @@ namespace KingCardsSpire.Core.MVC
 {
     public interface IView
     {
-        void Initialize();
-        void Dispose();
+        public void Initialize();
+        public void Dispose();
     }
 }

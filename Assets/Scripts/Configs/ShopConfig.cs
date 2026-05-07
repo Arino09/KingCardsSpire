@@ -8,15 +8,15 @@ namespace KingCardsSpire.Configs
     [CreateAssetMenu(fileName = "ShopConfig", menuName = "KingCardsSpire/Configs/Shop", order = 3)]
     public class ShopConfig : ScriptableObject
     {
-        [SerializeField] string id = "default";
-        [SerializeField] int abilityCardSlots = 1;
-        [SerializeField] int abilityCardPrice = 50;
-        [SerializeField] int functionCardSlots = 2;
-        [SerializeField] int functionCardPrice = 30;
-        [SerializeField] int basicCardSlots = 3;
-        [SerializeField] int basicCardPrice = 10;
-        [SerializeField] int consumableCardSlots = 1;
-        [SerializeField] int consumableCardPrice = 100;
+        [SerializeField] private string id = "default";
+        [SerializeField] private int abilityCardSlots = 1;
+        [SerializeField] private int abilityCardPrice = 50;
+        [SerializeField] private int functionCardSlots = 2;
+        [SerializeField] private int functionCardPrice = 30;
+        [SerializeField] private int basicCardSlots = 3;
+        [SerializeField] private int basicCardPrice = 10;
+        [SerializeField] private int consumableCardSlots = 1;
+        [SerializeField] private int consumableCardPrice = 100;
 
         public string Id => id;
         public int AbilityCardSlots => abilityCardSlots;

@@ -14,13 +14,13 @@ namespace KingCardsSpire.Views.UI
     /// </summary>
     public sealed class BattlePanelView : BaseView
     {
-        Text _headerText;
-        Text _enemyVisibleText;
-        Text _logText;
-        RectTransform _handRow;
-        BattleController _battle;
-        EventManager _events;
-        readonly StringBuilder _logBuilder = new();
+        private Text _headerText;
+        private Text _enemyVisibleText;
+        private Text _logText;
+        private RectTransform _handRow;
+        private BattleController _battle;
+        private EventManager _events;
+        private readonly StringBuilder _logBuilder = new();
 
         public override void Initialize()
         {
@@ -56,9 +56,9 @@ namespace KingCardsSpire.Views.UI
             RefreshAll();
         }
 
-        void OnBattleStateChanged(BattleStateChangedEvent _) => RefreshAll();
+        private void OnBattleStateChanged(BattleStateChangedEvent _) => RefreshAll();
 
-        void OnRoundResolved(BattleRoundResolvedEvent e)
+        private void OnRoundResolved(BattleRoundResolvedEvent e)
         {
             _logBuilder.AppendLine(e.Summary);
             if (_logText != null)
@@ -66,15 +66,16 @@ namespace KingCardsSpire.Views.UI
             RefreshAll();
         }
 
-        void OnBattleEnded(BattleEndedEvent e)
+        private void OnBattleEnded(BattleEndedEvent e)
         {
-            _logBuilder.AppendLine($"战斗结束 己方{(e.PlayerVictory ? "胜" : "败")} {e.Reason}");
+            _logBuilder.AppendLine(
+                $"战斗结束 己方{(e.PlayerVictory ? "胜" : "败")} {e.Reason}{(e.IsBossBattle ? " [BOSS]" : "")}");
             if (_logText != null)
                 _logText.text = _logBuilder.ToString();
             RefreshAll();
         }
 
-        void RefreshAll()
+        private void RefreshAll()
         {
             var bm = BattleManager.Instance;
             var state = bm != null ? bm.CurrentBattle : null;
@@ -96,7 +97,7 @@ namespace KingCardsSpire.Views.UI
             RebuildHandButtons(state?.PlayerHand);
         }
 
-        void RebuildHandButtons(Card[] hand)
+        private void RebuildHandButtons(Card[] hand)
         {
             if (_handRow == null)
                 return;
@@ -147,7 +148,7 @@ namespace KingCardsSpire.Views.UI
             }
         }
 
-        void EnsureUiBuilt()
+        private void EnsureUiBuilt()
         {
             if (_handRow != null)
                 return;
@@ -207,7 +208,7 @@ namespace KingCardsSpire.Views.UI
             CreateFooterButtons(panel.transform);
         }
 
-        static Text CreateText(Transform parent, string name, Vector2 anchorMin, Vector2 anchorMax, Vector2 offsetMin,
+        private static Text CreateText(Transform parent, string name, Vector2 anchorMin, Vector2 anchorMax, Vector2 offsetMin,
             Vector2 offsetMax, int fontSize)
         {
             var go = new GameObject(name, typeof(RectTransform), typeof(Text));
@@ -225,7 +226,7 @@ namespace KingCardsSpire.Views.UI
             return t;
         }
 
-        void CreateFooterButtons(Transform panel)
+        private void CreateFooterButtons(Transform panel)
         {
             var row = new GameObject("Footer", typeof(RectTransform), typeof(HorizontalLayoutGroup));
             row.transform.SetParent(panel, false);
@@ -252,7 +253,7 @@ namespace KingCardsSpire.Views.UI
             });
         }
 
-        static void MakeFooterButton(Transform parent, string label, UnityEngine.Events.UnityAction onClick)
+        private static void MakeFooterButton(Transform parent, string label, UnityEngine.Events.UnityAction onClick)
         {
             var go = new GameObject(label, typeof(RectTransform), typeof(Image), typeof(Button));
             go.transform.SetParent(parent, false);

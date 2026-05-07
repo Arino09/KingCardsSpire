@@ -6,7 +6,7 @@ namespace KingCardsSpire.Managers
 {
     public sealed class EventManager : PersistentMonoSingleton<EventManager>
     {
-        readonly EventBus _bus = new();
+        private readonly EventBus _bus = new();
 
         protected override void Awake()
         {

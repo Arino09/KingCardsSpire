@@ -9,7 +9,7 @@ namespace KingCardsSpire.Views.UI
     /// </summary>
     public abstract class BaseView : MonoBehaviour, IView
     {
-        [SerializeField] UIPanelId panelId = UIPanelId.None;
+        [SerializeField] private UIPanelId panelId = UIPanelId.None;
 
         public UIPanelId PanelId => panelId;
 

@@ -8,9 +8,9 @@ namespace KingCardsSpire.Controllers
     /// </summary>
     public sealed class BattleController
     {
-        public void RequestStartBattle()
+        public void RequestStartBattle(bool vsBoss = false)
         {
-            BattleManager.Instance?.StartBattleFromPlayerState();
+            BattleManager.Instance?.StartBattleFromPlayerState(vsBoss);
         }
 
         public bool TryPlayCard(int playerHandIndex, out string error)

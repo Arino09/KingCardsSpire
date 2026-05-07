@@ -8,17 +8,20 @@ namespace KingCardsSpire.Managers
 {
     public sealed class ConfigManager : PersistentMonoSingleton<ConfigManager>
     {
-        readonly Dictionary<string, CardConfig> _cards = new();
-        readonly Dictionary<string, BuffConfig> _buffs = new();
-        readonly Dictionary<string, WeatherConfig> _weathers = new();
-        readonly List<ShopConfig> _shopConfigs = new();
-        readonly List<GameConfig> _gameConfigs = new();
+        private readonly Dictionary<string, CardConfig> _cards = new();
+        private readonly Dictionary<string, BuffConfig> _buffs = new();
+        private readonly Dictionary<string, WeatherConfig> _weathers = new();
+        private readonly List<ShopConfig> _shopConfigs = new();
+        private readonly List<GameConfig> _gameConfigs = new();
+        private readonly List<TowerConfig> _towerConfigs = new();
 
         public int CardCount => _cards.Count;
         public int BuffCount => _buffs.Count;
         public int WeatherCount => _weathers.Count;
         public int ShopConfigCount => _shopConfigs.Count;
         public int GameConfigCount => _gameConfigs.Count;
+
+        public int TowerConfigCount => _towerConfigs.Count;
 
         protected override void Awake()
         {
@@ -56,9 +59,13 @@ namespace KingCardsSpire.Managers
             IList<GameConfig> gameList = null;
             yield return assets.LoadAssetsAsync<GameConfig>(AddressableLabels.ConfigGame, l => gameList = l);
             IndexGame(gameList);
+
+            IList<TowerConfig> towerList = null;
+            yield return assets.LoadAssetsAsync<TowerConfig>(AddressableLabels.ConfigTower, l => towerList = l);
+            IndexTowers(towerList);
         }
 
-        void IndexCards(IList<CardConfig> list)
+        private void IndexCards(IList<CardConfig> list)
         {
             _cards.Clear();
             if (list == null)
@@ -72,7 +79,7 @@ namespace KingCardsSpire.Managers
             }
         }
 
-        void IndexBuffs(IList<BuffConfig> list)
+        private void IndexBuffs(IList<BuffConfig> list)
         {
             _buffs.Clear();
             if (list == null)
@@ -86,7 +93,7 @@ namespace KingCardsSpire.Managers
             }
         }
 
-        void IndexWeathers(IList<WeatherConfig> list)
+        private void IndexWeathers(IList<WeatherConfig> list)
         {
             _weathers.Clear();
             if (list == null)
@@ -100,7 +107,7 @@ namespace KingCardsSpire.Managers
             }
         }
 
-        void IndexShop(IList<ShopConfig> list)
+        private void IndexShop(IList<ShopConfig> list)
         {
             _shopConfigs.Clear();
             if (list == null)
@@ -112,7 +119,7 @@ namespace KingCardsSpire.Managers
             }
         }
 
-        void IndexGame(IList<GameConfig> list)
+        private void IndexGame(IList<GameConfig> list)
         {
             _gameConfigs.Clear();
             if (list == null)
@@ -121,6 +128,18 @@ namespace KingCardsSpire.Managers
             {
                 if (g != null)
                     _gameConfigs.Add(g);
+            }
+        }
+
+        private void IndexTowers(IList<TowerConfig> list)
+        {
+            _towerConfigs.Clear();
+            if (list == null)
+                return;
+            foreach (var t in list)
+            {
+                if (t != null)
+                    _towerConfigs.Add(t);
             }
         }
 
@@ -133,5 +152,27 @@ namespace KingCardsSpire.Managers
         public IReadOnlyList<ShopConfig> GetShopConfigs() => _shopConfigs;
 
         public IReadOnlyList<GameConfig> GetGameConfigs() => _gameConfigs;
+
+        /// <summary>按层数（1-based）取塔层条目；无配置或越界时返回 false。</summary>
+        public bool TryGetTowerFloor(int floorIndex1Based, out TowerFloorEntry entry)
+        {
+            entry = null;
+            var tower = ResolveTowerConfig();
+            return tower != null && tower.TryGetFloor(floorIndex1Based, out entry);
+        }
+
+        private TowerConfig ResolveTowerConfig()
+        {
+            if (_towerConfigs.Count == 0)
+                return null;
+            for (var i = 0; i < _towerConfigs.Count; i++)
+            {
+                var t = _towerConfigs[i];
+                if (t != null && t.Id == "default")
+                    return t;
+            }
+
+            return _towerConfigs[0];
+        }
     }
 }

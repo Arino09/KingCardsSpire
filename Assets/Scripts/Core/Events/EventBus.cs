@@ -5,7 +5,7 @@ namespace KingCardsSpire.Core.Events
 {
     public sealed class EventBus
     {
-        readonly Dictionary<Type, Delegate> _handlers = new();
+        private readonly Dictionary<Type, Delegate> _handlers = new();
 
         public void Subscribe<T>(Action<T> handler) where T : IEvent
         {

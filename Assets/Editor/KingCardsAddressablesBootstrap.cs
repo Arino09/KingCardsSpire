@@ -17,7 +17,7 @@ namespace KingCardsSpire.Editor
             EditorApplication.delayCall += EnsureAddressablesSetup;
         }
 
-        static void EnsureAddressablesSetup()
+        private static void EnsureAddressablesSetup()
         {
             if (EditorApplication.isPlayingOrWillChangePlaymode)
                 return;
@@ -39,7 +39,7 @@ namespace KingCardsSpire.Editor
             }
         }
 
-        static bool EnsureGroup(AddressableAssetSettings settings, string groupName,
+        private static bool EnsureGroup(AddressableAssetSettings settings, string groupName,
             BundledAssetGroupSchema.BundlePackingMode packingMode)
         {
             var group = settings.FindGroup(groupName);

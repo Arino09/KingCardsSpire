@@ -5,11 +5,11 @@ namespace KingCardsSpire.Configs
     [CreateAssetMenu(fileName = "GameConfig", menuName = "KingCardsSpire/Configs/Game", order = 4)]
     public class GameConfig : ScriptableObject
     {
-        [SerializeField] string id = "default";
-        [SerializeField] int initialGold = 50;
-        [SerializeField] int towerFloors = 7;
-        [SerializeField] int maxDaysPerFloor = 3;
-        [SerializeField] int initialXRayCount = 1;
+        [SerializeField] private string id = "default";
+        [SerializeField] private int initialGold = 50;
+        [SerializeField] private int towerFloors = 7;
+        [SerializeField] private int maxDaysPerFloor = 3;
+        [SerializeField] private int initialXRayCount = 1;
 
         public string Id => id;
         public int InitialGold => initialGold;
