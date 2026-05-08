@@ -26,11 +26,21 @@ namespace KingCardsSpire.Managers
             base.OnDestroy();
         }
 
-        public void InitializeUi()
+        /// <summary>
+        /// 绑定 UI 挂载点。若传入场景中预设的 <paramref name="sceneUiRoot"/>，则所有通过本管理器打开的界面均为其子物体（不改变其在 Canvas 下的层级，以免脱离 Canvas 导致无法渲染）。
+        /// 否则在运行时创建名为 UIRoot 的空节点并挂在 UIManager 下。
+        /// </summary>
+        public void InitializeUi(Transform sceneUiRoot = null)
         {
-            var canvasGo = new GameObject("UIRoot");
-            canvasGo.transform.SetParent(transform, false);
-            _uiRoot = canvasGo.transform;
+            if (sceneUiRoot != null)
+                _uiRoot = sceneUiRoot;
+            else
+            {
+                var canvasGo = new GameObject("UIRoot");
+                canvasGo.transform.SetParent(transform, false);
+                _uiRoot = canvasGo.transform;
+            }
+
             EnsureEventSystem(transform);
         }
 

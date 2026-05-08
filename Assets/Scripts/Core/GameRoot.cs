@@ -4,6 +4,7 @@ using KingCardsSpire.Core;
 using KingCardsSpire.Core.Events;
 using KingCardsSpire.Managers;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 namespace KingCardsSpire.Core
 {
@@ -13,6 +14,10 @@ namespace KingCardsSpire.Core
     [DefaultExecutionOrder(-1000)]
     public class GameRoot : MonoBehaviour
     {
+        [Header("UI")]
+        [Tooltip("场景中用于挂载所有 UI 面板的 RectTransform（通常为 Canvas 下的容器）； GameRoot 会保留其所在 Canvas 跨场景销毁。")]
+        [SerializeField] private RectTransform sceneUiRoot;
+
         private static bool s_runtimeBootCompleted;
 
         private void Awake()
@@ -46,7 +51,20 @@ namespace KingCardsSpire.Core
             yield return ConfigManager.Instance.InitializeConfigsAsync();
 
             AudioManager.Instance.InitializeAudio();
-            UIManager.Instance.InitializeUi();
+            if (sceneUiRoot != null)
+            {
+                var canvas = sceneUiRoot.GetComponentInParent<Canvas>();
+                if (canvas != null)
+                    DontDestroyOnLoad(canvas.gameObject);
+                else
+                    DontDestroyOnLoad(sceneUiRoot.gameObject);
+
+                var existingEs = FindObjectOfType<EventSystem>();
+                if (existingEs != null)
+                    DontDestroyOnLoad(existingEs.gameObject);
+            }
+
+            UIManager.Instance.InitializeUi(sceneUiRoot);
             SceneFlowManager.Instance.InitializeFlow();
             GameManager.Instance.InitializeGame();
             BattleManager.Instance.InitializeBattle();
