@@ -23,6 +23,9 @@ namespace KingCardsSpire.Models
         /// <summary>本场用于等级计算的天气快照。</summary>
         public WeatherType BattleWeather = WeatherType.WarmWind;
 
+        /// <summary>战斗界面顶部展示的敌方名称（BOSS 来自塔配置等）。</summary>
+        public string OpponentDisplayName = string.Empty;
+
         public string[] TurnHistory = Array.Empty<string>();
     }
 }

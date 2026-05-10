@@ -16,7 +16,7 @@ namespace KingCardsSpire.Editor
     [InitializeOnLoad]
     public static class KingCardsDefaultConfigsSetup
     {
-        private const string BootstrapDir = "Assets/GameAssets/Configs/Bootstrap";
+        private const string BootstrapDir = "Assets/GameConfigs/Bootstrap";
         private const string MarkerAsset = BootstrapDir + "/GameConfig_Default.asset";
         private const string TowerMarkerAsset = BootstrapDir + "/Tower_Default.asset";
 
@@ -65,8 +65,7 @@ namespace KingCardsSpire.Editor
             EnsureDirectory(BootstrapDir);
 
             SaveGameConfig();
-            SaveCardConfig("Card_King.asset", WellKnownCardIds.King, "国王", 3f);
-            SaveCardConfig("Card_Commoner.asset", WellKnownCardIds.Commoner, "平民", 1f);
+            SaveCardDatabase();
             SaveBuffConfig();
             SaveWeatherConfig();
             SaveShopConfig();
@@ -109,22 +108,30 @@ namespace KingCardsSpire.Editor
             RegisterConfigsEntry(path, AddressableLabels.ConfigGame);
         }
 
-        private static void SaveCardConfig(string fileName, string id, string displayName, float level)
+        private static void SaveCardDatabase()
         {
-            var path = $"{BootstrapDir}/{fileName}";
+            var path = $"{BootstrapDir}/Cards_Default.asset";
             var asset = ScriptableObject.CreateInstance<CardConfig>();
             ApplySerialized(asset, so =>
             {
-                so.FindProperty("id").stringValue = id;
-                so.FindProperty("displayName").stringValue = displayName;
-                so.FindProperty("level").floatValue = level;
-                so.FindProperty("type").enumValueIndex = (int)CardType.Basic;
-                so.FindProperty("description").stringValue = "";
-                so.FindProperty("isUnique").boolValue =
-                    id == WellKnownCardIds.King || id == WellKnownCardIds.Commoner;
+                var cardsProp = so.FindProperty("cards");
+                cardsProp.arraySize = 2;
+                FillCardEntry(cardsProp.GetArrayElementAtIndex(0), WellKnownCardIds.King, "国王", 3f);
+                FillCardEntry(cardsProp.GetArrayElementAtIndex(1), WellKnownCardIds.Commoner, "平民", 1f);
             });
             AssetDatabase.CreateAsset(asset, path);
             RegisterConfigsEntry(path, AddressableLabels.ConfigCard);
+        }
+
+        private static void FillCardEntry(SerializedProperty element, string id, string displayName, float level)
+        {
+            element.FindPropertyRelative("id").stringValue = id;
+            element.FindPropertyRelative("displayName").stringValue = displayName;
+            element.FindPropertyRelative("level").floatValue = level;
+            element.FindPropertyRelative("type").enumValueIndex = (int)CardType.Basic;
+            element.FindPropertyRelative("description").stringValue = "";
+            element.FindPropertyRelative("isUnique").boolValue =
+                id == WellKnownCardIds.King || id == WellKnownCardIds.Commoner;
         }
 
         private static void SaveBuffConfig()

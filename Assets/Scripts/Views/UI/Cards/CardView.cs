@@ -1,6 +1,6 @@
+using System;
 using System.Collections;
 using KingCardsSpire.Configs;
-using KingCardsSpire.Models;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.Events;
@@ -14,58 +14,84 @@ namespace KingCardsSpire.Views.UI.Cards
     /// </summary>
     public sealed class CardView : MonoBehaviour
     {
+        [SerializeField] private RectTransform rectRoot, rectImage, rectFront, rectBack;
         [SerializeField] private Text levelBadgeText;
         [SerializeField] private Text typeSubText;
         [SerializeField] private Text nameText;
         [SerializeField] private Text effectText;
         [SerializeField] private Image cardArtImage;
-        [SerializeField] private GameObject artPlaceholder;
         [SerializeField] private Button clickTarget;
         [SerializeField] private UnityEvent onClicked;
         [SerializeField] private Image visualRoot;
         [SerializeField] private Color normalTint = Color.white;
         [SerializeField] private Color selectedTint = new(0.85f, 0.95f, 1f, 1f);
         [SerializeField] private Color disabledTint = new(0.55f, 0.55f, 0.55f, 1f);
-        [Tooltip("勾选后进入 Play 时在 Start 注入 Mock 卡牌数据；正式场景用的预制体请取消勾选。")]
-        [SerializeField] private bool applyMockDataOnStart = true;
-
+        
         private AsyncOperationHandle<Sprite> _artLoadHandle;
         private bool _hasArtHandle;
         private CardVisualState _visualState = CardVisualState.Normal;
+
+        /// <summary>最近一次 <see cref="Apply"/> 绑定的模板 <see cref="CardViewModel.CardId"/>；用于同 Id 时跳过重复加载卡画。</summary>
+        private string _lastAppliedCardId = string.Empty;
+
+        private bool _faceDown;
 
         public int HandIndex { get; set; }
 
         private void Awake()
         {
-            if (clickTarget != null)
-                clickTarget.onClick.AddListener(OnClickTargetInvoked);
+            clickTarget.onClick.AddListener(OnClickTargetInvoked);
         }
 
         private void OnDestroy()
         {
-            if (clickTarget != null)
-                clickTarget.onClick.RemoveListener(OnClickTargetInvoked);
+            clickTarget.onClick.RemoveListener(OnClickTargetInvoked);
 
             ReleaseAddressableArtOnly();
         }
 
-        private void Start()
+        public void SetScale(float scale)
         {
-            if (!applyMockDataOnStart)
-                return;
+            var s = Vector3.one * scale;
+            rectRoot.sizeDelta = new Vector2(842, 1180) * scale;
+            rectBack.localScale = s;
+            rectFront.localScale = s;
+            rectImage.localScale = s;
+        }
 
-            var mockCard = new Card
+        /// <summary>
+        /// 战斗：替换默认点击（否则使用 Inspector 配置的 <see cref="onClicked"/>）。
+        /// </summary>
+        public void OverrideClick(UnityAction handler)
+        {
+            clickTarget.onClick.RemoveAllListeners();
+            if (handler != null)
+                clickTarget.onClick.AddListener(handler);
+        }
+
+        /// <summary>
+        /// true 时仅展示卡背并禁用交互（用于敌方暗牌行）。
+        /// </summary>
+        public void SetFaceDown(bool faceDown)
+        {
+            _faceDown = faceDown;
+
+            rectFront.gameObject.SetActive(!faceDown);
+            rectBack.gameObject.SetActive(faceDown);
+
+            levelBadgeText.gameObject.SetActive(!faceDown);
+            typeSubText.gameObject.SetActive(!faceDown);
+            nameText.gameObject.SetActive(!faceDown);
+            effectText.gameObject.SetActive(!faceDown);
+            if (faceDown)
             {
-                Id = "mock_ui",
-                Name = "名称（Mock）",
-                Level = 3f,
-                Type = CardType.Basic,
-                EffectDesc = "效果区 Mock：用于检查换行与占位。\n第二行文案。",
-                IsUnique = false,
-                BattleInstanceId = string.Empty
-            };
+                ClearCardArtVisual();
+                _lastAppliedCardId = string.Empty;
+            }
 
-            Apply(CardViewModel.FromCard(mockCard));
+            clickTarget.interactable = !faceDown;
+
+            SetVisualState(faceDown ? CardVisualState.Disabled : CardVisualState.Normal);
         }
 
         public void Apply(CardViewModel vm)
@@ -76,65 +102,69 @@ namespace KingCardsSpire.Views.UI.Cards
                 return;
             }
 
-            if (levelBadgeText != null)
-                levelBadgeText.text = vm.LevelDisplay;
+            var sameCardId = string.Equals(vm.CardId, _lastAppliedCardId, StringComparison.Ordinal);
 
-            if (typeSubText != null)
-                typeSubText.text = vm.TypeDisplay;
-
-            if (nameText != null)
-                nameText.text = vm.Name;
-
-            if (effectText != null)
-                effectText.text = vm.Effect;
-
-            ReleaseAddressableArtOnly();
+            levelBadgeText.text = vm.LevelDisplay;
+            typeSubText.text = vm.TypeDisplay;
+            nameText.text = vm.Name;
+            effectText.text = vm.Effect;
 
             if (vm.Art != null)
             {
-                if (cardArtImage != null)
-                {
-                    cardArtImage.sprite = vm.Art;
-                    cardArtImage.enabled = true;
-                }
-
-                SetPlaceholderVisible(false);
+                ReleaseAddressableArtOnly();
+                cardArtImage.sprite = vm.Art;
+                cardArtImage.enabled = true;
             }
             else
             {
-                ClearCardArtVisual();
+                if (!sameCardId)
+                {
+                    ReleaseAddressableArtOnly();
+                    ClearCardArtVisual();
+                }
             }
+
+            _lastAppliedCardId = vm.CardId ?? string.Empty;
 
             ApplyVisualTint();
         }
 
         public void Clear()
         {
-            if (levelBadgeText != null)
-                levelBadgeText.text = string.Empty;
+            _faceDown = false;
+            rectFront.gameObject.SetActive(true);
+            rectBack.gameObject.SetActive(false);
 
-            if (typeSubText != null)
-                typeSubText.text = string.Empty;
-
-            if (nameText != null)
-                nameText.text = string.Empty;
-
-            if (effectText != null)
-                effectText.text = string.Empty;
+            levelBadgeText.text = string.Empty;
+            typeSubText.text = string.Empty;
+            nameText.text = string.Empty;
+            effectText.text = string.Empty;
 
             ReleaseAddressableArtOnly();
             ClearCardArtVisual();
+            _lastAppliedCardId = string.Empty;
             HandIndex = 0;
             _visualState = CardVisualState.Normal;
             ApplyVisualTint();
+
+            levelBadgeText.gameObject.SetActive(true);
+            typeSubText.gameObject.SetActive(true);
+            nameText.gameObject.SetActive(true);
+            effectText.gameObject.SetActive(true);
+            clickTarget.interactable = true;
         }
 
         /// <summary>
-        /// 从 <see cref="CardConfig.Icon"/> 异步加载卡画；加载期间可先 <see cref="Apply(CardViewModel)"/> 展示文字。
+        /// 从 <see cref="CardConfigEntry.Icon"/> 异步加载卡画；加载期间可先 <see cref="Apply(CardViewModel)"/> 展示文字。
         /// </summary>
-        public void LoadCardArtFromConfig(CardConfig config)
+        public void LoadCardArtFromConfig(CardConfigEntry config)
         {
             if (!isActiveAndEnabled)
+                return;
+
+            if (config != null && !string.IsNullOrEmpty(config.Id)
+                                && string.Equals(config.Id, _lastAppliedCardId, StringComparison.Ordinal)
+                                && cardArtImage.sprite != null && cardArtImage.enabled)
                 return;
 
             StopAllCoroutines();
@@ -144,14 +174,12 @@ namespace KingCardsSpire.Views.UI.Cards
         public void SetVisualState(CardVisualState state)
         {
             _visualState = state;
-
-            if (clickTarget != null)
-                clickTarget.interactable = state != CardVisualState.Disabled;
+            clickTarget.interactable = state != CardVisualState.Disabled;
 
             ApplyVisualTint();
         }
 
-        private IEnumerator LoadCardArtFromConfigRoutine(CardConfig config)
+        private IEnumerator LoadCardArtFromConfigRoutine(CardConfigEntry config)
         {
             ReleaseAddressableArtOnly();
             ClearCardArtVisual();
@@ -160,22 +188,17 @@ namespace KingCardsSpire.Views.UI.Cards
             {
                 yield break;
             }
-
+            
             var handle = config.Icon.LoadAssetAsync<Sprite>();
             _artLoadHandle = handle;
             _hasArtHandle = true;
 
             yield return handle;
 
-            if (handle.Status == AsyncOperationStatus.Succeeded && handle.Result != null)
+            if (handle.Status == AsyncOperationStatus.Succeeded && handle.Result)
             {
-                if (cardArtImage != null)
-                {
-                    cardArtImage.sprite = handle.Result;
-                    cardArtImage.enabled = true;
-                }
-
-                SetPlaceholderVisible(false);
+                cardArtImage.sprite = handle.Result;
+                cardArtImage.enabled = true;
             }
             else
             {
@@ -186,19 +209,8 @@ namespace KingCardsSpire.Views.UI.Cards
 
         private void ClearCardArtVisual()
         {
-            if (cardArtImage != null)
-            {
-                cardArtImage.sprite = null;
-                cardArtImage.enabled = false;
-            }
-
-            SetPlaceholderVisible(true);
-        }
-
-        private void SetPlaceholderVisible(bool visible)
-        {
-            if (artPlaceholder != null)
-                artPlaceholder.SetActive(visible);
+            cardArtImage.sprite = null;
+            cardArtImage.enabled = false;
         }
 
         private void ReleaseAddressableArtOnly()
@@ -214,9 +226,6 @@ namespace KingCardsSpire.Views.UI.Cards
 
         private void ApplyVisualTint()
         {
-            if (visualRoot == null)
-                return;
-
             visualRoot.color = _visualState switch
             {
                 CardVisualState.Selected => selectedTint,

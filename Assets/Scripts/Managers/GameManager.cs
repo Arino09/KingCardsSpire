@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using KingCardsSpire.Configs;
 using KingCardsSpire.Core;
 using KingCardsSpire.Core.Events;
@@ -13,6 +14,9 @@ namespace KingCardsSpire.Managers
         private bool _gameOver;
         private bool _runVictory;
         private EventManager _events;
+
+        /// <summary>击败驻守者后待玩家在界面中确认的奖励选项（与 <see cref="BossRewardOfferedEvent"/> 同步）。</summary>
+        private BossRewardOption[] _pendingBossRewards;
 
         public PlayerData PlayerState { get; private set; } = new();
         public FloorState FloorState { get; private set; } = new();
@@ -40,6 +44,34 @@ namespace KingCardsSpire.Managers
             _events?.Subscribe<BattleEndedEvent>(OnBattleEnded);
         }
 
+        /// <summary>每层允许停留天数上限（配置 MaxDaysPerFloor）。</summary>
+        public int GetMaxDaysPerFloor()
+        {
+            return ResolveGameConfig()?.MaxDaysPerFloor ?? 3;
+        }
+
+        /// <summary>根据当前本层已过天数估算剩余可停留天数（见超时判定 FloorDay &gt; MaxDaysPerFloor）。</summary>
+        public int GetEstimatedRemainingDaysOnFloor()
+        {
+            var max = GetMaxDaysPerFloor();
+            return Mathf.Max(0, max - PlayerState.FloorDay);
+        }
+
+        /// <summary>从存档恢复当前 Run（Boot 主菜单「继续游戏」）。</summary>
+        public void RestoreRunFromSave(SaveData data)
+        {
+            if (data == null)
+                return;
+
+            _gameOver = false;
+            _runVictory = false;
+            PlayerState = data.Player ?? new PlayerData();
+            FloorState = data.Floor ?? new FloorState();
+            if (FloorState.FloorIndex <= 0)
+                FloorState.FloorIndex = PlayerState.CurrentFloor;
+            _pendingBossRewards = null;
+        }
+
         /// <summary>新开局：重置玩家与第一层 FloorState，并滚动首日天气。</summary>
         public void StartNewGame()
         {
@@ -64,6 +96,7 @@ namespace KingCardsSpire.Managers
             };
 
             FloorState = new FloorState { BossDefeated = false };
+            _pendingBossRewards = null;
             SyncFloorStateFromTower();
             RollDailyWeather();
             _events?.Publish(new GameStartedEvent());
@@ -142,6 +175,81 @@ namespace KingCardsSpire.Managers
             _events?.Publish(new WeatherChangedEvent(w));
         }
 
+        /// <summary>供驻守奖励界面读取的待选列表（与最近一次 <see cref="BossRewardOfferedEvent"/> 一致）。</summary>
+        public IReadOnlyList<BossRewardOption> PendingBossRewards => _pendingBossRewards;
+
+        /// <summary>玩家确认一项驻守奖励后应用金币/卡牌并 <see cref="EnterNextFloor"/>。</summary>
+        /// <returns>是否成功应用并进层（含通关触发）。</returns>
+        public bool TryApplyBossRewardChoice(int optionIndex)
+        {
+            if (_gameOver || _runVictory)
+                return false;
+            if (!FloorState.BossDefeated)
+                return false;
+            if (_pendingBossRewards == null || optionIndex < 0 ||
+                optionIndex >= _pendingBossRewards.Length)
+                return false;
+
+            var opt = _pendingBossRewards[optionIndex];
+            _pendingBossRewards = null;
+
+            if (opt.IsGold)
+                AddGold(opt.GoldAmount);
+            else if (!string.IsNullOrEmpty(opt.CardId))
+            {
+                var cfgMgr = ConfigManager.Instance;
+                if (cfgMgr != null && cfgMgr.TryGetCard(opt.CardId, out var cc))
+                {
+                    AppendOwnedCard(CardFromConfig(cc));
+                    _events?.Publish(new CardAcquiredEvent(cc.Id));
+                }
+                else
+                    Debug.LogWarning($"[GameManager] 驻守奖励卡牌配置缺失: {opt.CardId}");
+            }
+
+            EnterNextFloor();
+            return true;
+        }
+
+        /// <summary>
+        /// 放弃本次驻守奖励（不领取金币与卡牌），仍按规则进层（文档「跳过」类操作）。
+        /// </summary>
+        public bool TryForfeitBossRewardsAndAdvance()
+        {
+            if (_gameOver || _runVictory)
+                return false;
+            if (!FloorState.BossDefeated)
+                return false;
+            if (_pendingBossRewards == null)
+                return false;
+
+            _pendingBossRewards = null;
+            EnterNextFloor();
+            return true;
+        }
+
+        private static Card CardFromConfig(CardConfigEntry cc)
+        {
+            return new Card
+            {
+                Id = cc.Id,
+                Name = string.IsNullOrEmpty(cc.DisplayName) ? cc.Id : cc.DisplayName,
+                Level = cc.Level,
+                Type = cc.Type,
+                EffectDesc = cc.Description,
+                IsUnique = cc.IsUnique
+            };
+        }
+
+        private void AppendOwnedCard(Card card)
+        {
+            if (card == null)
+                return;
+            var list = new List<Card>(PlayerState.OwnedCards ?? Array.Empty<Card>());
+            list.Add(card);
+            PlayerState.OwnedCards = list.ToArray();
+        }
+
         private void SyncFloorStateFromTower()
         {
             FloorState.FloorIndex = PlayerState.CurrentFloor;
@@ -183,6 +291,7 @@ namespace KingCardsSpire.Managers
             if (cfgMgr != null)
                 cfgMgr.TryGetTowerFloor(PlayerState.CurrentFloor, out entry);
             var options = BossRewardPicker.Generate(spareDays, entry, cfgMgr);
+            _pendingBossRewards = options;
             _events?.Publish(new BossRewardOfferedEvent(PlayerState.CurrentFloor, options));
         }
 

@@ -35,13 +35,6 @@ namespace KingCardsSpire.Models
         ChaoticBattlefield = 10
     }
 
-    public enum SceneId
-    {
-        Boot = 0,
-        Main = 1,
-        Battle = 2
-    }
-
     public enum UIPanelId
     {
         None = 0,
@@ -50,6 +43,10 @@ namespace KingCardsSpire.Models
         HeroRoom = 3,
         Shop = 4,
         UnlockedDialogues = 5,
-        Battle = 6
+        Battle = 6,
+        MainMenu = 7,
+        MainHub = 8,
+        BossReward = 9,
+        CardList = 10
     }
 }

@@ -84,6 +84,18 @@ namespace KingCardsSpire.Managers
             _stack.Push(view);
         }
 
+        /// <summary>
+        /// 获取当前已通过 <see cref="OpenAsync"/> 打开且仍存活的面板（用于在打开后注入数据，例如 <see cref="CardListView.Apply"/>）。
+        /// </summary>
+        public bool TryGetView<T>(UIPanelId panelId, out T view) where T : BaseView
+        {
+            view = null;
+            if (!_active.TryGetValue(panelId, out var baseView) || baseView == null)
+                return false;
+            view = baseView as T;
+            return view != null;
+        }
+
         public void Close(UIPanelId panelId)
         {
             if (!_active.TryGetValue(panelId, out var view) || view == null)

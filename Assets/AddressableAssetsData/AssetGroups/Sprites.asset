@@ -1,0 +1,245 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: Sprites
+  m_EditorClassIdentifier: 
+  m_GroupName: Sprites
+  m_Data:
+    m_SerializedData: []
+  m_GUID: 95160f2df225b8a4ab9936b6b7429b74
+  m_SerializeEntries:
+  - m_GUID: 45cc8ba6f3828254f9637acc4b5fcac7
+    m_Address: "Assets/GameAssets/Sprites/Cards/11. \u738B\u540E.png"
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 4f6668560d3355144857cf821d1dbb9f
+    m_Address: "Assets/GameAssets/Sprites/Cards/8. \u5F11\u541B\u8005.png"
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 3371c4f6160ce6c4089c784a144e2f3b
+    m_Address: "Assets/GameAssets/Sprites/Cards/26. \u94F8\u5251.png"
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: dde02a7a678e6dd499c0bd2a76e2bfd1
+    m_Address: "Assets/GameAssets/Sprites/Cards/29. \u56DB\u8C61\u2014\u767D\u864E.png"
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 4855c00538d272e4aa09cadc301ed315
+    m_Address: "Assets/GameAssets/Sprites/Cards/25. \u5929\u4F5C\u4E4B\u5408.png"
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 5aa822faf6ded0041b071920b4962450
+    m_Address: "Assets/GameAssets/Sprites/Cards/42. \u529F\u80FD\u5931\u6548\u724C.png"
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 336737f5677ad7143bee60e0184a0b10
+    m_Address: "Assets/GameAssets/Sprites/Cards/33. \u767D\u65E5\u68A6.png"
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f5f4f429a3a0ce24680b92a3864152ad
+    m_Address: "Assets/GameAssets/Sprites/Cards/20. \u6700\u7EC8\u65F6\u523B.png"
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 8ad7eadef3c316547aac265394dcf96f
+    m_Address: "Assets/GameAssets/Sprites/Cards/38. \u51CF0.5\u724C.png"
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: dce08616f19bf1d4983a2089a7e1a142
+    m_Address: "Assets/GameAssets/Sprites/Cards/35. \u6076\u9B54.png"
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 210ff951982e2f343b830b1899e9e0f1
+    m_Address: "Assets/GameAssets/Sprites/Cards/13. \u4F2A\u795E.png"
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 7ee93ae8f839e1f4a9c7ade1e9de2957
+    m_Address: "Assets/GameAssets/Sprites/Cards/37. \u540E\u6094\u724C.png"
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 5925740d2dc7f024fa2b3c7bcacbb891
+    m_Address: "Assets/GameAssets/Sprites/Cards/17. \u6587\u660E.png"
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: bab20b21d05c41744b8ad049f35419bf
+    m_Address: "Assets/GameAssets/Sprites/Cards/6. \u76D7\u8D3C.png"
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c773ed5c6a9c666489dba243cdf9f9fc
+    m_Address: "Assets/GameAssets/Sprites/Cards/28. \u56DB\u8C61\u2014\u9752\u9F99.png"
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 21d3a320ee92c7e4797b8c78b6fb5ed4
+    m_Address: "Assets/GameAssets/Sprites/Cards/3.\u5E73\u6C11.png"
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d26c5bb6b4d69014e8bc30c079b9ba37
+    m_Address: "Assets/GameAssets/Sprites/Cards/23. \u6307\u6570\u5F62\u6001.png"
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f5da6c7bcaac0614a85da7c886e17fb5
+    m_Address: "Assets/GameAssets/Sprites/Cards/39. \u51CF1\u724C.jpg"
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 0d50f2858a1f90948acd19d337c3aea9
+    m_Address: "Assets/GameAssets/Sprites/Cards/15. \u5F71\u5B50.png"
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 1752afafc18de3a428b48e8ca0a8fce0
+    m_Address: "Assets/GameAssets/Sprites/Cards/14. \u5360\u535C\u5E08.png"
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: af2626eef1db5fd498b0d19fbed0ef94
+    m_Address: "Assets/GameAssets/Sprites/Cards/2.\u5927\u81E3.png"
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 58a19fe52ea6f224a9273435e89098bc
+    m_Address: "Assets/GameAssets/Sprites/Cards/30. \u56DB\u8C61\u2014\u6731\u96C0.png"
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c9f11045f56d9df498de60e35c44a8e6
+    m_Address: "Assets/GameAssets/Sprites/Cards/10. \u4E5E\u4E10.png"
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 68ccb242f9fbacb4bb9129f789886cc7
+    m_Address: "Assets/GameAssets/Sprites/Cards/21. \u5076\u6570\u5F62\u6001.png"
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: bac3c889535be3b4aad4f369e5c38ecf
+    m_Address: "Assets/GameAssets/Sprites/Cards/40. \u52A00.5\u724C.jpg"
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 668aa5c5f82d66e4c8d9bf0bf275b33e
+    m_Address: "Assets/GameAssets/Sprites/Cards/18. \u6696\u65E5.png"
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: eef7fd0c835ebf3418792feb4d3ab093
+    m_Address: "Assets/GameAssets/Sprites/Cards/24. \u91D1\u8272\u9879\u94FE.png"
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 40cd4fff52cd2b646a68468586edba4e
+    m_Address: "Assets/GameAssets/Sprites/Cards/4. \u62A4\u536B.png"
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 1d9914fa8f3978648bc2d94b80f74a62
+    m_Address: "Assets/GameAssets/Sprites/Cards/19. \u96EA\u82B1.png"
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 1108e9c35faeb4f468709d4bc6bf3d99
+    m_Address: "Assets/GameAssets/Sprites/Cards/43. \u80FD\u529B\u5931\u6548\u724C.png"
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: fca6b5c94fa37c74db6f22bdfc005b77
+    m_Address: "Assets/GameAssets/Sprites/Cards/27. \u6325\u5251.png"
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 3d3f2509899306847a9e367d16e73d5d
+    m_Address: "Assets/GameAssets/Sprites/Cards/1.\u56FD\u738B.png"
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 5d28d1e623285b745ae837e07246c2e7
+    m_Address: "Assets/GameAssets/Sprites/Cards/36. \u9884\u89C1\u724C.png"
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: dfa2a7c43cce7eb4aaf7b0b934ba26f0
+    m_Address: "Assets/GameAssets/Sprites/Cards/34. \u5E0C\u671B.png"
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: ba45444a3a625cd42a2a4e73f8671697
+    m_Address: "Assets/GameAssets/Sprites/Cards/7. \u8D35\u65CF.png"
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 971abe5f031c3ca4ea4ed81adb56b14b
+    m_Address: "Assets/GameAssets/Sprites/Cards/9. \u4E71\u515A.jpg"
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 1212a048318d4354592e759695e08ca0
+    m_Address: "Assets/GameAssets/Sprites/Cards/44. \u7EED\u547D\u724C.png"
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: fddd61a50446a094ca8a779a25898e5d
+    m_Address: "Assets/GameAssets/Sprites/Cards/12. \u523A\u5BA2.png"
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 2112128b80565ed43848fa37f44f9f78
+    m_Address: "Assets/GameAssets/Sprites/Cards/5. \u4F8D\u5973.png"
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: b369f8896f6b59640a363b41456f39c8
+    m_Address: "Assets/GameAssets/Sprites/Cards/31. \u56DB\u8C61\u2014\u7384\u6B66.png"
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f6b73422a725e3e4ebe5636a4214ae23
+    m_Address: "Assets/GameAssets/Sprites/Cards/32. \u5B64\u6CE8\u4E00\u63B7.png"
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c3ab6ab95e3f57e4292f50823cee24d4
+    m_Address: "Assets/GameAssets/Sprites/Cards/41. \u52A01\u724C.jpg"
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 1384bc0e9dfe84c43bf2e993de6abc3a
+    m_Address: "Assets/GameAssets/Sprites/Cards/16. \u547D\u8FD0.png"
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f8ee2166f1f06a041b915f36216721b5
+    m_Address: "Assets/GameAssets/Sprites/Cards/22. \u5947\u6570\u5F62\u6001.png"
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: 0b8713ba58b57bb49bd9906570780370, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: 215ab8ae8b4c28b4eb0b0c5c71aa0138, type: 2}
+    - {fileID: 11400000, guid: 78df47992ed19e4419cdbe1dfcf641e5, type: 2}

@@ -34,6 +34,8 @@ namespace KingCardsSpire.Managers
         private string _lastEnemyInstanceId;
         private bool _isBossBattle;
 
+        private string _opponentDisplayName = string.Empty;
+
         public BattleState CurrentBattle { get; private set; } = new();
 
         public bool IsBattleActive => _phase == Phase.InBattle;
@@ -77,6 +79,7 @@ namespace KingCardsSpire.Managers
         {
             ResetRuntime();
             _isBossBattle = isBossBattle;
+            _opponentDisplayName = ResolveOpponentDisplayName(isBossBattle);
 
             foreach (var c in playerDeck)
                 _playerHand.Add(CloneForBattle(c));
@@ -166,7 +169,7 @@ namespace KingCardsSpire.Managers
             return BuildDefaultEnemyDeck();
         }
 
-        private static Card CardFromConfig(CardConfig cc)
+        private static Card CardFromConfig(CardConfigEntry cc)
         {
             return new Card
             {
@@ -355,6 +358,7 @@ namespace KingCardsSpire.Managers
             CurrentBattle.MaxRound = _noRoundLimit ? 0 : _maxRounds;
             CurrentBattle.NoRoundLimit = _noRoundLimit;
             CurrentBattle.BattleWeather = _weather;
+            CurrentBattle.OpponentDisplayName = _opponentDisplayName ?? string.Empty;
             CurrentBattle.TurnHistory = _historyLines.ToArray();
         }
 
@@ -369,7 +373,27 @@ namespace KingCardsSpire.Managers
             _lastPlayerInstanceId = null;
             _lastEnemyInstanceId = null;
             _isBossBattle = false;
+            _opponentDisplayName = string.Empty;
             CurrentBattle = new BattleState();
+        }
+
+        private static string ResolveOpponentDisplayName(bool vsBoss)
+        {
+            if (!vsBoss)
+                return "敌方";
+
+            var gm = GameManager.Instance;
+            var cfg = ConfigManager.Instance;
+            var floor = gm != null ? gm.PlayerState.CurrentFloor : 1;
+            if (cfg != null && cfg.TryGetTowerFloor(floor, out var entry))
+            {
+                var id = entry.BossId;
+                if (!string.IsNullOrEmpty(id) && cfg.TryGetCard(id, out var cc))
+                    return string.IsNullOrEmpty(cc.DisplayName) ? id : cc.DisplayName;
+                return string.IsNullOrEmpty(id) ? "驻守者" : id;
+            }
+
+            return "驻守者";
         }
 
         private static Card CloneForBattle(Card template)

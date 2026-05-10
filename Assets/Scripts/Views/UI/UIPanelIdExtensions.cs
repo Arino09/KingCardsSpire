@@ -17,6 +17,10 @@ namespace KingCardsSpire.Views.UI
                 UIPanelId.Shop => "UI/Panel_Shop",
                 UIPanelId.UnlockedDialogues => "UI/Panel_UnlockedDialogues",
                 UIPanelId.Battle => "UI/Panel_Battle",
+                UIPanelId.MainMenu => "UI/MainMenuView",
+                UIPanelId.MainHub => "UI/MainView",
+                UIPanelId.BossReward => "UI/Panel_BossReward",
+                UIPanelId.CardList => "UI/CardListView",
                 _ => string.Empty
             };
         }

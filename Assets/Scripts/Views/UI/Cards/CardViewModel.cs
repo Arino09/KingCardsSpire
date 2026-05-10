@@ -43,7 +43,7 @@ namespace KingCardsSpire.Views.UI.Cards
 
         public string BattleInstanceId { get; }
 
-        public static CardViewModel FromCard(Card card, CardConfig config = null)
+        public static CardViewModel FromCard(Card card, CardConfigEntry config = null)
         {
             if (card == null)
                 throw new ArgumentNullException(nameof(card));
@@ -66,7 +66,7 @@ namespace KingCardsSpire.Views.UI.Cards
                 card.BattleInstanceId);
         }
 
-        public static CardViewModel FromConfigOnly(CardConfig config)
+        public static CardViewModel FromConfigOnly(CardConfigEntry config)
         {
             if (config == null)
                 throw new ArgumentNullException(nameof(config));
@@ -81,7 +81,41 @@ namespace KingCardsSpire.Views.UI.Cards
                 string.Empty);
         }
 
-        private static string ResolveName(Card card, CardConfig config)
+        /// <summary>
+        /// 驻守奖励一条选项：金币展示为「奖励卡」样式；卡牌选项优先用配置表文案与等级。
+        /// </summary>
+        public static CardViewModel FromBossRewardOption(BossRewardOption option, CardConfigEntry cardConfigOrNull)
+        {
+            if (option == null)
+                throw new ArgumentNullException(nameof(option));
+
+            if (option.IsGold)
+            {
+                return new CardViewModel(
+                    "—",
+                    "奖励",
+                    "金币",
+                    $"点击领取 +{option.GoldAmount}",
+                    null,
+                    "__boss_reward_gold__",
+                    string.Empty);
+            }
+
+            if (cardConfigOrNull != null)
+                return FromConfigOnly(cardConfigOrNull);
+
+            var name = string.IsNullOrEmpty(option.CardDisplayName) ? option.CardId : option.CardDisplayName;
+            return new CardViewModel(
+                "?",
+                "卡牌",
+                name ?? string.Empty,
+                string.Empty,
+                null,
+                option.CardId ?? string.Empty,
+                string.Empty);
+        }
+
+        private static string ResolveName(Card card, CardConfigEntry config)
         {
             if (!string.IsNullOrEmpty(card.Name))
                 return card.Name;
@@ -90,7 +124,7 @@ namespace KingCardsSpire.Views.UI.Cards
             return string.Empty;
         }
 
-        private static string ResolveEffect(Card card, CardConfig config)
+        private static string ResolveEffect(Card card, CardConfigEntry config)
         {
             if (!string.IsNullOrEmpty(card.EffectDesc))
                 return card.EffectDesc;

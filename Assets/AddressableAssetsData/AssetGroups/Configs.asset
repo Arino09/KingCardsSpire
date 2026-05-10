@@ -18,43 +18,37 @@ MonoBehaviour:
   m_GUID: 2e5221c62bd4f1740bef5c89c42817db
   m_SerializeEntries:
   - m_GUID: 38c7bd107fa554ef493f2b915c5d7e05
-    m_Address: Assets/GameAssets/Configs/Bootstrap/GameConfig_Default.asset
+    m_Address: Assets/GameConfigs/Bootstrap/GameConfig_Default.asset
     m_ReadOnly: 0
     m_SerializedLabels:
     - config_game
     FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 7910868a009224a8dade3487a838304a
-    m_Address: Assets/GameAssets/Configs/Bootstrap/Card_King.asset
-    m_ReadOnly: 0
-    m_SerializedLabels:
-    - config_card
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: c654bfd88f1624132af255001951e095
-    m_Address: Assets/GameAssets/Configs/Bootstrap/Card_Commoner.asset
+  - m_GUID: f1e2d3c4b5a697887867554433221100
+    m_Address: Assets/GameConfigs/Bootstrap/Cards_Default.asset
     m_ReadOnly: 0
     m_SerializedLabels:
     - config_card
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 2c6739d9e88294fb49ebc75cc0528643
-    m_Address: Assets/GameAssets/Configs/Bootstrap/Buff_Placeholder.asset
+    m_Address: Assets/GameConfigs/Bootstrap/Buff_Placeholder.asset
     m_ReadOnly: 0
     m_SerializedLabels:
     - config_buff
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 88bdcdcffc89e4934a6a659e4d11fec2
-    m_Address: Assets/GameAssets/Configs/Bootstrap/Weather_WarmWind.asset
+    m_Address: Assets/GameConfigs/Bootstrap/Weather_WarmWind.asset
     m_ReadOnly: 0
     m_SerializedLabels:
     - config_weather
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 5ff9faad8ae86406ca01000f56a998bc
-    m_Address: Assets/GameAssets/Configs/Bootstrap/Shop_Default.asset
+    m_Address: Assets/GameConfigs/Bootstrap/Shop_Default.asset
     m_ReadOnly: 0
     m_SerializedLabels:
     - config_shop
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: e1d2c3b4a59687786955443322110099
-    m_Address: Assets/GameAssets/Configs/Bootstrap/Tower_Default.asset
+    m_Address: Assets/GameConfigs/Bootstrap/Tower_Default.asset
     m_ReadOnly: 0
     m_SerializedLabels:
     - config_tower

@@ -8,7 +8,7 @@ namespace KingCardsSpire.Managers
 {
     public sealed class ConfigManager : PersistentMonoSingleton<ConfigManager>
     {
-        private readonly Dictionary<string, CardConfig> _cards = new();
+        private readonly Dictionary<string, CardConfigEntry> _cards = new();
         private readonly Dictionary<string, BuffConfig> _buffs = new();
         private readonly Dictionary<string, WeatherConfig> _weathers = new();
         private readonly List<ShopConfig> _shopConfigs = new();
@@ -70,12 +70,21 @@ namespace KingCardsSpire.Managers
             _cards.Clear();
             if (list == null)
                 return;
-            foreach (var c in list)
+            foreach (var db in list)
             {
-                if (c == null || string.IsNullOrEmpty(c.Id))
+                if (db == null)
                     continue;
-                if (!_cards.ContainsKey(c.Id))
-                    _cards.Add(c.Id, c);
+                var entries = db.Cards;
+                if (entries == null)
+                    continue;
+                for (var i = 0; i < entries.Count; i++)
+                {
+                    var c = entries[i];
+                    if (c == null || string.IsNullOrEmpty(c.Id))
+                        continue;
+                    if (!_cards.ContainsKey(c.Id))
+                        _cards.Add(c.Id, c);
+                }
             }
         }
 
@@ -143,7 +152,7 @@ namespace KingCardsSpire.Managers
             }
         }
 
-        public bool TryGetCard(string id, out CardConfig config) => _cards.TryGetValue(id, out config);
+        public bool TryGetCard(string id, out CardConfigEntry config) => _cards.TryGetValue(id, out config);
 
         public bool TryGetBuff(string id, out BuffConfig config) => _buffs.TryGetValue(id, out config);
 

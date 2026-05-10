@@ -1,6 +1,5 @@
 #if UNITY_EDITOR
 using System.IO;
-using KingCardsSpire.Views.UI;
 using UnityEditor;
 using UnityEditor.AddressableAssets;
 using UnityEditor.AddressableAssets.Settings;
@@ -14,7 +13,7 @@ namespace KingCardsSpire.Editor
     [InitializeOnLoad]
     public static class KingCardsBattlePanelAddressablesSetup
     {
-        private const string PrefabPath = "Assets/GameAssets/UI/Panel_Battle.prefab";
+        private const string PrefabPath = "Assets/GameAssets/UI/BattleView.prefab";
         private const string Address = "UI/Panel_Battle";
         private const string Label = "ui_panel";
 
@@ -43,16 +42,8 @@ namespace KingCardsSpire.Editor
             if (File.Exists(PrefabPath))
                 return true;
 
-            var dir = Path.GetDirectoryName(PrefabPath);
-            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
-                Directory.CreateDirectory(dir);
-
-            var go = new GameObject("Panel_Battle", typeof(RectTransform), typeof(BattlePanelView));
-            PrefabUtility.SaveAsPrefabAsset(go, PrefabPath);
-            Object.DestroyImmediate(go);
-            AssetDatabase.SaveAssets();
-            Debug.Log($"[KingCards] 已创建战斗 UI 预制体: {PrefabPath}");
-            return true;
+            Debug.LogWarning($"[KingCards] 未找到战斗 UI 预制体，请将 BattleView 置于 {PrefabPath}。");
+            return false;
         }
 
         private static void RegisterIfNeeded()

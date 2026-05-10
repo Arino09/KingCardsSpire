@@ -1,0 +1,34 @@
+---
+description: UI 视图须在编辑器用 SerializeField 挂载引用，禁止运行时按路径 Find
+globs: "**/Views/UI/**/*.cs"
+alwaysApply: true
+---
+
+# UI 视图绑定约定
+
+适用于 `Assets/Scripts/Views/UI/` 下所有面向预制体 / 场景层级结构的界面脚本（含继承 `BaseView` 的面板）。
+
+## 必须
+
+- 所有需要绑定的 **UI 组件引用**（如 `Button`、`Text`、`Image`、`Slider`、`ScrollRect`、`TMP_Text` 等）必须使用 **`[SerializeField] private`**（或项目约定的显式访问修饰符）字段声明，并在 **Unity 编辑器** 中通过 Inspector 或预制体界面完成拖拽赋值。
+
+- 可使用 `[Header("…")]`、`[Tooltip("…")]` 分组说明，便于策划与美术配置。
+
+## 序列化引用假设（避免冗余判空）
+
+- 凡通过编辑器完成拖拽赋值的 **`[SerializeField]`** 字段，**约定在运行时非 null**；代码中 **不对这些字段做多余的 `== null` / `!= null` 判断**。
+- 仍需判空的情形：**非 Inspector 绑定**的来源（如 `ServiceLocator.Get`、`FindObjectOfType`、可选组件 `GetComponent`、配置表查不到等）。
+
+## 禁止
+
+- **禁止**在运行时使用 `Transform.Find`、`GameObject.Find`、`GameObject.FindWithTag`、按名字遍历子物体等方式，根据 **路径字符串** 查找预制体上已存在的控件并完成「主要交互绑定」。
+- **禁止**使用助手直接编辑 `*.prefab`、`*.unity` 的 YAML 来写入引用；引用赋值一律在 Unity 编辑器中操作（与本仓库「禁止直接修改预制体与场景文件」的规则一致）。
+
+## 例外
+
+- 仅在 **代码中完全动态创建**、且不存在于预制体层级中的节点（例如运行时 `new GameObject` / `Instantiate` 后立刻 `GetComponent` 缓存），可在创建处持有引用，不要求 SerializeField。
+- 性能敏感的一次性缓存（如 `GetComponent` 结果赋给私有字段）若针对的是 **脚本动态生成** 的子物体，可与项目负责人约定后使用，但不得以之替代预制体控件的 SerializeField 配置。
+
+## 新增或修改界面时
+
+- 新增 UI 脚本时默认遵守本规则；改动既有仍使用 `Find` 的旧代码时，若触及该区域，应改为 SerializeField 并提醒在编辑器内重新绑定。

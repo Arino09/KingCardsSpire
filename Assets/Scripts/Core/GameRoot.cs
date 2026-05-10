@@ -3,8 +3,8 @@ using KingCardsSpire.Controllers;
 using KingCardsSpire.Core;
 using KingCardsSpire.Core.Events;
 using KingCardsSpire.Managers;
+using KingCardsSpire.Models;
 using UnityEngine;
-using UnityEngine.EventSystems;
 
 namespace KingCardsSpire.Core
 {
@@ -15,7 +15,7 @@ namespace KingCardsSpire.Core
     public class GameRoot : MonoBehaviour
     {
         [Header("UI")]
-        [Tooltip("场景中用于挂载所有 UI 面板的 RectTransform（通常为 Canvas 下的容器）； GameRoot 会保留其所在 Canvas 跨场景销毁。")]
+        [Tooltip("单场景中用于挂载所有 UI 面板的 RectTransform（通常为 Canvas 下的容器）；游戏流程仅通过 UIManager 切换面板。")]
         [SerializeField] private RectTransform sceneUiRoot;
 
         private static bool s_runtimeBootCompleted;
@@ -33,7 +33,6 @@ namespace KingCardsSpire.Core
             systems.AddComponent<ConfigManager>();
             systems.AddComponent<AudioManager>();
             systems.AddComponent<UIManager>();
-            systems.AddComponent<SceneFlowManager>();
             systems.AddComponent<GameManager>();
             systems.AddComponent<BattleManager>();
         }
@@ -51,21 +50,7 @@ namespace KingCardsSpire.Core
             yield return ConfigManager.Instance.InitializeConfigsAsync();
 
             AudioManager.Instance.InitializeAudio();
-            if (sceneUiRoot != null)
-            {
-                var canvas = sceneUiRoot.GetComponentInParent<Canvas>();
-                if (canvas != null)
-                    DontDestroyOnLoad(canvas.gameObject);
-                else
-                    DontDestroyOnLoad(sceneUiRoot.gameObject);
-
-                var existingEs = FindObjectOfType<EventSystem>();
-                if (existingEs != null)
-                    DontDestroyOnLoad(existingEs.gameObject);
-            }
-
             UIManager.Instance.InitializeUi(sceneUiRoot);
-            SceneFlowManager.Instance.InitializeFlow();
             GameManager.Instance.InitializeGame();
             BattleManager.Instance.InitializeBattle();
 
@@ -77,6 +62,9 @@ namespace KingCardsSpire.Core
                 $"[GameRoot] all managers initialized. Configs loaded: {cfg.CardCount} cards / {cfg.BuffCount} buffs / {cfg.WeatherCount} weathers / {cfg.ShopConfigCount} shop rows / game configs: {cfg.GameConfigCount} / tower rows: {cfg.TowerConfigCount}");
 
             EventManager.Instance.Publish(new GameBootedEvent());
+
+            yield return UIManager.Instance.OpenAsync(UIPanelId.MainMenu);
+
             s_runtimeBootCompleted = true;
         }
     }
