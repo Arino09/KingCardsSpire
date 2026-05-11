@@ -26,6 +26,9 @@ namespace KingCardsSpire.Models
         /// <summary>战斗界面顶部展示的敌方名称（BOSS 来自塔配置等）。</summary>
         public string OpponentDisplayName = string.Empty;
 
+        /// <summary>本场是否为驻守 BOSS 战（用于与普通 NPC / 主角遭遇战区分界面收尾）。</summary>
+        public bool IsBossBattle;
+
         public string[] TurnHistory = Array.Empty<string>();
     }
 }

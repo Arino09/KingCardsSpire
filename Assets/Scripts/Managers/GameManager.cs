@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using KingCardsSpire.Configs;
 using KingCardsSpire.Core;
@@ -33,7 +34,11 @@ namespace KingCardsSpire.Managers
         protected override void OnDestroy()
         {
             if (_events != null)
+            {
                 _events.Unsubscribe<BattleEndedEvent>(OnBattleEnded);
+                _events.Unsubscribe<GameOverEvent>(OnGameOverNavToTitle);
+            }
+
             ServiceLocator.Unregister<GameManager>();
             base.OnDestroy();
         }
@@ -42,6 +47,7 @@ namespace KingCardsSpire.Managers
         {
             _events = EventManager.Instance;
             _events?.Subscribe<BattleEndedEvent>(OnBattleEnded);
+            _events?.Subscribe<GameOverEvent>(OnGameOverNavToTitle);
         }
 
         /// <summary>每层允许停留天数上限（配置 MaxDaysPerFloor）。</summary>
@@ -212,16 +218,26 @@ namespace KingCardsSpire.Managers
         }
 
         /// <summary>
-        /// 放弃本次驻守奖励（不领取金币与卡牌），仍按规则进层（文档「跳过」类操作）。
+        /// 跳过卡牌奖励：发放本次待选列表中<strong>全部金币项</strong>（每笔单独调用 <see cref="AddGold"/>，雨季增收仍生效），
+        /// 不领取任何卡牌；随后清空待选并进层。
         /// </summary>
-        public bool TryForfeitBossRewardsAndAdvance()
+        public bool TrySkipBossCardRewardsCollectGoldAndAdvance()
         {
             if (_gameOver || _runVictory)
                 return false;
             if (!FloorState.BossDefeated)
                 return false;
-            if (_pendingBossRewards == null)
+            if (_pendingBossRewards == null || _pendingBossRewards.Length == 0)
                 return false;
+
+            for (var i = 0; i < _pendingBossRewards.Length; i++)
+            {
+                var opt = _pendingBossRewards[i];
+                if (opt == null)
+                    continue;
+                if (opt.IsGold)
+                    AddGold(opt.GoldAmount);
+            }
 
             _pendingBossRewards = null;
             EnterNextFloor();
@@ -275,11 +291,22 @@ namespace KingCardsSpire.Managers
             _events?.Publish(new GameOverEvent(reason));
         }
 
+        /// <summary>
+        /// BOSS 战败结束 Run 并回标题；BOSS 胜发驻守奖励。
+        /// 非 BOSS 战不改变 Run，收尾仅在 <see cref="BattleView"/>（关闭战斗回到 MainHub）。
+        /// </summary>
         private void OnBattleEnded(BattleEndedEvent e)
         {
-            if (!e.IsBossBattle || _gameOver || _runVictory)
+            if (_gameOver || _runVictory)
                 return;
-            if (!e.PlayerVictory)
+
+            if (e.IsBossBattle && !e.PlayerVictory)
+            {
+                FailRun("boss_defeat");
+                return;
+            }
+
+            if (!e.IsBossBattle || !e.PlayerVictory)
                 return;
 
             FloorState.BossDefeated = true;
@@ -293,6 +320,26 @@ namespace KingCardsSpire.Managers
             var options = BossRewardPicker.Generate(spareDays, entry, cfgMgr);
             _pendingBossRewards = options;
             _events?.Publish(new BossRewardOfferedEvent(PlayerState.CurrentFloor, options));
+        }
+
+        /// <summary>
+        /// Run 结束时关闭当前全部面板并回到标题（主菜单）；例如 BOSS 战败、金币耗尽、层内超时等。
+        /// </summary>
+        private void OnGameOverNavToTitle(GameOverEvent _)
+        {
+            StartCoroutine(ReturnToTitleRoutine());
+        }
+
+        private static IEnumerator ReturnToTitleRoutine()
+        {
+            yield return null;
+
+            var ui = UIManager.Instance;
+            if (ui == null)
+                yield break;
+
+            ui.CloseAll();
+            yield return ui.OpenAsync(UIPanelId.MainMenu);
         }
 
         private GameConfig ResolveGameConfig()

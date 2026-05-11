@@ -30,13 +30,19 @@ MonoBehaviour:
     - ui_panel
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: acc17e1ab5f2dec4ab6ad365536258db
-    m_Address: UI/Panel_Battle
+    m_Address: UI/BattleView
     m_ReadOnly: 0
     m_SerializedLabels:
     - ui_panel
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 784e6e073243bd947ac3beae7946cc96
     m_Address: UI/CardListView
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - ui_panel
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 90f7017f0817d784dbf2138f4732b819
+    m_Address: UI/CardRewardView
     m_ReadOnly: 0
     m_SerializedLabels:
     - ui_panel

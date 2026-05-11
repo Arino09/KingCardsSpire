@@ -46,7 +46,7 @@ namespace KingCardsSpire.Models
         Battle = 6,
         MainMenu = 7,
         MainHub = 8,
-        BossReward = 9,
+        CardReward = 9,
         CardList = 10
     }
 }

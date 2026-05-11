@@ -11,15 +11,12 @@ namespace KingCardsSpire.Views.UI
         {
             return id switch
             {
-                UIPanelId.TopStatus => "UI/Panel_TopStatus",
-                UIPanelId.DailyChoice => "UI/Panel_DailyChoice",
-                UIPanelId.HeroRoom => "UI/Panel_HeroRoom",
-                UIPanelId.Shop => "UI/Panel_Shop",
-                UIPanelId.UnlockedDialogues => "UI/Panel_UnlockedDialogues",
-                UIPanelId.Battle => "UI/Panel_Battle",
+                UIPanelId.Shop => "UI/ShopView",
+                UIPanelId.UnlockedDialogues => "UI/UnlockedDialoguesView",
+                UIPanelId.Battle => "UI/BattleView",
                 UIPanelId.MainMenu => "UI/MainMenuView",
                 UIPanelId.MainHub => "UI/MainView",
-                UIPanelId.BossReward => "UI/Panel_BossReward",
+                UIPanelId.CardReward => "UI/CardRewardView",
                 UIPanelId.CardList => "UI/CardListView",
                 _ => string.Empty
             };

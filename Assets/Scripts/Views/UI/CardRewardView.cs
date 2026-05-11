@@ -12,23 +12,16 @@ namespace KingCardsSpire.Views.UI
 {
     /// <summary>
     /// 击败驻守者后的五选一奖励：选项使用与战斗相同的 Card 预制体（<see cref="CardView"/>）。
-    /// 预制体需在 Addressables 注册为 <c>UI/Panel_BossReward</c>，并绑定选项容器、Card 预制体与跳过按钮。
+    /// 跳过卡牌按钮：领取列表中<strong>全部金币项</strong>、不领取任何卡牌后进层（见 <see cref="GameManager.TrySkipBossCardRewardsCollectGoldAndAdvance"/>）。
     /// </summary>
-    public sealed class BossRewardView : BaseView
+    public sealed class CardRewardView : BaseView
     {
         private const int MaxOptions = 5;
 
-        [Header("文案")]
         [SerializeField] private Text titleText;
-
-        [Header("选项区 · Card 预制体")]
         [SerializeField] private RectTransform cardOptionsRoot;
-
         [SerializeField] private CardView cardOptionPrefab;
-
         [SerializeField] private float cardOptionScale = 0.22f;
-
-        [Header("跳过 · 不领取本次任一选项（金币与卡牌均放弃），仍进层")]
         [SerializeField] private Button skipCardRewardButton;
 
         private GameManager _game;
@@ -40,7 +33,7 @@ namespace KingCardsSpire.Views.UI
 
         public override void Initialize()
         {
-            SetPanelId(UIPanelId.BossReward);
+            SetPanelId(UIPanelId.CardReward);
             _game = GameManager.Instance;
             _config = ConfigManager.Instance;
         }
@@ -161,7 +154,7 @@ namespace KingCardsSpire.Views.UI
             if (gm == null || ui == null)
                 yield break;
 
-            if (!gm.TryForfeitBossRewardsAndAdvance())
+            if (!gm.TrySkipBossCardRewardsCollectGoldAndAdvance())
                 yield break;
 
             CloseRewardAndBattle(ui);
@@ -169,7 +162,7 @@ namespace KingCardsSpire.Views.UI
 
         private static void CloseRewardAndBattle(UIManager ui)
         {
-            ui.Close(UIPanelId.BossReward);
+            ui.Close(UIPanelId.CardReward);
             ui.Close(UIPanelId.Battle);
         }
     }

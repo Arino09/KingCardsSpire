@@ -184,7 +184,7 @@ namespace KingCardsSpire.Views.UI
             if (ui == null)
                 yield break;
 
-            yield return ui.OpenAsync(UIPanelId.BossReward);
+            yield return ui.OpenAsync(UIPanelId.CardReward);
         }
 
         private void RefreshAll()

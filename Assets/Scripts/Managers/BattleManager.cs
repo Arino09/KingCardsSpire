@@ -461,6 +461,7 @@ namespace KingCardsSpire.Managers
             CurrentBattle.NoRoundLimit = _noRoundLimit;
             CurrentBattle.BattleWeather = _weather;
             CurrentBattle.OpponentDisplayName = _opponentDisplayName ?? string.Empty;
+            CurrentBattle.IsBossBattle = _isBossBattle;
             CurrentBattle.TurnHistory = _historyLines.ToArray();
         }
 
