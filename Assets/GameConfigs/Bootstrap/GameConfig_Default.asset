@@ -17,3 +17,7 @@ MonoBehaviour:
   towerFloors: 7
   maxDaysPerFloor: 3
   initialXRayCount: 1
+  starterDeckCardIds:
+  - king
+  - minister
+  - commoner

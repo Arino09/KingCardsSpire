@@ -10,6 +10,10 @@ namespace KingCardsSpire.Core.Battle
         /// <summary>达回合上限，按总手牌等级低者胜（§2.2.5）。</summary>
         RoundLimitByTotalHandLevel = 3,
         /// <summary>达回合上限且双方总手牌等级和相等，平局。</summary>
-        RoundLimitDraw = 4
+        RoundLimitDraw = 4,
+
+        /// <summary>四象齐集直接获胜（功能卡）。</summary>
+        FourSymbolsComplete = 5
     }
 }
+

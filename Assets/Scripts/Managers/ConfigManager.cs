@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using KingCardsSpire.Configs;
 using KingCardsSpire.Core;
+using KingCardsSpire.Models;
 using UnityEngine;
 
 namespace KingCardsSpire.Managers
@@ -153,6 +154,22 @@ namespace KingCardsSpire.Managers
         }
 
         public bool TryGetCard(string id, out CardConfigEntry config) => _cards.TryGetValue(id, out config);
+
+        /// <summary>
+        /// 商店进货：同一类型内不放回随机所用候选池（已持有的唯一卡排除）。
+        /// </summary>
+        public void CollectShopCandidates(CardType type, HashSet<string> ownedCardIds, List<CardConfigEntry> results)
+        {
+            results.Clear();
+            foreach (var entry in _cards.Values)
+            {
+                if (entry == null || entry.Type != type)
+                    continue;
+                if (entry.IsUnique && ownedCardIds != null && ownedCardIds.Contains(entry.Id))
+                    continue;
+                results.Add(entry);
+            }
+        }
 
         public bool TryGetBuff(string id, out BuffConfig config) => _buffs.TryGetValue(id, out config);
 

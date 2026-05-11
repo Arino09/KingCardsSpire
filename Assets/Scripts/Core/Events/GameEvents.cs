@@ -47,11 +47,16 @@ namespace KingCardsSpire.Core.Events
         public readonly BattleEndReason Reason;
         public readonly bool IsBossBattle;
 
-        public BattleEndedEvent(bool playerVictory, BattleEndReason reason, bool isBossBattle = false)
+        /// <summary>本局是否打出过金色项链（获胜后可由经济系统用于金币倍率）。</summary>
+        public readonly bool GoldenNecklacePlayedThisBattle;
+
+        public BattleEndedEvent(bool playerVictory, BattleEndReason reason, bool isBossBattle = false,
+            bool goldenNecklacePlayedThisBattle = false)
         {
             PlayerVictory = playerVictory;
             Reason = reason;
             IsBossBattle = isBossBattle;
+            GoldenNecklacePlayedThisBattle = goldenNecklacePlayedThisBattle;
         }
     }
 

@@ -47,6 +47,12 @@ MonoBehaviour:
     m_SerializedLabels:
     - ui_panel
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f9b6a6ff5ae1b694981da8c25bcbfe6e
+    m_Address: UI/ShopView
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - ui_panel
+    FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: 0b8713ba58b57bb49bd9906570780370, type: 2}
   m_SchemaSet:

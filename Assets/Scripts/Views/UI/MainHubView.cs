@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Text;
 using KingCardsSpire.Controllers;
@@ -265,22 +266,21 @@ namespace KingCardsSpire.Views.UI
 
         private void OnDeckClicked()
         {
+            StartCoroutine(OpenDeckCardListRoutine());
+        }
+
+        /// <summary>
+        /// 打开通用卡牌列表弹窗，展示当前存档中的「持有卡组」(<see cref="PlayerData.OwnedCards"/>)。
+        /// </summary>
+        private IEnumerator OpenDeckCardListRoutine()
+        {
+            yield return UIManager.Instance.OpenAsync(UIPanelId.CardList);
+            if (!UIManager.Instance.TryGetView(UIPanelId.CardList, out CardListView view))
+                yield break;
+
             var player = _game != null ? _game.PlayerState : null;
-            if (player?.OwnedCards == null || player.OwnedCards.Length == 0)
-            {
-                Debug.Log("[MainHub] 卡组：当前尚无持有卡牌。");
-                return;
-            }
-
-            var sb = new StringBuilder("卡组：");
-            foreach (var c in player.OwnedCards)
-            {
-                if (c == null)
-                    continue;
-                sb.Append(c.Name).Append(' ');
-            }
-
-            Debug.Log(sb.ToString());
+            var cards = player?.OwnedCards;
+            view.Apply(new CardListViewModel("我的卡组", cards ?? Array.Empty<Card>()));
         }
 
         private void OnSettingsClicked()

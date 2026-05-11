@@ -42,6 +42,11 @@ namespace KingCardsSpire.Managers
         /// <summary>玩家已暂存的手牌下标；-1 表示未选择。</summary>
         private int _pendingPlayerHandIndex = -1;
 
+        private readonly BattleEffectRuntimeState _battleEffects = new();
+
+        /// <summary>「最终时刻」将在下一回合开始时生效。</summary>
+        private bool _restrictedNextRound;
+
         public BattleState CurrentBattle { get; private set; } = new();
 
         public bool IsBattleActive => _phase == Phase.InBattle;
@@ -191,6 +196,13 @@ namespace KingCardsSpire.Managers
                 return false;
             }
 
+            if (_battleEffects.FinalMomentRestrictionActive &&
+                !IsAllowedUnderFinalMoment(playerCard))
+            {
+                error = "最终时刻：仅能出国王、平民或大臣";
+                return false;
+            }
+
             _pendingPlayerHandIndex = playerHandIndex;
             return true;
         }
@@ -212,18 +224,55 @@ namespace KingCardsSpire.Managers
                 return false;
             }
 
+            if (_restrictedNextRound)
+            {
+                _battleEffects.FinalMomentRestrictionActive = true;
+                _restrictedNextRound = false;
+            }
+
             var playerIdx = _pendingPlayerHandIndex;
+            var enemyIdx = _pendingEnemyHandIndex;
+
+            ApplyPreRoundSpecials(ref playerIdx, ref enemyIdx);
+
             var playerCard = _playerHand[playerIdx];
-            var enemyCard = _enemyHand[_pendingEnemyHandIndex];
+            var enemyCard = _enemyHand[enemyIdx];
 
-            compareResult = CardBattleRules.Compare(playerCard, enemyCard, _weather);
+            if (BattleCardEffectResolver.HandContainsAllFourSymbols(_playerHand))
+            {
+                compareResult = BattleCompareResult.FirstWins;
+                _pendingEnemyHandIndex = -1;
+                _pendingPlayerHandIndex = -1;
+                FinishBattle(true, BattleEndReason.FourSymbolsComplete);
+                return true;
+            }
 
-            ResolveRound(playerIdx, playerCard, enemyCard);
+            compareResult = ComputeRoundCompareResult(playerCard, enemyCard);
+
+            ResolveRound(playerIdx, enemyIdx, playerCard, enemyCard, compareResult);
+
+            _battleEffects.ClearRoundConsumableFlags();
+
+            if (_battleEffects.FinalMomentRestrictionActive)
+                _battleEffects.FinalMomentRestrictionActive = false;
 
             _pendingEnemyHandIndex = -1;
             _pendingPlayerHandIndex = -1;
 
             return true;
+        }
+
+        /// <summary>
+        /// 队列消耗牌效果（预见/加减等级/续命等），在下次 <see cref="CommitPendingRound"/> 结算前生效。
+        /// </summary>
+        public void QueueConsumableRoundModifiers(float playerLevelBonus, float enemyLevelBonus,
+            bool disableEnemyFunction, bool disableEnemyAbility, bool surviveLossToHand)
+        {
+            _battleEffects.ConsumablePlayerLevelBonus = playerLevelBonus;
+            _battleEffects.ConsumableEnemyLevelBonus = enemyLevelBonus;
+            _battleEffects.DisableEnemyFunctionEffects = disableEnemyFunction;
+            _battleEffects.DisableEnemyAbilityEffects = disableEnemyAbility;
+            _battleEffects.PlayerSurviveLossToHand = surviveLossToHand;
         }
 
         public void EndBattle()
@@ -269,6 +318,7 @@ namespace KingCardsSpire.Managers
                 Name = cc.DisplayName,
                 Level = cc.Level,
                 Type = cc.Type,
+                EffectDesc = cc.Description ?? string.Empty,
                 IsUnique = cc.IsUnique
             };
         }
@@ -284,8 +334,21 @@ namespace KingCardsSpire.Managers
             for (var i = 0; i < _enemyHand.Count; i++)
             {
                 var c = _enemyHand[i];
-                if (IsLegalPlay(c, _enemyHand, _lastEnemyInstanceId))
-                    candidates.Add(i);
+                if (!IsLegalPlay(c, _enemyHand, _lastEnemyInstanceId))
+                    continue;
+                if (_battleEffects.FinalMomentRestrictionActive && !IsAllowedUnderFinalMoment(c))
+                    continue;
+                candidates.Add(i);
+            }
+
+            if (candidates.Count == 0)
+            {
+                for (var i = 0; i < _enemyHand.Count; i++)
+                {
+                    var c = _enemyHand[i];
+                    if (IsLegalPlay(c, _enemyHand, _lastEnemyInstanceId))
+                        candidates.Add(i);
+                }
             }
 
             if (candidates.Count == 0)
@@ -305,33 +368,129 @@ namespace KingCardsSpire.Managers
             return _enemyHand[idx];
         }
 
-        private void ResolveRound(int playerHandIndex, Card playerCard, Card enemyCard)
+        private void ApplyPreRoundSpecials(ref int playerIdx, ref int enemyIdx)
         {
-            var enemyIdx = _enemyHand.IndexOf(enemyCard);
-            if (enemyIdx < 0)
-                enemyIdx = 0;
+            var playerInst = _playerHand[playerIdx].BattleInstanceId;
+            var enemyInst = _enemyHand[enemyIdx].BattleInstanceId;
+            var pl = _playerHand[playerIdx];
 
-            var result = CardBattleRules.Compare(playerCard, enemyCard, _weather);
+            if (string.Equals(pl.Id, WellKnownCardIds.AllIn, StringComparison.OrdinalIgnoreCase)
+                && _playerHand.Count > 1)
+            {
+                var removeAt = RandomOtherIndex(_playerHand.Count, playerIdx);
+                DiscardPlayerCardAt(removeAt);
+                playerIdx = FindHandIndexByInstanceId(_playerHand, playerInst);
+            }
+
+            if (string.Equals(pl.Id, WellKnownCardIds.Hope, StringComparison.OrdinalIgnoreCase)
+                && _playerDiscard.Count > 0)
+            {
+                var di = Random.Range(0, _playerDiscard.Count);
+                var recalled = _playerDiscard[di];
+                _playerDiscard.RemoveAt(di);
+                _playerHand.Add(recalled);
+                playerIdx = FindHandIndexByInstanceId(_playerHand, playerInst);
+            }
+
+            if (string.Equals(pl.Id, WellKnownCardIds.Demon, StringComparison.OrdinalIgnoreCase)
+                && _enemyHand.Count > 1)
+            {
+                var removeAt = RandomOtherIndex(_enemyHand.Count, enemyIdx);
+                DiscardEnemyCardAt(removeAt);
+                enemyIdx = FindHandIndexByInstanceId(_enemyHand, enemyInst);
+                if (enemyIdx < 0)
+                    enemyIdx = 0;
+            }
+        }
+
+        private BattleCompareResult ComputeRoundCompareResult(Card stagedPlayer, Card stagedEnemy)
+        {
+            var round1Based = _roundsCompleted + 1;
+            var completedBefore = _roundsCompleted;
+
+            var playerLogical = BattleCardEffectResolver.ResolvePlayerLogicalCardForCompare(stagedPlayer,
+                _playerHand, _enemyHand, _battleEffects);
+            var enemyLogical =
+                BattleCardEffectResolver.ResolveEnemyLogicalCardForCompare(stagedEnemy, _enemyHand,
+                    _playerHand, _battleEffects);
+
+            if (BattleCardEffectResolver.EnemyEffectsInactive(enemyLogical, _battleEffects))
+                enemyLogical = BattleCardEffectResolver.StripToNeutralZero(enemyLogical);
+
+            var playerAllIn = string.Equals(stagedPlayer.Id, WellKnownCardIds.AllIn,
+                StringComparison.OrdinalIgnoreCase);
+            var enemyAllIn = string.Equals(stagedEnemy.Id, WellKnownCardIds.AllIn,
+                StringComparison.OrdinalIgnoreCase);
+
+            var pCompare = BattleCardEffectResolver.ToCompareCard(playerLogical, true, _playerHand,
+                _enemyHand,
+                _battleEffects, round1Based, completedBefore, playerAllIn);
+            var eCompare = BattleCardEffectResolver.ToCompareCard(enemyLogical, false, _playerHand,
+                _enemyHand,
+                _battleEffects, round1Based, completedBefore, enemyAllIn);
+
+            if (_battleEffects.PlayerMustWinThisRound)
+            {
+                _battleEffects.PlayerMustWinThisRound = false;
+                return BattleCompareResult.FirstWins;
+            }
+
+            if (_battleEffects.PlayerMustLoseThisRound)
+            {
+                _battleEffects.PlayerMustLoseThisRound = false;
+                return BattleCompareResult.SecondWins;
+            }
+
+            var normal = CardBattleRules.Compare(pCompare, eCompare, _weather);
+            var special =
+                BattleCardEffectResolver.ResolveSpecialFunctionPriority(playerLogical, enemyLogical, normal);
+            if (special != normal)
+                return special;
+
+            if (BattleCardEffectResolver.IsFortuneTeller(playerLogical))
+                return BattleCompareResult.SecondWins;
+            if (BattleCardEffectResolver.IsFortuneTeller(enemyLogical))
+                return BattleCompareResult.FirstWins;
+
+            return normal;
+        }
+
+        private void ResolveRound(int playerHandIndex, int enemyIdx, Card playerCard, Card enemyCard,
+            BattleCompareResult result)
+        {
             var summary =
                 $"{playerCard.Name} vs {enemyCard.Name} → {result} (天气 {_weather})";
 
-            // Doc §2.2.3：败者入弃牌；平局双方入弃牌；胜者该回合牌留在手中。
             switch (result)
             {
                 case BattleCompareResult.Draw:
-                    MoveCardAtToDiscard(_playerHand, playerHandIndex, _playerDiscard);
-                    MoveCardAtToDiscard(_enemyHand, enemyIdx, _enemyDiscard);
+                    DiscardPlayerCardAt(playerHandIndex);
+                    DiscardEnemyCardAt(enemyIdx);
                     summary += " [平局入弃牌]";
                     break;
                 case BattleCompareResult.FirstWins:
-                    MoveCardAtToDiscard(_enemyHand, enemyIdx, _enemyDiscard);
+                    DiscardEnemyCardAt(enemyIdx);
                     summary += " [己方胜·敌方牌入弃]";
                     break;
                 case BattleCompareResult.SecondWins:
-                    MoveCardAtToDiscard(_playerHand, playerHandIndex, _playerDiscard);
-                    summary += " [敌方胜·己方牌入弃]";
+                    if (!_battleEffects.PlayerSurviveLossToHand)
+                    {
+                        DiscardPlayerCardAt(playerHandIndex);
+                        summary += " [敌方胜·己方牌入弃]";
+                    }
+                    else
+                    {
+                        summary += " [续命·己方败牌留在手]";
+                    }
+
                     break;
             }
+
+            ApplyFortuneAndFalseGodChains(playerCard, enemyCard, result);
+            ApplyCivilizationIfPlayed(playerCard, enemyCard);
+            ArmFinalMomentNextRound(playerCard, enemyCard, result);
+
+            UpdateLastPlayedSnapshots(playerCard, enemyCard);
 
             _lastPlayerInstanceId = playerCard.BattleInstanceId;
             _lastEnemyInstanceId = enemyCard.BattleInstanceId;
@@ -348,6 +507,166 @@ namespace KingCardsSpire.Managers
                 return;
 
             TryEndByRoundLimit();
+        }
+
+        private static bool IsAllowedUnderFinalMoment(Card c)
+        {
+            if (c == null)
+                return false;
+            return string.Equals(c.Id, WellKnownCardIds.King, StringComparison.OrdinalIgnoreCase)
+                   || string.Equals(c.Id, WellKnownCardIds.Commoner, StringComparison.OrdinalIgnoreCase)
+                   || string.Equals(c.Id, WellKnownCardIds.Minister, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static int RandomOtherIndex(int count, int except)
+        {
+            if (count <= 1)
+                return 0;
+            var idx = Random.Range(0, count - 1);
+            if (idx >= except)
+                idx++;
+            return idx;
+        }
+
+        private static int FindHandIndexByInstanceId(List<Card> hand, string instanceId)
+        {
+            if (hand == null || string.IsNullOrEmpty(instanceId))
+                return -1;
+            for (var i = 0; i < hand.Count; i++)
+            {
+                if (hand[i].BattleInstanceId == instanceId)
+                    return i;
+            }
+
+            return -1;
+        }
+
+        private void DiscardPlayerCardAt(int index)
+        {
+            if (index < 0 || index >= _playerHand.Count)
+                return;
+            var c = _playerHand[index];
+            MoveCardAtToDiscard(_playerHand, index, _playerDiscard);
+            OnCardDiscardedFromSide(c, true);
+        }
+
+        private void DiscardEnemyCardAt(int index)
+        {
+            if (index < 0 || index >= _enemyHand.Count)
+                return;
+            var c = _enemyHand[index];
+            MoveCardAtToDiscard(_enemyHand, index, _enemyDiscard);
+            OnCardDiscardedFromSide(c, false);
+        }
+
+        private void OnCardDiscardedFromSide(Card card, bool fromPlayerPerspective)
+        {
+            if (card == null)
+                return;
+            var id = card.Id;
+            if (string.Equals(id, WellKnownCardIds.WarmDay, StringComparison.OrdinalIgnoreCase)
+                && fromPlayerPerspective)
+                _battleEffects.PlayerWarmDayActive = true;
+            if (string.Equals(id, WellKnownCardIds.Snowflake, StringComparison.OrdinalIgnoreCase)
+                && !fromPlayerPerspective)
+                _battleEffects.EnemySnowflakeActive = true;
+            if (string.Equals(id, WellKnownCardIds.ForgeBlade, StringComparison.OrdinalIgnoreCase)
+                && fromPlayerPerspective)
+                _battleEffects.PlayerForgeBladeActive = true;
+            if (string.Equals(id, WellKnownCardIds.StrikeBlade, StringComparison.OrdinalIgnoreCase)
+                && fromPlayerPerspective)
+                _battleEffects.PlayerStrikeBladeActive = true;
+            if (string.Equals(id, WellKnownCardIds.ForgeBlade, StringComparison.OrdinalIgnoreCase)
+                && !fromPlayerPerspective)
+                _battleEffects.EnemyForgeBladeActive = true;
+            if (string.Equals(id, WellKnownCardIds.StrikeBlade, StringComparison.OrdinalIgnoreCase)
+                && !fromPlayerPerspective)
+                _battleEffects.EnemyStrikeBladeActive = true;
+            if (string.Equals(id, WellKnownCardIds.EvenForm, StringComparison.OrdinalIgnoreCase)
+                && fromPlayerPerspective)
+                _battleEffects.PlayerEvenFormActive = true;
+            if (string.Equals(id, WellKnownCardIds.OddForm, StringComparison.OrdinalIgnoreCase)
+                && fromPlayerPerspective)
+                _battleEffects.PlayerOddFormActive = true;
+            if (string.Equals(id, WellKnownCardIds.EvenForm, StringComparison.OrdinalIgnoreCase)
+                && !fromPlayerPerspective)
+                _battleEffects.EnemyEvenFormActive = true;
+            if (string.Equals(id, WellKnownCardIds.OddForm, StringComparison.OrdinalIgnoreCase)
+                && !fromPlayerPerspective)
+                _battleEffects.EnemyOddFormActive = true;
+            if (string.Equals(id, WellKnownCardIds.GoldenNecklace, StringComparison.OrdinalIgnoreCase)
+                && fromPlayerPerspective)
+                _battleEffects.PlayerGoldenNecklacePlayed = true;
+        }
+
+        private void ApplyCivilizationIfPlayed(Card playerCard, Card enemyCard)
+        {
+            if (playerCard != null &&
+                string.Equals(playerCard.Id, WellKnownCardIds.Civilization, StringComparison.OrdinalIgnoreCase))
+            {
+                foreach (var c in _playerHand)
+                    c.Level = 3f;
+            }
+
+            if (enemyCard != null &&
+                string.Equals(enemyCard.Id, WellKnownCardIds.Civilization, StringComparison.OrdinalIgnoreCase))
+            {
+                foreach (var c in _enemyHand)
+                    c.Level = 3f;
+            }
+        }
+
+        private void ArmFinalMomentNextRound(Card playerCard, Card enemyCard, BattleCompareResult result)
+        {
+            if (playerCard != null &&
+                string.Equals(playerCard.Id, WellKnownCardIds.FinalMoment, StringComparison.OrdinalIgnoreCase)
+                && result != BattleCompareResult.FirstWins)
+                _restrictedNextRound = true;
+
+            if (enemyCard != null &&
+                string.Equals(enemyCard.Id, WellKnownCardIds.FinalMoment, StringComparison.OrdinalIgnoreCase)
+                && result == BattleCompareResult.FirstWins)
+                _restrictedNextRound = true;
+        }
+
+        private void UpdateLastPlayedSnapshots(Card playerCard, Card enemyCard)
+        {
+            _battleEffects.LastPlayerPlayedSnapshot = SnapshotCard(playerCard);
+            _battleEffects.LastEnemyPlayedSnapshot = SnapshotCard(enemyCard);
+        }
+
+        private static Card SnapshotCard(Card c)
+        {
+            if (c == null)
+                return null;
+            return new Card
+            {
+                Id = c.Id,
+                Name = c.Name,
+                Level = c.Level,
+                Type = c.Type,
+                EffectDesc = c.EffectDesc,
+                IsUnique = c.IsUnique,
+                BattleInstanceId = c.BattleInstanceId
+            };
+        }
+
+        private void ApplyFortuneAndFalseGodChains(Card playerCard, Card enemyCard,
+            BattleCompareResult result)
+        {
+            if (BattleCardEffectResolver.IsFortuneTeller(playerCard) &&
+                result == BattleCompareResult.SecondWins)
+                _battleEffects.PlayerMustWinThisRound = true;
+            if (BattleCardEffectResolver.IsFalseGod(playerCard) &&
+                result == BattleCompareResult.FirstWins)
+                _battleEffects.PlayerMustLoseThisRound = true;
+
+            if (BattleCardEffectResolver.IsFortuneTeller(enemyCard) &&
+                result == BattleCompareResult.FirstWins)
+                _battleEffects.PlayerMustLoseThisRound = true;
+            if (BattleCardEffectResolver.IsFalseGod(enemyCard) &&
+                result == BattleCompareResult.SecondWins)
+                _battleEffects.PlayerMustWinThisRound = true;
         }
 
         private bool TryEndByHandEmpty()
@@ -406,7 +725,8 @@ namespace KingCardsSpire.Managers
             Debug.Log(
                 $"[BattleManager] 战斗结束 己方{(playerVictory ? "胜" : "败")} 原因={reason} BOSS战={boss}");
             SyncBattleState();
-            EventManager.Instance?.Publish(new BattleEndedEvent(playerVictory, reason, boss));
+            EventManager.Instance?.Publish(new BattleEndedEvent(playerVictory, reason, boss,
+                _battleEffects.PlayerGoldenNecklacePlayed));
             EventManager.Instance?.Publish(new BattleStateChangedEvent());
         }
 
@@ -479,6 +799,8 @@ namespace KingCardsSpire.Managers
             _opponentDisplayName = string.Empty;
             _pendingEnemyHandIndex = -1;
             _pendingPlayerHandIndex = -1;
+            _battleEffects.ResetBattle();
+            _restrictedNextRound = false;
             CurrentBattle = new BattleState();
         }
 

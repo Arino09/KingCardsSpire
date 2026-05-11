@@ -6,7 +6,7 @@ namespace KingCardsSpire.Core.Battle
 {
     /// <summary>
     /// 斗兽棋式单轮比较与有效等级（Doc/Plan §2.2.2、§2.3、§2.2.5）。
-    /// 刻意延后：弑君者/乱党等多形态牌、功能牌优先级链等（Phase 5）。
+    /// 形态与功能牌特殊结算见 <see cref="BattleCardEffectResolver"/> / <see cref="BattleManager"/>（Phase 5）。
     /// </summary>
     public static class CardBattleRules
     {

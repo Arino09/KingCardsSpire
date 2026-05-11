@@ -22,6 +22,14 @@ namespace KingCardsSpire.Managers
         public PlayerData PlayerState { get; private set; } = new();
         public FloorState FloorState { get; private set; } = new();
 
+        /// <summary>当前层、当前日的商店货架（文档 §4）。</summary>
+        public ShopState ShopState { get; private set; } = new();
+
+        private readonly List<ShopSlotState> _shopSlotsBuilder = new();
+        private readonly List<CardConfigEntry> _shopCandidatesScratch = new();
+        private readonly HashSet<string> _shopPickedProductIds = new();
+        private readonly HashSet<string> _ownedCardIdsScratch = new();
+
         public bool IsGameOver => _gameOver;
         public bool IsRunVictory => _runVictory;
 
@@ -73,6 +81,7 @@ namespace KingCardsSpire.Managers
             _runVictory = false;
             PlayerState = data.Player ?? new PlayerData();
             FloorState = data.Floor ?? new FloorState();
+            ShopState = data.Shop ?? new ShopState();
             if (FloorState.FloorIndex <= 0)
                 FloorState.FloorIndex = PlayerState.CurrentFloor;
             _pendingBossRewards = null;
@@ -101,7 +110,10 @@ namespace KingCardsSpire.Managers
                 UnlockedAchievements = Array.Empty<string>()
             };
 
+            ApplyStarterDeckFromConfig(PlayerState, gc);
+
             FloorState = new FloorState { BossDefeated = false };
+            ShopState = new ShopState();
             _pendingBossRewards = null;
             SyncFloorStateFromTower();
             RollDailyWeather();
@@ -171,6 +183,85 @@ namespace KingCardsSpire.Managers
 
             PlayerState.Gold += applied;
             _events?.Publish(new GoldChangedEvent(PlayerState.Gold));
+        }
+
+        /// <summary>扣除金币（支出不受雨季加成）。</summary>
+        public bool TrySpendGold(int amount)
+        {
+            if (_gameOver || _runVictory || amount <= 0)
+                return false;
+            if (PlayerState.Gold < amount)
+                return false;
+
+            PlayerState.Gold -= amount;
+            _events?.Publish(new GoldChangedEvent(PlayerState.Gold));
+            return true;
+        }
+
+        /// <summary>
+        /// 若当前层/日与货架一致则保留；否则按 <see cref="ShopConfig"/> 重新进货（文档 §4.2）。
+        /// </summary>
+        public void EnsureShopStock()
+        {
+            if (_gameOver || _runVictory)
+                return;
+
+            if (ShopState.FloorIndex == PlayerState.CurrentFloor &&
+                ShopState.DayIndex == PlayerState.CurrentDay &&
+                ShopState.Slots != null &&
+                ShopState.Slots.Length > 0)
+                return;
+
+            var shopCfg = ResolveShopConfig();
+            if (shopCfg == null)
+            {
+                Debug.LogWarning("[GameManager] 未找到 ShopConfig，商店货架为空。");
+                ShopState.FloorIndex = PlayerState.CurrentFloor;
+                ShopState.DayIndex = PlayerState.CurrentDay;
+                ShopState.Slots = Array.Empty<ShopSlotState>();
+                return;
+            }
+
+            RollShopStockFromConfig(shopCfg);
+        }
+
+        /// <summary>购买指定槽位；无限供应 Buff 下不买断货架。</summary>
+        public bool TryPurchaseShopSlot(int index)
+        {
+            if (_gameOver || _runVictory)
+                return false;
+
+            EnsureShopStock();
+
+            var slots = ShopState.Slots;
+            if (slots == null || index < 0 || index >= slots.Length)
+                return false;
+
+            var slot = slots[index];
+            if (slot.SoldOut)
+                return false;
+
+            var cfgMgr = ConfigManager.Instance;
+            if (cfgMgr == null || !cfgMgr.TryGetCard(slot.ProductId, out var cc))
+                return false;
+
+            if (cc.IsUnique && OwnsCardId(cc.Id))
+                return false;
+
+            if (!TrySpendGold(slot.BasePrice))
+                return false;
+
+            AppendOwnedCard(CardFromConfig(cc));
+            _events?.Publish(new CardAcquiredEvent(cc.Id));
+
+            var unlimited = PlayerState.SelectedBuff == BuffId.UnlimitedSupply;
+            if (!unlimited)
+            {
+                slot.SoldOut = true;
+                slots[index] = slot;
+            }
+
+            return true;
         }
 
         public void RollDailyWeather()
@@ -257,6 +348,37 @@ namespace KingCardsSpire.Managers
             };
         }
 
+        /// <summary>
+        /// 按 <see cref="GameConfig.StarterDeckCardIds"/> 把卡牌写入「持有卡组」；列表为空或未配置则保持空数组。
+        /// </summary>
+        private void ApplyStarterDeckFromConfig(PlayerData player, GameConfig gc)
+        {
+            if (player == null)
+                return;
+            var ids = gc?.StarterDeckCardIds;
+            if (ids == null || ids.Length == 0)
+                return;
+
+            var cfgMgr = ConfigManager.Instance;
+            if (cfgMgr == null)
+                return;
+
+            var list = new List<Card>();
+            for (var i = 0; i < ids.Length; i++)
+            {
+                var id = ids[i];
+                if (string.IsNullOrEmpty(id))
+                    continue;
+                if (cfgMgr.TryGetCard(id, out var cc))
+                    list.Add(CardFromConfig(cc));
+                else
+                    Debug.LogWarning($"[GameManager] 开局卡组配置未知卡牌 Id: {id}");
+            }
+
+            if (list.Count > 0)
+                player.OwnedCards = list.ToArray();
+        }
+
         private void AppendOwnedCard(Card card)
         {
             if (card == null)
@@ -264,6 +386,89 @@ namespace KingCardsSpire.Managers
             var list = new List<Card>(PlayerState.OwnedCards ?? Array.Empty<Card>());
             list.Add(card);
             PlayerState.OwnedCards = list.ToArray();
+        }
+
+        private bool OwnsCardId(string cardId)
+        {
+            foreach (var c in PlayerState.OwnedCards ?? Array.Empty<Card>())
+            {
+                if (c != null && c.Id == cardId)
+                    return true;
+            }
+
+            return false;
+        }
+
+        private void RollShopStockFromConfig(ShopConfig shopCfg)
+        {
+            _shopPickedProductIds.Clear();
+            _ownedCardIdsScratch.Clear();
+            foreach (var c in PlayerState.OwnedCards ?? Array.Empty<Card>())
+            {
+                if (c != null && !string.IsNullOrEmpty(c.Id))
+                    _ownedCardIdsScratch.Add(c.Id);
+            }
+
+            _shopSlotsBuilder.Clear();
+            AddShopSlotsForType(CardType.Ability, shopCfg.AbilityCardSlots, shopCfg.AbilityCardPrice);
+            AddShopSlotsForType(CardType.Function, shopCfg.FunctionCardSlots, shopCfg.FunctionCardPrice);
+            AddShopSlotsForType(CardType.Basic, shopCfg.BasicCardSlots, shopCfg.BasicCardPrice);
+            AddShopSlotsForType(CardType.Consumable, shopCfg.ConsumableCardSlots, shopCfg.ConsumableCardPrice);
+
+            ShopState.FloorIndex = PlayerState.CurrentFloor;
+            ShopState.DayIndex = PlayerState.CurrentDay;
+            ShopState.Slots = _shopSlotsBuilder.ToArray();
+        }
+
+        private void AddShopSlotsForType(CardType type, int count, int unitPrice)
+        {
+            if (count <= 0)
+                return;
+
+            var cfgMgr = ConfigManager.Instance;
+            if (cfgMgr == null)
+                return;
+
+            for (var i = 0; i < count; i++)
+            {
+                cfgMgr.CollectShopCandidates(type, _ownedCardIdsScratch, _shopCandidatesScratch);
+                for (var j = _shopCandidatesScratch.Count - 1; j >= 0; j--)
+                {
+                    var id = _shopCandidatesScratch[j].Id;
+                    if (_shopPickedProductIds.Contains(id))
+                        _shopCandidatesScratch.RemoveAt(j);
+                }
+
+                if (_shopCandidatesScratch.Count == 0)
+                {
+                    Debug.LogWarning($"[GameManager] 商店 {type} 类型无可用卡牌，跳过一格。");
+                    continue;
+                }
+
+                var pick = _shopCandidatesScratch[Random.Range(0, _shopCandidatesScratch.Count)];
+                _shopPickedProductIds.Add(pick.Id);
+                _shopSlotsBuilder.Add(new ShopSlotState
+                {
+                    ProductId = pick.Id,
+                    BasePrice = unitPrice,
+                    SoldOut = false
+                });
+            }
+        }
+
+        private ShopConfig ResolveShopConfig()
+        {
+            var list = ConfigManager.Instance?.GetShopConfigs();
+            if (list == null || list.Count == 0)
+                return null;
+            for (var i = 0; i < list.Count; i++)
+            {
+                var s = list[i];
+                if (s != null && s.Id == "default")
+                    return s;
+            }
+
+            return list[0];
         }
 
         private void SyncFloorStateFromTower()
