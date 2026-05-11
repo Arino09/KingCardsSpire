@@ -1,4 +1,5 @@
 using KingCardsSpire.Core;
+using KingCardsSpire.Core.Battle;
 using KingCardsSpire.Managers;
 
 namespace KingCardsSpire.Controllers
@@ -13,6 +14,7 @@ namespace KingCardsSpire.Controllers
             BattleManager.Instance?.StartBattleFromPlayerState(vsBoss);
         }
 
+        /// <summary>一步出牌（等同 Prepare → Stage → Commit），供无需动画编排的调用方。</summary>
         public bool TryPlayCard(int playerHandIndex, out string error)
         {
             if (BattleManager.Instance == null)
@@ -24,11 +26,51 @@ namespace KingCardsSpire.Controllers
             return BattleManager.Instance.TrySubmitPlayerCard(playerHandIndex, out error);
         }
 
+        public bool PrepareEnemyPlay(out string error)
+        {
+            if (BattleManager.Instance == null)
+            {
+                error = "BattleManager 未就绪";
+                return false;
+            }
+
+            return BattleManager.Instance.PrepareEnemyPlay(out error);
+        }
+
+        public bool TryStagePlayerCard(int playerHandIndex, out string error)
+        {
+            if (BattleManager.Instance == null)
+            {
+                error = "BattleManager 未就绪";
+                return false;
+            }
+
+            return BattleManager.Instance.TryStagePlayerCard(playerHandIndex, out error);
+        }
+
+        public bool CommitPendingRound(out BattleCompareResult compareResult, out string error)
+        {
+            compareResult = default;
+            if (BattleManager.Instance == null)
+            {
+                error = "BattleManager 未就绪";
+                return false;
+            }
+
+            return BattleManager.Instance.CommitPendingRound(out compareResult, out error);
+        }
+
         public void RequestEndBattle()
         {
             BattleManager.Instance?.EndBattle();
         }
 
         public bool IsBattleActive => BattleManager.Instance != null && BattleManager.Instance.IsBattleActive;
+
+        public int PendingEnemyHandIndex =>
+            BattleManager.Instance != null ? BattleManager.Instance.PendingEnemyHandIndex : -1;
+
+        public int PendingPlayerHandIndex =>
+            BattleManager.Instance != null ? BattleManager.Instance.PendingPlayerHandIndex : -1;
     }
 }

@@ -3,6 +3,7 @@ using System.Text;
 using KingCardsSpire.Configs;
 using KingCardsSpire.Controllers;
 using KingCardsSpire.Core;
+using KingCardsSpire.Core.Battle;
 using KingCardsSpire.Core.Events;
 using KingCardsSpire.Managers;
 using KingCardsSpire.Models;
@@ -16,10 +17,15 @@ namespace KingCardsSpire.Views.UI
     /// <summary>
     /// 战斗界面：绑定 BattleView 预制体；手牌区实例化 Card 预制体并接入 <see cref="BattleController"/>。
     /// </summary>
+    /// <remarks>
+    /// 需在 Unity Inspector 中绑定 <see cref="playerDiscardPileAnchor"/>、<see cref="enemyDiscardPileAnchor"/>
+    ///（可与己方/敌方弃牌堆按钮同一 RectTransform），否则飞行动画目标无效。
+    /// </remarks>
     public sealed class BattleView : BaseView
     {
         private const float EnemyHandCardScale = 0.15f;
         private const float PlayerHandCardScale = 0.25f;
+        private const float PlayAreaCardScale = 0.3f;
 
         [Header("顶部状态")]
         [SerializeField] private Text opponentNameText;
@@ -32,10 +38,21 @@ namespace KingCardsSpire.Views.UI
         [SerializeField] private RectTransform enemyHandRoot;
         [SerializeField] private RectTransform playerHandRoot;
 
+        [Header("出牌区")]
+        [SerializeField] private RectTransform enemyPlayArea;
+        [SerializeField] private RectTransform myPlayArea;
+
         [Header("按钮")]
         [SerializeField] private Button enemyDiscardButton;
         [SerializeField] private Button playerDiscardButton;
         [SerializeField] private Button settingsButton;
+
+        [Header("动画锚点")]
+        [Tooltip("一般为己方弃牌堆按钮所在 RectTransform（Inspector 可与 playerDiscardButton 同一物体）。")]
+        [SerializeField] private RectTransform playerDiscardPileAnchor;
+
+        [Tooltip("一般为敌方弃牌堆按钮所在 RectTransform（可与 enemyDiscardButton 同一物体）。")]
+        [SerializeField] private RectTransform enemyDiscardPileAnchor;
 
         private BattleController _battle;
         private EventManager _events;
@@ -44,6 +61,12 @@ namespace KingCardsSpire.Views.UI
         private UnityAction _onSettings;
         private UnityAction _onEnemyDiscard;
         private UnityAction _onPlayerDiscard;
+
+        /// <summary>翻面与飞行动画进行中；期间忽略手牌点击并延后完整 Refresh。</summary>
+        private bool _roundVisualBusy;
+
+        /// <summary>本回合敌方出牌区实例（Prepare 后创建）。</summary>
+        private CardView _enemyPlayCard;
 
         public override void Initialize()
         {
@@ -68,8 +91,6 @@ namespace KingCardsSpire.Views.UI
         {
             if (_events != null)
             {
-                // 避免重复 Open 时叠加订阅；同一回合内 BattleManager 会先发 <see cref="BattleRoundResolvedEvent"/> 再发
-                // <see cref="BattleStateChangedEvent"/>，手牌刷新只响应后者即可，防止同帧内 Refresh 两次。
                 _events.Unsubscribe<BattleStateChangedEvent>(OnBattleStateChanged);
                 _events.Subscribe<BattleStateChangedEvent>(OnBattleStateChanged);
             }
@@ -119,7 +140,16 @@ namespace KingCardsSpire.Views.UI
             btn.onClick.RemoveListener(action);
         }
 
-        private void OnBattleStateChanged(BattleStateChangedEvent _) => RefreshAll();
+        private void OnBattleStateChanged(BattleStateChangedEvent _)
+        {
+            if (_roundVisualBusy)
+            {
+                RefreshBattleChromeOnly();
+                return;
+            }
+
+            RefreshAll();
+        }
 
         private void OnSettingsClicked()
         {
@@ -146,7 +176,8 @@ namespace KingCardsSpire.Views.UI
                 view.Apply(new CardListViewModel(isEnemy ? "敌方弃牌堆" : "己方弃牌堆", pile));
             }
         }
-        private void RefreshAll()
+
+        private void RefreshBattleChromeOnly()
         {
             var state = BattleManager.Instance.CurrentBattle;
 
@@ -176,6 +207,11 @@ namespace KingCardsSpire.Views.UI
             {
                 xRayHintText.text = string.Empty;
             }
+        }
+
+        private void RefreshAll()
+        {
+            RefreshBattleChromeOnly();
 
             LayoutGroup layoutEnemy = null;
             LayoutGroup layoutPlayer = null;
@@ -203,6 +239,7 @@ namespace KingCardsSpire.Views.UI
 
             try
             {
+                var state = BattleManager.Instance.CurrentBattle;
                 RebuildEnemyHand(state?.EnemyHand);
                 RebuildPlayerHand(state?.PlayerHand);
             }
@@ -213,6 +250,67 @@ namespace KingCardsSpire.Views.UI
                 if (layoutPlayer != null && wasPlayerLayout)
                     layoutPlayer.enabled = true;
             }
+
+            if (!_roundVisualBusy && _battle != null && _battle.IsBattleActive)
+                SetupPlayAreaRound();
+        }
+
+        private void SetupPlayAreaRound()
+        {
+            if (_battle == null || !_battle.IsBattleActive)
+            {
+                ClearPlayAreaRoots();
+                _enemyPlayCard = null;
+                return;
+            }
+
+            if (!_battle.PrepareEnemyPlay(out _))
+            {
+                ClearPlayAreaRoots();
+                _enemyPlayCard = null;
+                return;
+            }
+
+            if (_enemyPlayCard != null && enemyPlayArea != null && enemyPlayArea.childCount > 0)
+                return;
+
+            ClearPlayAreaRoots();
+            _enemyPlayCard = null;
+
+            var idx = _battle.PendingEnemyHandIndex;
+            var state = BattleManager.Instance.CurrentBattle;
+            if (state?.EnemyHand == null || idx < 0 || idx >= state.EnemyHand.Length)
+                return;
+
+            var card = state.EnemyHand[idx];
+            CardConfigEntry cfg = null;
+            if (_config != null && card != null && !string.IsNullOrEmpty(card.Id))
+                _config.TryGetCard(card.Id, out cfg);
+
+            var vm = CardViewModel.FromCard(card, cfg);
+            var cv = Instantiate(cardPrefab, enemyPlayArea, false);
+            cv.SetScale(PlayAreaCardScale);
+            cv.Apply(vm);
+            if (cfg != null)
+                cv.LoadCardArtFromConfig(cfg);
+            cv.SetFaceDown(true);
+            cv.OverrideClick(null);
+            _enemyPlayCard = cv;
+        }
+
+        private void ClearPlayAreaRoots()
+        {
+            ClearChildTransforms(enemyPlayArea);
+            ClearChildTransforms(myPlayArea);
+        }
+
+        private static void ClearChildTransforms(RectTransform root)
+        {
+            if (root == null)
+                return;
+
+            for (var i = root.childCount - 1; i >= 0; i--)
+                Destroy(root.GetChild(i).gameObject);
         }
 
         private void RebuildEnemyHand(Card[] hand)
@@ -270,16 +368,111 @@ namespace KingCardsSpire.Views.UI
 
                 cv.HandIndex = i;
                 var capturedIndex = i;
-                cv.OverrideClick(() =>
-                {
-                    if (battleRef == null || !battleRef.IsBattleActive)
-                        return;
-                    if (!battleRef.TryPlayCard(capturedIndex, out var err))
-                        Debug.LogWarning($"[BattleView] {err}");
-                });
+                cv.OverrideClick(() => OnPlayerHandCardClicked(battleRef, capturedIndex));
             }
 
             TrimHandTail(playerHandRoot, n);
+        }
+
+        private void OnPlayerHandCardClicked(BattleController battleRef, int capturedIndex)
+        {
+            if (battleRef == null || !battleRef.IsBattleActive || _roundVisualBusy)
+                return;
+
+            if (!battleRef.TryStagePlayerCard(capturedIndex, out var err))
+            {
+                Debug.LogWarning($"[BattleView] {err}");
+                return;
+            }
+
+            StartCoroutine(RoundVisualSequenceRoutine());
+        }
+
+        private IEnumerator RoundVisualSequenceRoutine()
+        {
+            _roundVisualBusy = true;
+
+            var playerIdx = _battle.PendingPlayerHandIndex;
+            var state = BattleManager.Instance.CurrentBattle;
+            var hand = state?.PlayerHand;
+            if (hand == null || playerIdx < 0 || playerIdx >= hand.Length || _enemyPlayCard == null)
+            {
+                _roundVisualBusy = false;
+                yield break;
+            }
+
+            var pCard = hand[playerIdx];
+            CardConfigEntry pCfg = null;
+            if (_config != null && pCard != null && !string.IsNullOrEmpty(pCard.Id))
+                _config.TryGetCard(pCard.Id, out pCfg);
+
+            var pVm = CardViewModel.FromCard(pCard, pCfg);
+            var playerPlay = Instantiate(cardPrefab, myPlayArea, false);
+            playerPlay.SetScale(PlayAreaCardScale);
+            playerPlay.Apply(pVm);
+            if (pCfg != null)
+                playerPlay.LoadCardArtFromConfig(pCfg);
+            playerPlay.SetFaceDown(true);
+            playerPlay.OverrideClick(null);
+
+            yield return null;
+
+            yield return RunTwoEnumeratorsParallel(
+                _enemyPlayCard.PlayRevealFlipRoutine(),
+                playerPlay.PlayRevealFlipRoutine());
+
+            if (!_battle.CommitPendingRound(out var cmp, out var cerr))
+            {
+                Debug.LogWarning($"[BattleView] CommitPendingRound: {cerr}");
+                Destroy(playerPlay.gameObject);
+                _roundVisualBusy = false;
+                RefreshAll();
+                yield break;
+            }
+
+            yield return FlyOutcomeRoutine(playerPlay, _enemyPlayCard, cmp);
+
+            Destroy(playerPlay.gameObject);
+            if (_enemyPlayCard != null)
+                Destroy(_enemyPlayCard.gameObject);
+            _enemyPlayCard = null;
+
+            _roundVisualBusy = false;
+            RefreshAll();
+        }
+
+        private IEnumerator FlyOutcomeRoutine(CardView playerCard, CardView enemyCard, BattleCompareResult result)
+        {
+            switch (result)
+            {
+                case BattleCompareResult.Draw:
+                    yield return RunTwoEnumeratorsParallel(
+                        playerCard.FlyToRectTransformRoutine(playerDiscardPileAnchor),
+                        enemyCard.FlyToRectTransformRoutine(enemyDiscardPileAnchor));
+                    break;
+                case BattleCompareResult.FirstWins:
+                    yield return RunTwoEnumeratorsParallel(
+                        playerCard.FlyToRectTransformRoutine(playerHandRoot),
+                        enemyCard.FlyToRectTransformRoutine(enemyDiscardPileAnchor));
+                    break;
+                case BattleCompareResult.SecondWins:
+                    yield return RunTwoEnumeratorsParallel(
+                        playerCard.FlyToRectTransformRoutine(playerDiscardPileAnchor),
+                        enemyCard.FlyToRectTransformRoutine(enemyHandRoot));
+                    break;
+            }
+        }
+
+        private static IEnumerator RunTwoEnumeratorsParallel(IEnumerator a, IEnumerator b)
+        {
+            while (true)
+            {
+                var am = a.MoveNext();
+                var bm = b.MoveNext();
+                if (!am && !bm)
+                    break;
+                yield return null;
+            }
         }
 
         /// <summary>

@@ -83,12 +83,6 @@ namespace KingCardsSpire.Views.UI.Cards
             typeSubText.gameObject.SetActive(!faceDown);
             nameText.gameObject.SetActive(!faceDown);
             effectText.gameObject.SetActive(!faceDown);
-            if (faceDown)
-            {
-                ClearCardArtVisual();
-                _lastAppliedCardId = string.Empty;
-            }
-
             clickTarget.interactable = !faceDown;
 
             SetVisualState(faceDown ? CardVisualState.Disabled : CardVisualState.Normal);
@@ -179,6 +173,52 @@ namespace KingCardsSpire.Views.UI.Cards
             ApplyVisualTint();
         }
 
+        /// <summary>
+        /// 暗牌→正面展示翻转动效（绕 Y 轴 0°→180°，半程切换正反面）；结束时复位旋转并 <see cref="SetFaceDown"/> false。
+        /// 翻面前应已 <see cref="Apply"/> 正面数据（卡背时正面节点隐藏但可保留贴图）。
+        /// </summary>
+        public IEnumerator PlayRevealFlipRoutine(float durationSeconds = 0.35f)
+        {
+            var elapsed = 0f;
+            var swapped = false;
+            while (elapsed < durationSeconds)
+            {
+                elapsed += Time.deltaTime;
+                var t = Mathf.Clamp01(elapsed / durationSeconds);
+                var angle = Mathf.Lerp(0f, 180f, t);
+                if (!swapped && t >= 0.5f)
+                {
+                    SetFaceDown(false);
+                    swapped = true;
+                }
+
+                rectRoot.localEulerAngles = new Vector3(0f, angle, 0f);
+                yield return null;
+            }
+
+            rectRoot.localEulerAngles = Vector3.zero;
+            SetFaceDown(false);
+        }
+
+        /// <summary>将卡牌实例移动到目标 UI 矩形的世界坐标位置（线性插值）；销毁由调用方处理。</summary>
+        public IEnumerator FlyToRectTransformRoutine(RectTransform target, float durationSeconds = 0.45f)
+        {
+            var rt = rectRoot;
+            var startWorld = rt.position;
+            var endWorld = target.position;
+            var elapsed = 0f;
+            var dur = Mathf.Max(0.05f, durationSeconds);
+            while (elapsed < dur)
+            {
+                elapsed += Time.deltaTime;
+                var t = Mathf.Clamp01(elapsed / dur);
+                rt.position = Vector3.Lerp(startWorld, endWorld, t);
+                yield return null;
+            }
+
+            rt.position = endWorld;
+        }
+
         private IEnumerator LoadCardArtFromConfigRoutine(CardConfigEntry config)
         {
             ReleaseAddressableArtOnly();
@@ -188,8 +228,10 @@ namespace KingCardsSpire.Views.UI.Cards
             {
                 yield break;
             }
-            
-            var handle = config.Icon.LoadAssetAsync<Sprite>();
+
+            // 使用 RuntimeKey 经 Addressables 独立加载：同一 Icon 的 AssetReference 被多张牌 UI 同时使用时，
+            // 再次调用 AssetReference.LoadAssetAsync 会触发「already been loaded」警告。
+            var handle = Addressables.LoadAssetAsync<Sprite>(config.Icon.RuntimeKey);
             _artLoadHandle = handle;
             _hasArtHandle = true;
 

@@ -36,9 +36,21 @@ namespace KingCardsSpire.Managers
 
         private string _opponentDisplayName = string.Empty;
 
+        /// <summary>本回合已锁定的敌方手牌下标；-1 表示未准备。</summary>
+        private int _pendingEnemyHandIndex = -1;
+
+        /// <summary>玩家已暂存的手牌下标；-1 表示未选择。</summary>
+        private int _pendingPlayerHandIndex = -1;
+
         public BattleState CurrentBattle { get; private set; } = new();
 
         public bool IsBattleActive => _phase == Phase.InBattle;
+
+        /// <summary>本回合已锁定的敌方手牌下标，未准备时为 -1。</summary>
+        public int PendingEnemyHandIndex => _pendingEnemyHandIndex;
+
+        /// <summary>玩家已暂存的手牌下标，未选择时为 -1。</summary>
+        public int PendingPlayerHandIndex => _pendingPlayerHandIndex;
 
         protected override void Awake()
         {
@@ -100,13 +112,69 @@ namespace KingCardsSpire.Managers
                 $"[BattleManager] 战斗开始 天气={_weather} 上限回合={(_noRoundLimit ? "无(暖风)" : _maxRounds.ToString())}");
         }
 
-        /// <summary>玩家点击手牌下标出牌。</summary>
+        /// <summary>
+        /// 玩家一键出牌（无动画编排时使用）：准备敌方 → 暂存己方 → 立即结算。
+        /// </summary>
         public bool TrySubmitPlayerCard(int playerHandIndex, out string error)
+        {
+            if (!PrepareEnemyPlay(out error))
+                return false;
+            if (!TryStagePlayerCard(playerHandIndex, out error))
+                return false;
+            return CommitPendingRound(out _, out error);
+        }
+
+        /// <summary>
+        /// 为本回合随机锁定敌方将要出的牌（仍在手牌中）；已锁定且己方未选时幂等成功。
+        /// </summary>
+        public bool PrepareEnemyPlay(out string error)
         {
             error = null;
             if (_phase != Phase.InBattle)
             {
                 error = "当前不在战斗中";
+                return false;
+            }
+
+            if (_pendingEnemyHandIndex >= 0 && _pendingPlayerHandIndex >= 0)
+            {
+                error = "本回合出牌进行中";
+                return false;
+            }
+
+            if (_pendingEnemyHandIndex >= 0 && _pendingPlayerHandIndex < 0)
+                return true;
+
+            if (!TryPickEnemyHandIndex(out var enemyIdx))
+            {
+                error = "敌方无牌可出";
+                return false;
+            }
+
+            _pendingEnemyHandIndex = enemyIdx;
+            _pendingPlayerHandIndex = -1;
+            return true;
+        }
+
+        /// <summary>暂存玩家本回合要出的手牌下标（不结算）。需先 <see cref="PrepareEnemyPlay"/>。</summary>
+        public bool TryStagePlayerCard(int playerHandIndex, out string error)
+        {
+            error = null;
+            if (_phase != Phase.InBattle)
+            {
+                error = "当前不在战斗中";
+                return false;
+            }
+
+            if (_pendingEnemyHandIndex < 0)
+            {
+                error = "尚未准备敌方出牌";
+                return false;
+            }
+
+            if (_pendingPlayerHandIndex >= 0)
+            {
+                error = "已选择己方出牌";
                 return false;
             }
 
@@ -123,14 +191,38 @@ namespace KingCardsSpire.Managers
                 return false;
             }
 
-            var enemyCard = PickEnemyCard();
-            if (enemyCard == null)
+            _pendingPlayerHandIndex = playerHandIndex;
+            return true;
+        }
+
+        /// <summary>翻面动画结束后调用：执行单回合结算并清空待定索引。</summary>
+        public bool CommitPendingRound(out BattleCompareResult compareResult, out string error)
+        {
+            compareResult = default;
+            error = null;
+            if (_phase != Phase.InBattle)
             {
-                error = "敌方无牌可出";
+                error = "当前不在战斗中";
                 return false;
             }
 
-            ResolveRound(playerHandIndex, playerCard, enemyCard);
+            if (_pendingEnemyHandIndex < 0 || _pendingPlayerHandIndex < 0)
+            {
+                error = "出牌未完成";
+                return false;
+            }
+
+            var playerIdx = _pendingPlayerHandIndex;
+            var playerCard = _playerHand[playerIdx];
+            var enemyCard = _enemyHand[_pendingEnemyHandIndex];
+
+            compareResult = CardBattleRules.Compare(playerCard, enemyCard, _weather);
+
+            ResolveRound(playerIdx, playerCard, enemyCard);
+
+            _pendingEnemyHandIndex = -1;
+            _pendingPlayerHandIndex = -1;
+
             return true;
         }
 
@@ -181,10 +273,12 @@ namespace KingCardsSpire.Managers
             };
         }
 
-        private Card PickEnemyCard()
+        /// <summary>与原先 <see cref="PickEnemyCard"/> 相同的选取规则，返回手牌下标。</summary>
+        private bool TryPickEnemyHandIndex(out int index)
         {
+            index = -1;
             if (_enemyHand.Count == 0)
-                return null;
+                return false;
 
             var candidates = new List<int>();
             for (var i = 0; i < _enemyHand.Count; i++)
@@ -196,13 +290,19 @@ namespace KingCardsSpire.Managers
 
             if (candidates.Count == 0)
             {
-                // 仅一张且与上次相同实例时仍须出牌
-                var idx = Random.Range(0, _enemyHand.Count);
-                return _enemyHand[idx];
+                index = Random.Range(0, _enemyHand.Count);
+                return true;
             }
 
-            var pick = candidates[Random.Range(0, candidates.Count)];
-            return _enemyHand[pick];
+            index = candidates[Random.Range(0, candidates.Count)];
+            return true;
+        }
+
+        private Card PickEnemyCard()
+        {
+            if (!TryPickEnemyHandIndex(out var idx))
+                return null;
+            return _enemyHand[idx];
         }
 
         private void ResolveRound(int playerHandIndex, Card playerCard, Card enemyCard)
@@ -300,6 +400,8 @@ namespace KingCardsSpire.Managers
         private void FinishBattle(bool playerVictory, BattleEndReason reason)
         {
             _phase = Phase.Idle;
+            _pendingEnemyHandIndex = -1;
+            _pendingPlayerHandIndex = -1;
             var boss = _isBossBattle;
             Debug.Log(
                 $"[BattleManager] 战斗结束 己方{(playerVictory ? "胜" : "败")} 原因={reason} BOSS战={boss}");
@@ -374,6 +476,8 @@ namespace KingCardsSpire.Managers
             _lastEnemyInstanceId = null;
             _isBossBattle = false;
             _opponentDisplayName = string.Empty;
+            _pendingEnemyHandIndex = -1;
+            _pendingPlayerHandIndex = -1;
             CurrentBattle = new BattleState();
         }
 

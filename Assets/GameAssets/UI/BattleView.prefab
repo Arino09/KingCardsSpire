@@ -1,5 +1,40 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!1 &1054167342043628189
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 63094659015531280}
+  m_Layer: 5
+  m_Name: EnemyPlay
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &63094659015531280
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1054167342043628189}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1916738462647259579}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: -202, y: 72}
+  m_SizeDelta: {x: 100, y: 100}
+  m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &1180351196304289150
 GameObject:
   m_ObjectHideFlags: 0
@@ -250,7 +285,7 @@ GameObject:
   - component: {fileID: 7738944395578948578}
   - component: {fileID: 9185976633492712074}
   m_Layer: 5
-  m_Name: MyWaste
+  m_Name: MyDiscard
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -437,6 +472,41 @@ MonoBehaviour:
     m_VerticalOverflow: 0
     m_LineSpacing: 1
   m_Text: "\u56DE\u5408\u6570{0}/{1}"
+--- !u!1 &4563682212090035699
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4908657407497437520}
+  m_Layer: 5
+  m_Name: MyPlay
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &4908657407497437520
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4563682212090035699}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1916738462647259579}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 231, y: -57}
+  m_SizeDelta: {x: 100, y: 100}
+  m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &6653974680787504483
 GameObject:
   m_ObjectHideFlags: 0
@@ -608,7 +678,7 @@ GameObject:
   - component: {fileID: 8051941871140880169}
   - component: {fileID: 5870085319575212385}
   m_Layer: 5
-  m_Name: EnemyWaste
+  m_Name: EnemyDiscard
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -951,10 +1021,12 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 3864636090182561490}
-  - {fileID: 4656705647133326160}
   - {fileID: 249150973257337484}
   - {fileID: 3480350449086845616}
+  - {fileID: 4656705647133326160}
   - {fileID: 305877580249185661}
+  - {fileID: 63094659015531280}
+  - {fileID: 4908657407497437520}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -1020,11 +1092,13 @@ MonoBehaviour:
   cardPrefab: {fileID: 6042190764628795243, guid: e4e47986c01e2f246a3717b608d870bf, type: 3}
   enemyHandRoot: {fileID: 4656705647133326160}
   playerHandRoot: {fileID: 305877580249185661}
+  enemyPlayArea: {fileID: 63094659015531280}
+  myPlayArea: {fileID: 4908657407497437520}
   enemyDiscardButton: {fileID: 5870085319575212385}
   playerDiscardButton: {fileID: 9185976633492712074}
   settingsButton: {fileID: 2531084799751642790}
-  discardDetailText: {fileID: 0}
-  discardDetailPanel: {fileID: 0}
+  playerDiscardPileAnchor: {fileID: 3480350449086845616}
+  enemyDiscardPileAnchor: {fileID: 249150973257337484}
 --- !u!1 &8776330274311736677
 GameObject:
   m_ObjectHideFlags: 0
