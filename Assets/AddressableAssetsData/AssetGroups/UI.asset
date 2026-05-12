@@ -53,6 +53,54 @@ MonoBehaviour:
     m_SerializedLabels:
     - ui_panel
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e65db0244ca10ba4c8d5c05c165bf3f6
+    m_Address: UI/NPCView
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - ui_panel
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c829b78105f56404eb3cf0a4c9011b65
+    m_Address: UI/HeroView
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - ui_panel
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 2194f478e66a2ea488d78002f7fa0714
+    m_Address: Sprites/UI/FloorBg
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: fffaa793c2f8d1f49929aaeb95cbedd3
+    m_Address: UI/DialogView
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - ui_panel
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: dde47d8a9bfe94647a3d7f709483979f
+    m_Address: Sprites/Character/NPC/Avatar
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 2756c1d8e132eae41a20653941106296
+    m_Address: Sprites/Character/Hero
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 49a6a61b61254444f9b977bf88bc2667
+    m_Address: Sprites/Character/Heroine1
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 83ca95ed61d3a1e449413fe7bc878d0b
+    m_Address: Sprites/Character/Heroine2
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: bce97c4c3ffef5e47bec5742c5317ddb
+    m_Address: Sprites/Character/Hero2
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: 0b8713ba58b57bb49bd9906570780370, type: 2}
   m_SchemaSet:

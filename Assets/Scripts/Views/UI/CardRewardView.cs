@@ -1,5 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
+using KingCardsSpire.Controllers;
+using KingCardsSpire.Core;
 using KingCardsSpire.Configs;
 using KingCardsSpire.Managers;
 using KingCardsSpire.Models;
@@ -145,6 +147,7 @@ namespace KingCardsSpire.Views.UI
                 yield break;
 
             CloseRewardAndBattle(ui);
+            yield return RunEndingDialogueIfVictoryRoutine(ui);
         }
 
         private IEnumerator OnSkipConfirmed()
@@ -158,6 +161,17 @@ namespace KingCardsSpire.Views.UI
                 yield break;
 
             CloseRewardAndBattle(ui);
+            yield return RunEndingDialogueIfVictoryRoutine(ui);
+        }
+
+        private static IEnumerator RunEndingDialogueIfVictoryRoutine(UIManager ui)
+        {
+            var gm = GameManager.Instance;
+            var dialogue = ServiceLocator.Get<DialogueController>();
+            if (gm == null || ui == null || dialogue == null || !gm.IsRunVictory)
+                yield break;
+
+            yield return ui.StartCoroutine(dialogue.PlayDialogue("ending_final", null));
         }
 
         private static void CloseRewardAndBattle(UIManager ui)

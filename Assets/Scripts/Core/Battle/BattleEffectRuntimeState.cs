@@ -33,6 +33,12 @@ namespace KingCardsSpire.Core.Battle
 
         public bool PlayerGoldenNecklacePlayed;
 
+        /// <summary>异能「指数形态」：每次己方出牌额外弃1张自选牌，且本张参与比大小的等级按平方计。</summary>
+        public bool PlayerExponentialFormActive;
+
+        /// <summary>敌方打出指数形态异能后，同上（弃牌由 AI 随机，比大小等级平方）。</summary>
+        public bool EnemyExponentialFormActive;
+
         public bool PlayerMustWinThisRound;
 
         public bool PlayerMustLoseThisRound;
@@ -75,6 +81,8 @@ namespace KingCardsSpire.Core.Battle
             EnemyForgeBladeActive = false;
             EnemyStrikeBladeActive = false;
             PlayerGoldenNecklacePlayed = false;
+            PlayerExponentialFormActive = false;
+            EnemyExponentialFormActive = false;
             PlayerMustWinThisRound = false;
             PlayerMustLoseThisRound = false;
             FinalMomentRestrictionActive = false;

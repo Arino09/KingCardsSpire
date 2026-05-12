@@ -133,6 +133,14 @@ namespace KingCardsSpire.Core.Battle
                     completedRoundsBeforeThisOne);
             }
 
+            if (state != null)
+            {
+                if (isPlayerCard && state.PlayerExponentialFormActive)
+                    lv *= lv;
+                else if (!isPlayerCard && state.EnemyExponentialFormActive)
+                    lv *= lv;
+            }
+
             return CloneCard(logicalCard, lv);
         }
 

@@ -15,6 +15,7 @@ namespace KingCardsSpire.Managers
         private readonly List<ShopConfig> _shopConfigs = new();
         private readonly List<GameConfig> _gameConfigs = new();
         private readonly List<TowerConfig> _towerConfigs = new();
+        private readonly Dictionary<string, DialogueLineEntry> _dialogueLines = new();
 
         public int CardCount => _cards.Count;
         public int BuffCount => _buffs.Count;
@@ -23,6 +24,8 @@ namespace KingCardsSpire.Managers
         public int GameConfigCount => _gameConfigs.Count;
 
         public int TowerConfigCount => _towerConfigs.Count;
+
+        public int DialogueLineCount => _dialogueLines.Count;
 
         protected override void Awake()
         {
@@ -64,6 +67,10 @@ namespace KingCardsSpire.Managers
             IList<TowerConfig> towerList = null;
             yield return assets.LoadAssetsAsync<TowerConfig>(AddressableLabels.ConfigTower, l => towerList = l);
             IndexTowers(towerList);
+
+            IList<DialogueConfig> dialogueList = null;
+            yield return assets.LoadAssetsAsync<DialogueConfig>(AddressableLabels.ConfigDialogue, l => dialogueList = l);
+            IndexDialogues(dialogueList);
         }
 
         private void IndexCards(IList<CardConfig> list)
@@ -153,6 +160,38 @@ namespace KingCardsSpire.Managers
             }
         }
 
+        private void IndexDialogues(IList<DialogueConfig> list)
+        {
+            _dialogueLines.Clear();
+            if (list == null)
+                return;
+
+            for (var i = 0; i < list.Count; i++)
+            {
+                var db = list[i];
+                if (db == null)
+                    continue;
+
+                var lines = db.Lines;
+                if (lines == null)
+                    continue;
+
+                for (var j = 0; j < lines.Count; j++)
+                {
+                    var line = lines[j];
+                    if (line == null || string.IsNullOrEmpty(line.Id))
+                        continue;
+                    _dialogueLines[line.Id] = line;
+                }
+            }
+        }
+
+        public bool TryGetDialogueLine(string id, out DialogueLineEntry line)
+        {
+            line = null;
+            return !string.IsNullOrEmpty(id) && _dialogueLines.TryGetValue(id, out line);
+        }
+
         public bool TryGetCard(string id, out CardConfigEntry config) => _cards.TryGetValue(id, out config);
 
         /// <summary>
@@ -185,6 +224,30 @@ namespace KingCardsSpire.Managers
             entry = null;
             var tower = ResolveTowerConfig();
             return tower != null && tower.TryGetFloor(floorIndex1Based, out entry);
+        }
+
+        /// <summary>汇总第 1 层至 <paramref name="floorInclusive"/> 层塔配置中的 npcId 并集（去重写入 <paramref name="dest"/>）。</summary>
+        public void CollectNpcIdsForFloorsUpTo(int floorInclusive, ISet<string> dest)
+        {
+            if (dest == null || floorInclusive < 1)
+                return;
+
+            for (var floor = 1; floor <= floorInclusive; floor++)
+            {
+                if (!TryGetTowerFloor(floor, out var entry))
+                    continue;
+
+                var ids = entry.NpcIds;
+                if (ids == null)
+                    continue;
+
+                for (var i = 0; i < ids.Length; i++)
+                {
+                    var id = ids[i];
+                    if (!string.IsNullOrEmpty(id))
+                        dest.Add(id);
+                }
+            }
         }
 
         private TowerConfig ResolveTowerConfig()

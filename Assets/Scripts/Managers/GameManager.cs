@@ -29,6 +29,8 @@ namespace KingCardsSpire.Managers
         private readonly List<CardConfigEntry> _shopCandidatesScratch = new();
         private readonly HashSet<string> _shopPickedProductIds = new();
         private readonly HashSet<string> _ownedCardIdsScratch = new();
+        private readonly List<string> _npcNewEncounterScratch = new();
+        private readonly HashSet<string> _npcTowerIdScratch = new();
 
         public bool IsGameOver => _gameOver;
         public bool IsRunVictory => _runVictory;
@@ -82,9 +84,12 @@ namespace KingCardsSpire.Managers
             PlayerState = data.Player ?? new PlayerData();
             FloorState = data.Floor ?? new FloorState();
             ShopState = data.Shop ?? new ShopState();
+            if (data.Version < 2 && PlayerState != null)
+                PlayerState.HasCompletedOpeningTutorial = true;
             if (FloorState.FloorIndex <= 0)
                 FloorState.FloorIndex = PlayerState.CurrentFloor;
             _pendingBossRewards = null;
+            NormalizeNpcPersistence(PlayerState);
         }
 
         /// <summary>新开局：重置玩家与第一层 FloorState，并滚动首日天气。</summary>
@@ -107,7 +112,9 @@ namespace KingCardsSpire.Managers
                 XRayCount = gc?.InitialXRayCount ?? 1,
                 CurrentWeather = WeatherType.WarmWind,
                 UnlockedDialogues = Array.Empty<string>(),
-                UnlockedAchievements = Array.Empty<string>()
+                UnlockedAchievements = Array.Empty<string>(),
+                MetNpcIds = Array.Empty<string>(),
+                LastNpcInteractionDay = 0
             };
 
             ApplyStarterDeckFromConfig(PlayerState, gc);
@@ -545,6 +552,155 @@ namespace KingCardsSpire.Managers
 
             ui.CloseAll();
             yield return ui.OpenAsync(UIPanelId.MainMenu);
+        }
+
+        /// <summary>今日是否仍可访问 NPC（主界面按钮与进入 NPCView 的门禁）。</summary>
+        public bool HasNpcVisitRemainingToday()
+        {
+            return PlayerState.LastNpcInteractionDay != PlayerState.CurrentDay;
+        }
+
+        /// <summary>当前层及以下塔层中，是否存在尚未结识的 npcId。</summary>
+        public bool IsNewNpcEncounterPoolEmpty()
+        {
+            RefreshNewNpcEncounterScratch();
+            return _npcNewEncounterScratch.Count == 0;
+        }
+
+        /// <summary>从塔配置可结识池中随机一个未在 <see cref="PlayerData.MetNpcIds"/> 中的 npcId。</summary>
+        public bool TryPickRandomNewNpcFromTower(out string pickedNpcId)
+        {
+            pickedNpcId = null;
+            RefreshNewNpcEncounterScratch();
+            if (_npcNewEncounterScratch.Count == 0)
+                return false;
+
+            pickedNpcId = _npcNewEncounterScratch[Random.Range(0, _npcNewEncounterScratch.Count)];
+            return true;
+        }
+
+        /// <summary>消耗当日唯一一次 NPC 访问并记录已遇；对话系统未接入前为占位日志/事件。</summary>
+        public bool TryInteractWithNpc(string npcId)
+        {
+            if (_gameOver || _runVictory || string.IsNullOrEmpty(npcId))
+                return false;
+
+            if (PlayerState.LastNpcInteractionDay == PlayerState.CurrentDay)
+            {
+                Debug.LogWarning("[GameManager] TryInteractWithNpc: 当日访问已消耗，不应从 UI 再次触发。");
+                return false;
+            }
+
+            PlayerState.LastNpcInteractionDay = PlayerState.CurrentDay;
+            AppendMetNpcIfMissing(npcId, PlayerState);
+            _events?.Publish(new NpcEncounterStartedEvent(npcId));
+            Debug.Log($"[GameManager] NPC 遭遇占位: {npcId}");
+            return true;
+        }
+
+        /// <summary>供 NPC 列表展示：已遇 Id 按字典序排序的副本。</summary>
+        public string[] GetMetNpcIdsSortedCopy()
+        {
+            var met = PlayerState.MetNpcIds ?? Array.Empty<string>();
+            if (met.Length <= 1)
+                return (string[])met.Clone();
+
+            var copy = (string[])met.Clone();
+            Array.Sort(copy, StringComparer.Ordinal);
+            return copy;
+        }
+
+        private void RefreshNewNpcEncounterScratch()
+        {
+            _npcNewEncounterScratch.Clear();
+            var cfg = ConfigManager.Instance;
+            if (cfg == null)
+                return;
+
+            _npcTowerIdScratch.Clear();
+            cfg.CollectNpcIdsForFloorsUpTo(PlayerState.CurrentFloor, _npcTowerIdScratch);
+
+            var met = PlayerState.MetNpcIds ?? Array.Empty<string>();
+            foreach (var id in _npcTowerIdScratch)
+            {
+                if (string.IsNullOrEmpty(id))
+                    continue;
+                if (Array.IndexOf(met, id) >= 0)
+                    continue;
+                _npcNewEncounterScratch.Add(id);
+            }
+        }
+
+        private static void AppendMetNpcIfMissing(string npcId, PlayerData player)
+        {
+            var met = player.MetNpcIds;
+            if (met == null || met.Length == 0)
+            {
+                player.MetNpcIds = new[] { npcId };
+                return;
+            }
+
+            if (Array.IndexOf(met, npcId) >= 0)
+                return;
+
+            var list = new List<string>(met) { npcId };
+            player.MetNpcIds = list.ToArray();
+        }
+
+        private static void NormalizeNpcPersistence(PlayerData player)
+        {
+            if (player == null)
+                return;
+
+            if (player.MetNpcIds == null)
+                player.MetNpcIds = Array.Empty<string>();
+        }
+
+        /// <summary>将对话行 id 记入已解锁列表（去重）。</summary>
+        public void RegisterDialogueLineSeen(string dialogueId)
+        {
+            if (string.IsNullOrEmpty(dialogueId) || PlayerState == null)
+                return;
+
+            var arr = PlayerState.UnlockedDialogues ?? Array.Empty<string>();
+            if (Array.IndexOf(arr, dialogueId) >= 0)
+                return;
+
+            var next = new List<string>(arr) { dialogueId };
+            PlayerState.UnlockedDialogues = next.ToArray();
+        }
+
+        /// <summary>将当前 Run 写入默认存档位，保留盘上历史记录条目。</summary>
+        public void PersistCurrentRunToDisk()
+        {
+            var pm = PersistenceManager.Instance;
+            if (pm == null)
+                return;
+
+            var existing = pm.Load();
+            var history = existing != null && existing.History != null
+                ? existing.History
+                : Array.Empty<HistoryRecord>();
+
+            var data = new SaveData
+            {
+                Version = 2,
+                Player = PlayerState,
+                Floor = FloorState,
+                Shop = ShopState,
+                History = history
+            };
+
+            pm.Save(data);
+        }
+
+        /// <summary>标记开场教程对话已完成并写盘。</summary>
+        public void SetOpeningTutorialCompletedAndSave()
+        {
+            if (PlayerState == null)
+                return;
+            PlayerState.HasCompletedOpeningTutorial = true;
+            PersistCurrentRunToDisk();
         }
 
         private GameConfig ResolveGameConfig()

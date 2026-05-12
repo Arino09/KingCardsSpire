@@ -47,6 +47,8 @@ namespace KingCardsSpire.Models
         MainMenu = 7,
         MainHub = 8,
         CardReward = 9,
-        CardList = 10
+        CardList = 10,
+        NpcHub = 11,
+        Dialog = 12
     }
 }

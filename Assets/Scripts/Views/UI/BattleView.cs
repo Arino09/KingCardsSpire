@@ -44,6 +44,15 @@ namespace KingCardsSpire.Views.UI
         [SerializeField] private RectTransform enemyHandRoot;
         [SerializeField] private RectTransform playerHandRoot;
 
+        [Tooltip("指数形态弃牌：全屏遮罩（通常为 Mask 节点）；未绑定时仅依赖手牌 Canvas 抬升。")]
+        [SerializeField] private GameObject exponentialSacrificeDimmer;
+
+        [Tooltip("指数形态弃牌：一般为 MyHand 上的 Canvas；留空则从 playerHandRoot 上取 Canvas。")]
+        [SerializeField] private Canvas playerHandCanvasOverride;
+
+        [Tooltip("指数形态弃牌时遮罩上方的提示文案（可选）。")]
+        [SerializeField] private Text exponentialSacrificeHintText;
+
         [Header("出牌区")]
         [SerializeField] private RectTransform enemyPlayArea;
         [SerializeField] private RectTransform myPlayArea;
@@ -94,6 +103,16 @@ namespace KingCardsSpire.Views.UI
         /// <summary>翻面与飞行动画进行中；期间忽略手牌点击并延后完整 Refresh。</summary>
         private bool _roundVisualBusy;
 
+        /// <summary>已确认出牌，指数形态下正等待玩家点击弃掉另一张手牌。</summary>
+        private bool _awaitingExponentialSacrifice;
+
+        private int _savedPlayerHandCanvasSortOrder;
+
+        private bool _hasSavedPlayerHandCanvasSort;
+
+        /// <summary>指数弃牌阶段为手牌 Canvas 叠加的排序增量。</summary>
+        private const int ExponentialHandCanvasSortBoost = 80;
+
         /// <summary>本回合敌方出牌区实例（Prepare 后创建）。</summary>
         private CardView _enemyPlayCard;
 
@@ -107,6 +126,9 @@ namespace KingCardsSpire.Views.UI
             _events = EventManager.Instance;
             _config = ConfigManager.Instance;
 
+            if (playerHandCanvasOverride == null && playerHandRoot != null)
+                playerHandCanvasOverride = playerHandRoot.GetComponent<Canvas>();
+
             WireButtons();
         }
 
@@ -115,6 +137,7 @@ namespace KingCardsSpire.Views.UI
         /// </summary>
         public override void Dispose()
         {
+            ExitExponentialSacrificeUi(true);
             UnwireButtons();
             if (_events != null)
                 _events.Unsubscribe<BattleStateChangedEvent>(OnBattleStateChanged);
@@ -137,6 +160,7 @@ namespace KingCardsSpire.Views.UI
             if (_battle != null && !_battle.IsBattleActive)
                 _battle.RequestStartBattle();
 
+            ExitExponentialSacrificeUi(true);
             RefreshAll();
         }
 
@@ -149,7 +173,7 @@ namespace KingCardsSpire.Views.UI
                 return;
 
             var canConfirm = _battle != null && _battle.IsBattleActive && !_roundVisualBusy &&
-                             _selectedPlayerHandIndex >= 0;
+                             !_awaitingExponentialSacrifice && _selectedPlayerHandIndex >= 0;
             confirmPlayButton.interactable = canConfirm;
         }
 
@@ -467,7 +491,13 @@ namespace KingCardsSpire.Views.UI
                 var capturedIndex = i;
                 cv.OverrideClick(() => OnPlayerHandCardClicked(battleRef, capturedIndex));
 
-                cv.SetVisualState(i == _selectedPlayerHandIndex ? CardVisualState.Selected : CardVisualState.Normal);
+                if (_awaitingExponentialSacrifice && battleRef != null)
+                {
+                    var pend = battleRef.PendingPlayerHandIndex;
+                    cv.SetVisualState(i == pend ? CardVisualState.Disabled : CardVisualState.Normal);
+                }
+                else
+                    cv.SetVisualState(i == _selectedPlayerHandIndex ? CardVisualState.Selected : CardVisualState.Normal);
             }
 
             TrimHandTail(playerHandRoot, n);
@@ -480,6 +510,12 @@ namespace KingCardsSpire.Views.UI
         {
             if (battleRef == null || !battleRef.IsBattleActive || _roundVisualBusy)
                 return;
+
+            if (_awaitingExponentialSacrifice)
+            {
+                OnExponentialSacrificeHandClicked(capturedIndex);
+                return;
+            }
 
             _selectedPlayerHandIndex = _selectedPlayerHandIndex == capturedIndex ? -1 : capturedIndex;
             SyncPlayerHandSelectionVisuals();
@@ -520,6 +556,77 @@ namespace KingCardsSpire.Views.UI
 
             _selectedPlayerHandIndex = -1;
             SyncPlayerHandSelectionVisuals();
+
+            if (_battle.RequiresPlayerExponentialSacrifice())
+            {
+                EnterExponentialSacrificeUi();
+                RefreshAll();
+                UpdateConfirmPlayButtonInteractable();
+                return;
+            }
+
+            UpdateConfirmPlayButtonInteractable();
+            StartCoroutine(RoundVisualSequenceRoutine());
+        }
+
+        private void EnterExponentialSacrificeUi()
+        {
+            _awaitingExponentialSacrifice = true;
+            if (exponentialSacrificeDimmer != null)
+                exponentialSacrificeDimmer.SetActive(true);
+            if (exponentialSacrificeHintText != null)
+            {
+                exponentialSacrificeHintText.gameObject.SetActive(true);
+                exponentialSacrificeHintText.text = "指数形态：请点击弃置一张手牌（不能弃本回合打出的牌）";
+            }
+
+            if (playerHandCanvasOverride != null)
+            {
+                if (!_hasSavedPlayerHandCanvasSort)
+                {
+                    _savedPlayerHandCanvasSortOrder = playerHandCanvasOverride.sortingOrder;
+                    _hasSavedPlayerHandCanvasSort = true;
+                }
+
+                playerHandCanvasOverride.overrideSorting = true;
+                playerHandCanvasOverride.sortingOrder =
+                    _savedPlayerHandCanvasSortOrder + ExponentialHandCanvasSortBoost;
+            }
+        }
+
+        private void ExitExponentialSacrificeUi(bool restoreHandCanvasSort)
+        {
+            _awaitingExponentialSacrifice = false;
+            if (exponentialSacrificeDimmer != null)
+                exponentialSacrificeDimmer.SetActive(false);
+            if (exponentialSacrificeHintText != null)
+                exponentialSacrificeHintText.gameObject.SetActive(false);
+
+            if (restoreHandCanvasSort && playerHandCanvasOverride != null && _hasSavedPlayerHandCanvasSort)
+            {
+                playerHandCanvasOverride.sortingOrder = _savedPlayerHandCanvasSortOrder;
+                _hasSavedPlayerHandCanvasSort = false;
+            }
+        }
+
+        private void OnExponentialSacrificeHandClicked(int handIndex)
+        {
+            if (!_awaitingExponentialSacrifice || _battle == null)
+                return;
+
+            if (handIndex == _battle.PendingPlayerHandIndex)
+            {
+                Debug.Log("[BattleView] 指数形态：不能弃置本回合打出的牌。");
+                return;
+            }
+
+            if (!_battle.TryCompletePlayerExponentialSacrifice(handIndex, out var err))
+            {
+                Debug.LogWarning($"[BattleView] {err}");
+                return;
+            }
+
+            ExitExponentialSacrificeUi(true);
             UpdateConfirmPlayButtonInteractable();
             StartCoroutine(RoundVisualSequenceRoutine());
         }

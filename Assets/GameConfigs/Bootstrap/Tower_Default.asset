@@ -19,7 +19,8 @@ MonoBehaviour:
     - king
     - commoner
     npcIds:
-    - npc_floor_1
+    - npc_1_1
+    - npc_1_2
     rewardCardPoolIds:
     - king
     - commoner
@@ -29,7 +30,7 @@ MonoBehaviour:
     - king
     - commoner
     npcIds:
-    - npc_floor_2
+    - npc_2_1
     rewardCardPoolIds:
     - king
     - commoner
@@ -39,7 +40,7 @@ MonoBehaviour:
     - king
     - commoner
     npcIds:
-    - npc_floor_3
+    - npc_3_1
     rewardCardPoolIds:
     - king
     - commoner
@@ -49,7 +50,7 @@ MonoBehaviour:
     - king
     - commoner
     npcIds:
-    - npc_floor_4
+    - npc_4_1
     rewardCardPoolIds:
     - king
     - commoner
@@ -59,7 +60,7 @@ MonoBehaviour:
     - king
     - commoner
     npcIds:
-    - npc_floor_5
+    - npc_5_1
     rewardCardPoolIds:
     - king
     - commoner
@@ -69,7 +70,7 @@ MonoBehaviour:
     - king
     - commoner
     npcIds:
-    - npc_floor_6
+    - npc_6_1
     rewardCardPoolIds:
     - king
     - commoner
@@ -79,7 +80,7 @@ MonoBehaviour:
     - king
     - commoner
     npcIds:
-    - npc_floor_7
+    - npc_7_1
     rewardCardPoolIds:
     - king
     - commoner

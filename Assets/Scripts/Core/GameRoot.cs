@@ -56,6 +56,7 @@ namespace KingCardsSpire.Core
 
             ServiceLocator.Register(new BattleController());
             ServiceLocator.Register(new DailyController(EventManager.Instance, GameManager.Instance));
+            ServiceLocator.Register(new DialogueController(EventManager.Instance, GameManager.Instance));
 
             var cfg = ConfigManager.Instance;
             Debug.Log(

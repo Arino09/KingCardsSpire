@@ -102,11 +102,6 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: f5da6c7bcaac0614a85da7c886e17fb5
-    m_Address: "Assets/GameAssets/Sprites/Cards/39. \u51CF1\u724C.jpg"
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 0d50f2858a1f90948acd19d337c3aea9
     m_Address: "Assets/GameAssets/Sprites/Cards/15. \u5F71\u5B50.png"
     m_ReadOnly: 0
@@ -137,11 +132,6 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: bac3c889535be3b4aad4f369e5c38ecf
-    m_Address: "Assets/GameAssets/Sprites/Cards/40. \u52A00.5\u724C.jpg"
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 668aa5c5f82d66e4c8d9bf0bf275b33e
     m_Address: "Assets/GameAssets/Sprites/Cards/18. \u6696\u65E5.png"
     m_ReadOnly: 0
@@ -159,11 +149,6 @@ MonoBehaviour:
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 1d9914fa8f3978648bc2d94b80f74a62
     m_Address: "Assets/GameAssets/Sprites/Cards/19. \u96EA\u82B1.png"
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 1108e9c35faeb4f468709d4bc6bf3d99
-    m_Address: "Assets/GameAssets/Sprites/Cards/43. \u80FD\u529B\u5931\u6548\u724C.png"
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
@@ -192,11 +177,6 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 971abe5f031c3ca4ea4ed81adb56b14b
-    m_Address: "Assets/GameAssets/Sprites/Cards/9. \u4E71\u515A.jpg"
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 1212a048318d4354592e759695e08ca0
     m_Address: "Assets/GameAssets/Sprites/Cards/44. \u7EED\u547D\u724C.png"
     m_ReadOnly: 0
@@ -219,11 +199,6 @@ MonoBehaviour:
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: f6b73422a725e3e4ebe5636a4214ae23
     m_Address: "Assets/GameAssets/Sprites/Cards/32. \u5B64\u6CE8\u4E00\u63B7.png"
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: c3ab6ab95e3f57e4292f50823cee24d4
-    m_Address: "Assets/GameAssets/Sprites/Cards/41. \u52A01\u724C.jpg"
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0

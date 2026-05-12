@@ -89,4 +89,12 @@ namespace KingCardsSpire.Core.Events
     public readonly struct SaveLoadedEvent : IEvent { }
 
     public readonly struct SaveWrittenEvent : IEvent { }
+
+    /// <summary>玩家当日 NPC 访问已消耗且进入对话占位流程（对话系统未实装前供 UI 刷新等订阅）。</summary>
+    public readonly struct NpcEncounterStartedEvent : IEvent
+    {
+        public readonly string NpcId;
+
+        public NpcEncounterStartedEvent(string npcId) => NpcId = npcId ?? string.Empty;
+    }
 }

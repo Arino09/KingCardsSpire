@@ -1,4 +1,6 @@
 using System.Collections;
+using KingCardsSpire.Controllers;
+using KingCardsSpire.Core;
 using KingCardsSpire.Managers;
 using KingCardsSpire.Models;
 using UnityEngine;
@@ -168,6 +170,15 @@ namespace KingCardsSpire.Views.UI
                 yield break;
 
             ui.Close(UIPanelId.MainMenu);
+
+            if (view._game != null && !view._game.PlayerState.HasCompletedOpeningTutorial)
+            {
+                var dialogue = ServiceLocator.Get<DialogueController>();
+                if (dialogue != null)
+                    yield return ui.StartCoroutine(dialogue.PlayDialogue("tutorial_opening", null));
+                view._game.SetOpeningTutorialCompletedAndSave();
+            }
+
             yield return ui.OpenAsync(UIPanelId.MainHub);
         }
 

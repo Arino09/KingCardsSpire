@@ -1,0 +1,118 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f7a2b8c0d1e24a3b9c8d7e6f5a4b3c2d, type: 3}
+  m_Name: Dialogue_Default
+  m_EditorClassIdentifier: 
+  lines:
+  - id: tutorial_opening
+    timingKind: 1
+    backgroundId: 1
+    characterId: Hero/1
+    speakerName: "\u5BFC\u89C6"
+    bodyText: "\u6B22\u8FCE\u6765\u5230\u673A\u6838\u5854\u3002\u8FD9\u662F\u5F00\u5C40\u6559\u7A0B\u7684\u7B2C\u4E00\u53E5\u8BDD\u3002"
+    isChoice: 0
+    nextId: tutorial_opening_2
+    choices: []
+  - id: tutorial_opening_2
+    timingKind: 1
+    backgroundId: 1
+    characterId: Hero/1
+    speakerName: "\u5BFC\u89C6"
+    bodyText: "\u70B9\u51FB\u7EE7\u7EED\u63A8\u8FDB\u5BF9\u8BDD\u3002\u5B8C\u6210\u540E\u4F60\u5C06\u8FDB\u5165\u5854\u5185\u4E3B\u754C\u9762\u3002"
+    isChoice: 0
+    nextId: 
+    choices: []
+  - id: boss_prefight
+    timingKind: 2
+    backgroundId: 1
+    characterId: NPC/Avatar/0_1.png
+    speakerName: "\u5C61\u4E3B"
+    bodyText: "\u51C6\u5907\u597D\u6311\u6218\u672C\u5C42\u9A7B\u5B88\u8005\u4E86\u5417\uFF1F"
+    isChoice: 0
+    nextId: 
+    choices: []
+  - id: hero_talk_0
+    timingKind: 3
+    backgroundId: 1
+    characterId: Hero/1
+    speakerName: "\u53C2\u8D5B\u8005\u4E00"
+    bodyText: "\u6211\u662F\u4E00\u53F7\u53C2\u8D5B\u8005\uFF0C\u6709\u7A7A\u6765\u804A\u804A\u5417\uFF1F"
+    isChoice: 0
+    nextId: 
+    choices: []
+  - id: hero_talk_1
+    timingKind: 3
+    backgroundId: 1
+    characterId: Heroine1/1
+    speakerName: "\u53C2\u8D5B\u8005\u4E8C"
+    bodyText: "\u6211\u662F\u4E8C\u53F7\u53C2\u8D5B\u8005\u3002"
+    isChoice: 0
+    nextId: 
+    choices: []
+  - id: hero_talk_2
+    timingKind: 3
+    backgroundId: 1
+    characterId: Heroine2/1
+    speakerName: "\u53C2\u8D5B\u8005\u4E09"
+    bodyText: "\u6211\u662F\u4E09\u53F7\u53C2\u8D5B\u8005\u3002"
+    isChoice: 0
+    nextId: 
+    choices: []
+  - id: npc_default_visit
+    timingKind: 4
+    backgroundId: 2
+    characterId: NPC/Avatar/1_1
+    speakerName: "\u539F\u4F4F\u6C11"
+    bodyText: "\u4F60\u9047\u5230\u4E86\u4E00\u4F4D\u539F\u4F4F\u6C11\u3002"
+    isChoice: 0
+    nextId: 
+    choices: []
+  - id: ending_final
+    timingKind: 5
+    backgroundId: 7
+    characterId: Hero/1
+    speakerName: "\u7ED3\u5C40"
+    bodyText: "\u7B2C\u4E03\u5C42\u9A7B\u5B88\u8005\u5DF2\u88AB\u51FB\u5012\u3002\u901A\u5173\u5BCC\u8D35\uFF0C\u8C22\u8C22\u4F60\u7684\u594B\u6218\uFF01"
+    isChoice: 0
+    nextId: 
+    choices: []
+  - id: sample_choice_root
+    timingKind: 6
+    backgroundId: 1
+    characterId: Hero/1
+    speakerName: "\u793A\u4F8B"
+    bodyText: "\u9009\u4E00\u4E2A\u5206\u652F\uFF1A"
+    isChoice: 1
+    nextId: 
+    choices:
+    - optionText: "\u5206\u652FA"
+      nextDialogueId: sample_choice_a
+    - optionText: "\u5206\u652FB"
+      nextDialogueId: sample_choice_b
+  - id: sample_choice_a
+    timingKind: 6
+    backgroundId: 1
+    characterId: Hero/1
+    speakerName: "\u793A\u4F8B"
+    bodyText: "\u4F60\u9009\u4E86 A\u3002"
+    isChoice: 0
+    nextId: 
+    choices: []
+  - id: sample_choice_b
+    timingKind: 6
+    backgroundId: 1
+    characterId: Hero/1
+    speakerName: "\u793A\u4F8B"
+    bodyText: "\u4F60\u9009\u4E86 B\u3002"
+    isChoice: 0
+    nextId: 
+    choices: []

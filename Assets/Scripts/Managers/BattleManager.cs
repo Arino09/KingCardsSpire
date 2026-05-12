@@ -47,6 +47,9 @@ namespace KingCardsSpire.Managers
         /// <summary>「最终时刻」将在下一回合开始时生效。</summary>
         private bool _restrictedNextRound;
 
+        /// <summary>本回合指数形态要求的额外弃牌是否已由玩家完成（或无需弃牌）。</summary>
+        private bool _playerExponentialSacrificeResolved;
+
         public BattleState CurrentBattle { get; private set; } = new();
 
         public bool IsBattleActive => _phase == Phase.InBattle;
@@ -82,21 +85,38 @@ namespace KingCardsSpire.Managers
             var enemyCards = vsBoss ? BuildBossDeckFromTowerOrFallback() : BuildDefaultEnemyDeck();
 
             StartBattleInternal(playerCards, enemyCards, player?.CurrentWeather ?? WeatherType.WarmWind,
-                player?.XRayCount ?? 1, vsBoss);
+                player?.XRayCount ?? 1, vsBoss, null);
+        }
+
+        /// <summary>主角房友谊战：敌方卡组由 <see cref="HeroOpponentDeckGenerator"/> 占位生成，非 BOSS。</summary>
+        public void StartHeroDuelFromPlayerState(string heroSlotId, string opponentDisplayName)
+        {
+            var game = GameManager.Instance;
+            var player = game != null ? game.PlayerState : null;
+
+            var playerCards = BuildPlayerDeck(player);
+            var enemyCards = HeroOpponentDeckGenerator.BuildPlaceholderDeck(heroSlotId);
+
+            StartBattleInternal(playerCards, enemyCards, player?.CurrentWeather ?? WeatherType.WarmWind,
+                player?.XRayCount ?? 1, isBossBattle: false, opponentDisplayNameOverride: opponentDisplayName);
         }
 
         public void StartBattle(IReadOnlyList<Card> playerDeck, IReadOnlyList<Card> enemyDeck,
-            WeatherType weather, int xRayCount, bool isBossBattle = false)
+            WeatherType weather, int xRayCount, bool isBossBattle = false,
+            string opponentDisplayNameOverride = null)
         {
-            StartBattleInternal(playerDeck, enemyDeck, weather, xRayCount, isBossBattle);
+            StartBattleInternal(playerDeck, enemyDeck, weather, xRayCount, isBossBattle,
+                opponentDisplayNameOverride);
         }
 
         private void StartBattleInternal(IReadOnlyList<Card> playerDeck, IReadOnlyList<Card> enemyDeck,
-            WeatherType weather, int xRayCount, bool isBossBattle)
+            WeatherType weather, int xRayCount, bool isBossBattle, string opponentDisplayNameOverride = null)
         {
             ResetRuntime();
             _isBossBattle = isBossBattle;
-            _opponentDisplayName = ResolveOpponentDisplayName(isBossBattle);
+            _opponentDisplayName = !string.IsNullOrEmpty(opponentDisplayNameOverride)
+                ? opponentDisplayNameOverride
+                : ResolveOpponentDisplayName(isBossBattle);
 
             foreach (var c in playerDeck)
                 _playerHand.Add(CloneForBattle(c));
@@ -126,6 +146,13 @@ namespace KingCardsSpire.Managers
                 return false;
             if (!TryStagePlayerCard(playerHandIndex, out error))
                 return false;
+
+            if (RequiresPlayerExponentialSacrifice())
+            {
+                if (!TryAutoCompletePlayerExponentialSacrifice(out error))
+                    return false;
+            }
+
             return CommitPendingRound(out _, out error);
         }
 
@@ -142,10 +169,7 @@ namespace KingCardsSpire.Managers
             }
 
             if (_pendingEnemyHandIndex >= 0 && _pendingPlayerHandIndex >= 0)
-            {
-                error = "本回合出牌进行中";
-                return false;
-            }
+                return true;
 
             if (_pendingEnemyHandIndex >= 0 && _pendingPlayerHandIndex < 0)
                 return true;
@@ -204,10 +228,64 @@ namespace KingCardsSpire.Managers
             }
 
             _pendingPlayerHandIndex = playerHandIndex;
+            _playerExponentialSacrificeResolved = !RequiresPlayerExponentialSacrifice();
             return true;
         }
 
-        /// <summary>翻面动画结束后调用：执行单回合结算并清空待定索引。</summary>
+        /// <summary>
+        /// 指数形态激活且本回合尚有多张手牌时，需在 <see cref="CommitPendingRound"/> 前额外弃置1张非出牌张。
+        /// </summary>
+        public bool RequiresPlayerExponentialSacrifice() =>
+            _phase == Phase.InBattle
+            && _battleEffects.PlayerExponentialFormActive
+            && _pendingPlayerHandIndex >= 0
+            && !_playerExponentialSacrificeResolved
+            && _playerHand.Count > 1;
+
+        /// <summary>玩家点击手牌完成指数形态的额外弃置。</summary>
+        public bool TryCompletePlayerExponentialSacrifice(int discardHandIndex, out string error)
+        {
+            error = null;
+            if (!RequiresPlayerExponentialSacrifice())
+            {
+                error = "当前不需要弃牌";
+                return false;
+            }
+
+            if (discardHandIndex == _pendingPlayerHandIndex)
+            {
+                error = "不能弃置本回合即将打出的牌";
+                return false;
+            }
+
+            if (discardHandIndex < 0 || discardHandIndex >= _playerHand.Count)
+            {
+                error = "手牌下标无效";
+                return false;
+            }
+
+            var pending = _pendingPlayerHandIndex;
+            DiscardPlayerCardAt(discardHandIndex);
+            if (discardHandIndex < pending)
+                _pendingPlayerHandIndex--;
+
+            _playerExponentialSacrificeResolved = true;
+            SyncBattleState();
+            EventManager.Instance?.Publish(new BattleStateChangedEvent());
+            return true;
+        }
+
+        private bool TryAutoCompletePlayerExponentialSacrifice(out string error)
+        {
+            error = null;
+            if (!RequiresPlayerExponentialSacrifice())
+                return true;
+
+            var pending = _pendingPlayerHandIndex;
+            var removeAt = RandomOtherIndex(_playerHand.Count, pending);
+            return TryCompletePlayerExponentialSacrifice(removeAt, out error);
+        }
+
         public bool CommitPendingRound(out BattleCompareResult compareResult, out string error)
         {
             compareResult = default;
@@ -221,6 +299,13 @@ namespace KingCardsSpire.Managers
             if (_pendingEnemyHandIndex < 0 || _pendingPlayerHandIndex < 0)
             {
                 error = "出牌未完成";
+                return false;
+            }
+
+            if (_battleEffects.PlayerExponentialFormActive && _playerHand.Count > 1 &&
+                !_playerExponentialSacrificeResolved)
+            {
+                error = "指数形态：须先弃置1张手牌";
                 return false;
             }
 
@@ -394,6 +479,15 @@ namespace KingCardsSpire.Managers
 
             if (string.Equals(pl.Id, WellKnownCardIds.Demon, StringComparison.OrdinalIgnoreCase)
                 && _enemyHand.Count > 1)
+            {
+                var removeAt = RandomOtherIndex(_enemyHand.Count, enemyIdx);
+                DiscardEnemyCardAt(removeAt);
+                enemyIdx = FindHandIndexByInstanceId(_enemyHand, enemyInst);
+                if (enemyIdx < 0)
+                    enemyIdx = 0;
+            }
+
+            if (_battleEffects.EnemyExponentialFormActive && _enemyHand.Count > 1)
             {
                 var removeAt = RandomOtherIndex(_enemyHand.Count, enemyIdx);
                 DiscardEnemyCardAt(removeAt);
@@ -597,6 +691,12 @@ namespace KingCardsSpire.Managers
             if (string.Equals(id, WellKnownCardIds.GoldenNecklace, StringComparison.OrdinalIgnoreCase)
                 && fromPlayerPerspective)
                 _battleEffects.PlayerGoldenNecklacePlayed = true;
+            if (string.Equals(id, WellKnownCardIds.ExponentialForm, StringComparison.OrdinalIgnoreCase)
+                && fromPlayerPerspective)
+                _battleEffects.PlayerExponentialFormActive = true;
+            if (string.Equals(id, WellKnownCardIds.ExponentialForm, StringComparison.OrdinalIgnoreCase)
+                && !fromPlayerPerspective)
+                _battleEffects.EnemyExponentialFormActive = true;
         }
 
         private void ApplyCivilizationIfPlayed(Card playerCard, Card enemyCard)
@@ -801,6 +901,7 @@ namespace KingCardsSpire.Managers
             _pendingPlayerHandIndex = -1;
             _battleEffects.ResetBattle();
             _restrictedNextRound = false;
+            _playerExponentialSacrificeResolved = false;
             CurrentBattle = new BattleState();
         }
 

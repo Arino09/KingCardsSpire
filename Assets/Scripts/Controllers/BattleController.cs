@@ -14,6 +14,11 @@ namespace KingCardsSpire.Controllers
             BattleManager.Instance?.StartBattleFromPlayerState(vsBoss);
         }
 
+        public void RequestStartHeroDuel(string heroSlotId, string opponentDisplayName)
+        {
+            BattleManager.Instance?.StartHeroDuelFromPlayerState(heroSlotId, opponentDisplayName);
+        }
+
         /// <summary>一步出牌（等同 Prepare → Stage → Commit），供无需动画编排的调用方。</summary>
         public bool TryPlayCard(int playerHandIndex, out string error)
         {
@@ -72,5 +77,20 @@ namespace KingCardsSpire.Controllers
 
         public int PendingPlayerHandIndex =>
             BattleManager.Instance != null ? BattleManager.Instance.PendingPlayerHandIndex : -1;
+
+        public bool RequiresPlayerExponentialSacrifice() =>
+            BattleManager.Instance != null && BattleManager.Instance.RequiresPlayerExponentialSacrifice();
+
+        public bool TryCompletePlayerExponentialSacrifice(int discardHandIndex, out string error)
+        {
+            error = null;
+            if (BattleManager.Instance == null)
+            {
+                error = "BattleManager 未就绪";
+                return false;
+            }
+
+            return BattleManager.Instance.TryCompletePlayerExponentialSacrifice(discardHandIndex, out error);
+        }
     }
 }
