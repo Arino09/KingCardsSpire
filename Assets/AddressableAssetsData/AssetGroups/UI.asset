@@ -107,6 +107,16 @@ MonoBehaviour:
     m_SerializedLabels:
     - ui_panel
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: b03632bb2cc0a8345a1c73c525dc326e
+    m_Address: Sprites/Character/NPC
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 069a1e3a0a45bac499492c9e72fbd430
+    m_Address: Sprites/Character/Boss
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: 0b8713ba58b57bb49bd9906570780370, type: 2}
   m_SchemaSet:

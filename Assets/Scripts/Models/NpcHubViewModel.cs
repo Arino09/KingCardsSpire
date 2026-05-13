@@ -15,12 +15,14 @@ namespace KingCardsSpire.Models
         public NpcHubButtonKind Kind { get; }
         public string NpcId { get; }
         public string LabelText { get; }
+        public string AvatarId { get; }
 
-        public NpcHubButtonSpec(NpcHubButtonKind kind, string npcId, string labelText)
+        public NpcHubButtonSpec(NpcHubButtonKind kind, string npcId, string labelText, string avatarId = "")
         {
             Kind = kind;
             NpcId = npcId ?? string.Empty;
             LabelText = labelText ?? string.Empty;
+            AvatarId = avatarId ?? string.Empty;
         }
     }
 
@@ -42,6 +44,23 @@ namespace KingCardsSpire.Models
 
         public static NpcHubViewModel Build(IReadOnlyList<string> metNpcIdsSorted, bool newEncounterPoolEmpty)
         {
+            return Build(metNpcIdsSorted, newEncounterPoolEmpty, null, null);
+        }
+
+        public static NpcHubViewModel Build(
+            IReadOnlyList<string> metNpcIdsSorted,
+            bool newEncounterPoolEmpty,
+            Func<string, string> displayNameResolver)
+        {
+            return Build(metNpcIdsSorted, newEncounterPoolEmpty, displayNameResolver, null);
+        }
+
+        public static NpcHubViewModel Build(
+            IReadOnlyList<string> metNpcIdsSorted,
+            bool newEncounterPoolEmpty,
+            Func<string, string> displayNameResolver,
+            Func<string, string> avatarIdResolver)
+        {
             var list = new List<NpcHubButtonSpec> { new NpcHubButtonSpec(NpcHubButtonKind.NewEncounter, string.Empty, NewEncounterLabel) };
 
             if (metNpcIdsSorted != null)
@@ -51,7 +70,9 @@ namespace KingCardsSpire.Models
                     var id = metNpcIdsSorted[i];
                     if (string.IsNullOrEmpty(id))
                         continue;
-                    list.Add(new NpcHubButtonSpec(NpcHubButtonKind.MetNpc, id, id));
+                    var label = displayNameResolver != null ? displayNameResolver(id) : id;
+                    var avatarId = avatarIdResolver != null ? avatarIdResolver(id) : string.Empty;
+                    list.Add(new NpcHubButtonSpec(NpcHubButtonKind.MetNpc, id, label, avatarId));
                 }
             }
 

@@ -155,6 +155,10 @@ namespace KingCardsSpire.Core.Battle
 
             if (isPlayerCard && state.PlayerWarmDayActive && isHalfFive)
                 level += 0.25f;
+            if (!isPlayerCard && state.EnemyWarmDayActive && isHalfFive)
+                level += 0.25f;
+            if (isPlayerCard && state.PlayerSnowflakeActive && isHalfFive)
+                level -= 0.25f;
             if (!isPlayerCard && state.EnemySnowflakeActive && isHalfFive)
                 level -= 0.25f;
 

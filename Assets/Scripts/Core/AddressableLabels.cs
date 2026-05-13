@@ -12,6 +12,8 @@ namespace KingCardsSpire.Core
         public const string ConfigGame = "config_game";
         public const string ConfigTower = "config_tower";
         public const string ConfigDialogue = "config_dialogue";
+        public const string ConfigHero = "config_hero";
+        public const string ConfigNpc = "config_npc";
 
         public const string UiPanel = "ui_panel";
         public const string AudioBgm = "audio_bgm";

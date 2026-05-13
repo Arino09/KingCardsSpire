@@ -34,6 +34,8 @@ namespace KingCardsSpire.Views.UI
             "参赛者三"
         };
 
+        [SerializeField] private Text[] heroDisplayNameTexts;
+
         private UnityAction _onClose;
         private UnityAction _onHero0;
         private UnityAction _onHero1;
@@ -56,6 +58,7 @@ namespace KingCardsSpire.Views.UI
         {
             HideChoiceDialog();
             _selectedSlot = -1;
+            RefreshHeroDisplayNames();
         }
 
         public override void Dispose()
@@ -137,14 +140,20 @@ namespace KingCardsSpire.Views.UI
         {
             var ui = UIManager.Instance;
             var dialogue = ServiceLocator.Get<DialogueController>();
-            var cfg = ConfigManager.Instance;
             var gm = GameManager.Instance;
             if (ui == null || dialogue == null)
                 yield break;
 
             var floor = gm != null ? gm.PlayerState.CurrentFloor : 1;
-            var startId = DialogueController.ResolveHeroTalkStartId(cfg, _selectedSlot, floor);
+            if (gm == null || !gm.TryPrepareHeroDialogue(_selectedSlot, out var startId))
+            {
+                Debug.LogWarning($"[HeroView] 今日已交谈或没有可推进的参赛者剧情 slot={_selectedSlot} floor={floor}");
+                HideChoiceDialog();
+                yield break;
+            }
+
             yield return ui.StartCoroutine(dialogue.PlayDialogue(startId, null));
+            gm.CompleteHeroDialogue(_selectedSlot);
             HideChoiceDialog();
         }
 
@@ -177,6 +186,10 @@ namespace KingCardsSpire.Views.UI
 
         private string ResolveDisplayName(int slotIndex)
         {
+            var cfg = ConfigManager.Instance;
+            if (cfg != null && cfg.TryGetHeroBySlot(slotIndex, out var hero) && !string.IsNullOrEmpty(hero.DisplayName))
+                return hero.DisplayName;
+
             if (heroDisplayNames != null && slotIndex >= 0 && slotIndex < heroDisplayNames.Length)
             {
                 var n = heroDisplayNames[slotIndex];
@@ -185,6 +198,19 @@ namespace KingCardsSpire.Views.UI
             }
 
             return $"参赛者{slotIndex + 1}";
+        }
+
+        private void RefreshHeroDisplayNames()
+        {
+            if (heroDisplayNameTexts == null)
+                return;
+
+            for (var i = 0; i < heroDisplayNameTexts.Length; i++)
+            {
+                var label = heroDisplayNameTexts[i];
+                if (label != null)
+                    label.text = ResolveDisplayName(i);
+            }
         }
     }
 }

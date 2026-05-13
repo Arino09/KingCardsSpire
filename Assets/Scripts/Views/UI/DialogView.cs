@@ -74,8 +74,14 @@ namespace KingCardsSpire.Views.UI
         /// <summary>绑定当前行 UI（不加载资源）；由 <see cref="Controllers.DialogueController"/> 负责贴图。</summary>
         public void ApplyTexts(DialogueLineEntry line)
         {
-            speakerNameText.text = line != null ? line.SpeakerName : string.Empty;
-            speakerNameObj.SetActive(line.SpeakerName != string.Empty);
+            ApplyTexts(line, line != null ? line.SpeakerName : string.Empty);
+        }
+
+        public void ApplyTexts(DialogueLineEntry line, string speakerName)
+        {
+            var resolvedName = speakerName ?? string.Empty;
+            speakerNameText.text = resolvedName;
+            speakerNameObj.SetActive(resolvedName != string.Empty);
             bodyText.text = line != null ? line.BodyText : string.Empty;
         }
 

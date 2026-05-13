@@ -15,7 +15,7 @@ MonoBehaviour:
   m_DefaultGroup: add102721c67cc640a87007f6ee72182
   m_currentHash:
     serializedVersion: 2
-    Hash: 00000000000000000000000000000000
+    Hash: 2ee68abcfd5f0d1ae2601f3f6a9bb115
   m_OptimizeCatalogSize: 0
   m_BuildRemoteCatalog: 0
   m_BundleLocalCatalog: 0
@@ -100,6 +100,8 @@ MonoBehaviour:
     - config_shop
     - config_tower
     - config_dialogue
+    - config_hero
+    - config_npc
   m_SchemaTemplates: []
   m_GroupTemplateObjects:
   - {fileID: 11400000, guid: 1c5b84728b634394f89bd7d26f72ecda, type: 2}

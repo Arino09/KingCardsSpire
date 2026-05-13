@@ -13,7 +13,12 @@ namespace KingCardsSpire.Core.Battle
 
         public bool PlayerWarmDayActive;
 
+        public bool EnemyWarmDayActive;
+
+        public bool PlayerSnowflakeActive;
+
         public bool EnemySnowflakeActive;
+
 
         public bool PlayerEvenFormActive;
 
@@ -71,6 +76,8 @@ namespace KingCardsSpire.Core.Battle
             LastEnemyPlayedSnapshot = null;
             LastPlayerPlayedSnapshot = null;
             PlayerWarmDayActive = false;
+            EnemyWarmDayActive = false;
+            PlayerSnowflakeActive = false;
             EnemySnowflakeActive = false;
             PlayerEvenFormActive = false;
             PlayerOddFormActive = false;

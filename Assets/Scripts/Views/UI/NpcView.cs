@@ -2,7 +2,6 @@ using System.Collections;
 using System.Collections.Generic;
 using KingCardsSpire.Controllers;
 using KingCardsSpire.Core;
-using KingCardsSpire.Core.Events;
 using KingCardsSpire.Managers;
 using KingCardsSpire.Models;
 using UnityEngine;
@@ -15,6 +14,7 @@ namespace KingCardsSpire.Views.UI
     public sealed class NpcView : BaseView
     {
         private const string EmptyNewPoolMessage = "暂无新原住民";
+        private const string NoAvailableDialogueMessage = "暂无可推进剧情";
 
         [Header("布局")]
         [SerializeField] private RectTransform groupRoot;
@@ -31,7 +31,6 @@ namespace KingCardsSpire.Views.UI
         [SerializeField] private Text tipText;
 
         private GameManager _game;
-        private EventManager _events;
 
         private UnityAction _onCloseClicked;
         private readonly List<Button> _entryButtons = new();
@@ -41,12 +40,9 @@ namespace KingCardsSpire.Views.UI
         {
             SetPanelId(UIPanelId.NpcHub);
             _game = GameManager.Instance;
-            _events = EventManager.Instance;
 
             _onCloseClicked = OnCloseClicked;
             closeButton.onClick.AddListener(_onCloseClicked);
-            if (_events != null)
-                _events.Subscribe<NpcEncounterStartedEvent>(OnNpcEncounterStarted);
         }
 
         protected override void OnOpen()
@@ -58,8 +54,6 @@ namespace KingCardsSpire.Views.UI
         public override void Dispose()
         {
             StopHideTipRoutine();
-            if (_events != null)
-                _events.Unsubscribe<NpcEncounterStartedEvent>(OnNpcEncounterStarted);
             closeButton.onClick.RemoveListener(_onCloseClicked);
             ClearSpawnedEntries();
             base.Dispose();
@@ -68,8 +62,6 @@ namespace KingCardsSpire.Views.UI
         private void OnDestroy()
         {
             StopHideTipRoutine();
-            if (_events != null)
-                _events.Unsubscribe<NpcEncounterStartedEvent>(OnNpcEncounterStarted);
             closeButton.onClick.RemoveListener(_onCloseClicked);
             ClearSpawnedEntries();
         }
@@ -79,22 +71,17 @@ namespace KingCardsSpire.Views.UI
             UIManager.Instance.Close(UIPanelId.NpcHub);
         }
 
-        private void OnNpcEncounterStarted(NpcEncounterStartedEvent e)
-        {
-            LockAllEntryButtons();
-            StartCoroutine(PlayNpcDialogueRoutine(e.NpcId));
-        }
-
-        private IEnumerator PlayNpcDialogueRoutine(string npcId)
+        private IEnumerator PlayNpcDialogueRoutine(string npcId, string startId)
         {
             var ui = UIManager.Instance;
             var dialogue = ServiceLocator.Get<DialogueController>();
-            var cfg = ConfigManager.Instance;
             if (ui == null || dialogue == null)
                 yield break;
 
-            var startId = DialogueController.ResolveNpcVisitStartId(cfg, npcId);
             yield return ui.StartCoroutine(dialogue.PlayDialogue(startId, null));
+            var gm = _game ?? GameManager.Instance;
+            gm?.CompleteNpcDialogue(npcId);
+            RebuildList();
         }
 
         private void RebuildList()
@@ -106,7 +93,12 @@ namespace KingCardsSpire.Views.UI
                 return;
 
             var metSorted = gm.GetMetNpcIdsSortedCopy();
-            var vm = NpcHubViewModel.Build(metSorted, gm.IsNewNpcEncounterPoolEmpty());
+            var cfg = ConfigManager.Instance;
+            var vm = NpcHubViewModel.Build(
+                metSorted,
+                gm.IsNewNpcEncounterPoolEmpty(),
+                id => ResolveNpcDisplayName(cfg, id),
+                id => ResolveNpcAvatarId(cfg, id));
 
             for (var i = 0; i < vm.Buttons.Count; i++)
             {
@@ -131,10 +123,7 @@ namespace KingCardsSpire.Views.UI
                 var label = go.GetComponentInChildren<Text>(true);
                 if (label != null)
                 {
-                    if (spec.Kind == NpcHubButtonKind.MetNpc)
-                        label.gameObject.SetActive(false);
-                    else
-                        label.text = spec.LabelText;
+                    label.text = spec.LabelText;
                 }
 
                 _entryButtons.Add(btn);
@@ -160,16 +149,14 @@ namespace KingCardsSpire.Views.UI
                 return;
             }
 
-            if (!gm.TryPickRandomNewNpcFromTower(out var picked) || string.IsNullOrEmpty(picked))
+            if (!gm.TryPrepareRandomNewNpcDialogue(out var picked, out var startId) || string.IsNullOrEmpty(picked))
             {
-                ShowTipMessage(EmptyNewPoolMessage);
+                ShowTipMessage(NoAvailableDialogueMessage);
                 return;
             }
 
-            if (!gm.TryInteractWithNpc(picked))
-                return;
-
             LockAllEntryButtons();
+            StartCoroutine(PlayNpcDialogueRoutine(picked, startId));
         }
 
         private void OnMetNpcClicked(string npcId)
@@ -178,10 +165,14 @@ namespace KingCardsSpire.Views.UI
             if (gm == null)
                 return;
 
-            if (!gm.TryInteractWithNpc(npcId))
+            if (!gm.TryPrepareNpcDialogue(npcId, out var startId))
+            {
+                ShowTipMessage(NoAvailableDialogueMessage);
                 return;
+            }
 
             LockAllEntryButtons();
+            StartCoroutine(PlayNpcDialogueRoutine(npcId, startId));
         }
 
         private void LockAllEntryButtons()
@@ -249,6 +240,22 @@ namespace KingCardsSpire.Views.UI
 
             StopCoroutine(_hideTipRoutine);
             _hideTipRoutine = null;
+        }
+
+        private static string ResolveNpcDisplayName(ConfigManager cfg, string npcId)
+        {
+            if (cfg != null && cfg.TryGetNpc(npcId, out var npc) && !string.IsNullOrEmpty(npc.DisplayName))
+                return npc.DisplayName;
+
+            return npcId;
+        }
+
+        private static string ResolveNpcAvatarId(ConfigManager cfg, string npcId)
+        {
+            if (cfg != null && cfg.TryGetNpc(npcId, out var npc))
+                return npc.AvatarId;
+
+            return string.Empty;
         }
     }
 }

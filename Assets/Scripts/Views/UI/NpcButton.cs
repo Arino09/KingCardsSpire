@@ -1,5 +1,5 @@
 using System.Collections;
-using System.Text.RegularExpressions;
+using KingCardsSpire.Core;
 using KingCardsSpire.Models;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
@@ -14,12 +14,10 @@ namespace KingCardsSpire.Views.UI
     /// </summary>
     public sealed class NpcButton : MonoBehaviour
     {
-        private const string AvatarAddressPrefix = "Sprites/Character/NPC/Avatar/";
-
         [Header("绑定")]
         [SerializeField] private Image avatar;
         [SerializeField] private Button button;
-        private const string NewEncounterAvatarName = "0_1.png";
+        private const string NewEncounterAvatarId = "NPC/Avatar/0_1.png";
 
         private Coroutine _loadRoutine;
         private AsyncOperationHandle<Sprite> _avatarLoadHandle;
@@ -40,23 +38,25 @@ namespace KingCardsSpire.Views.UI
             switch (spec.Kind)
             {
                 case NpcHubButtonKind.NewEncounter:
-                    if (string.IsNullOrEmpty(NewEncounterAvatarName))
+                    if (string.IsNullOrEmpty(NewEncounterAvatarId))
                     {
                         SetAvatarSprite(null);
                         return;
                     }
 
-                    _loadRoutine = StartCoroutine(LoadAvatarRoutine(AvatarAddressPrefix + NewEncounterAvatarName));
+                    _loadRoutine = StartCoroutine(LoadAvatarRoutine(
+                        DialogueArtResolver.ResolveCharacterAddress(NewEncounterAvatarId)));
                     break;
                 case NpcHubButtonKind.MetNpc:
-                    if (!TryResolveAvatarFileName(spec.NpcId, out var fileName))
+                    var address = DialogueArtResolver.ResolveCharacterAddress(spec.AvatarId);
+                    if (string.IsNullOrEmpty(address))
                     {
-                        Debug.LogWarning($"[NpcButton] 无法将 npcId 解析为头像文件名: {spec.NpcId}");
+                        Debug.LogWarning($"[NpcButton] NPC 表未配置头像: {spec.NpcId}");
                         SetAvatarSprite(null);
                         return;
                     }
 
-                    _loadRoutine = StartCoroutine(LoadAvatarRoutine(AvatarAddressPrefix + fileName));
+                    _loadRoutine = StartCoroutine(LoadAvatarRoutine(address));
                     break;
                 default:
                     SetAvatarSprite(null);
@@ -122,45 +122,5 @@ namespace KingCardsSpire.Views.UI
             _hasAvatarLoadHandle = false;
         }
 
-        /// <summary>
-        /// 将塔层配置的 <c>npcId</c> 解析为 Avatar 目录下的文件名（含扩展名）。
-        /// 支持：<c>npc_2_1</c>→<c>2_1.png</c>、<c>npc_floor_5</c>→<c>5_1.png</c>、首层中文名映射、以及已为 <c>N_M.png</c> 形式的 id。
-        /// </summary>
-        private static bool TryResolveAvatarFileName(string npcId, out string fileName)
-        {
-            fileName = null;
-            if (string.IsNullOrEmpty(npcId))
-                return false;
-
-            var m = Regex.Match(npcId, @"^npc_(\d+)_(\d+)$");
-            if (m.Success)
-            {
-                fileName = $"{m.Groups[1].Value}_{m.Groups[2].Value}.png";
-                return true;
-            }
-
-            m = Regex.Match(npcId, @"^npc_floor_(\d+)$", RegexOptions.IgnoreCase);
-            if (m.Success)
-            {
-                fileName = $"{m.Groups[1].Value}_1.png";
-                return true;
-            }
-
-            if (Regex.IsMatch(npcId, @"^\d+_\d+$"))
-            {
-                fileName = npcId + ".png";
-                return true;
-            }
-
-            if (npcId.EndsWith(".png", System.StringComparison.OrdinalIgnoreCase) &&
-                npcId.IndexOf('/') < 0 &&
-                npcId.IndexOf('\\') < 0)
-            {
-                fileName = npcId;
-                return true;
-            }
-
-            return false;
-        }
     }
 }

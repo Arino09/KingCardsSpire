@@ -212,6 +212,41 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 179ce3156ad0d1843b3fc2ec7f776731
+    m_Address: Assets/GameAssets/Sprites/Character/Boss/5.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: eb7cdb2197a42d84cbeb2f0a9bd98425
+    m_Address: Assets/GameAssets/Sprites/Character/Boss/1.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 5108f5d8e096958498c20909f73938f8
+    m_Address: Assets/GameAssets/Sprites/Character/Boss/4.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: eab69e8fb30de6e4599867372d32da5c
+    m_Address: Assets/GameAssets/Sprites/Character/Boss/7.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e80fd2282382a9a4aa78f58b8ca8ba6d
+    m_Address: Assets/GameAssets/Sprites/Character/Boss/2.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 03acceeff96ec50428c2be84b6dc3fd9
+    m_Address: Assets/GameAssets/Sprites/Character/Boss/3.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 852301f5ccd9c3441ba4924ee81935ed
+    m_Address: Assets/GameAssets/Sprites/Character/Boss/6.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: 0b8713ba58b57bb49bd9906570780370, type: 2}
   m_SchemaSet:

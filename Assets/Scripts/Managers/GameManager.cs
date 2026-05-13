@@ -115,8 +115,12 @@ namespace KingCardsSpire.Managers
                 CurrentWeather = WeatherType.WarmWind,
                 UnlockedDialogues = Array.Empty<string>(),
                 UnlockedAchievements = Array.Empty<string>(),
+                HeroDialogueProgress = new int[StoryDialogueRules.HeroSlotCount],
+                NpcDialogueProgress = Array.Empty<NpcDialogueProgress>(),
+                LastHeroDialogueDay = 0,
                 MetNpcIds = Array.Empty<string>(),
-                LastNpcInteractionDay = 0
+                LastNpcInteractionDay = 0,
+                NpcDialogueCredits = StoryDialogueRules.NpcCreditsPerFloor
             };
 
             ApplyStarterDeckFromConfig(PlayerState, gc);
@@ -150,6 +154,7 @@ namespace KingCardsSpire.Managers
             PlayerState.FloorDay = 0;
             FloorState.BossDefeated = false;
             PlayerState.XRayCount++;
+            PlayerState.NpcDialogueCredits += StoryDialogueRules.NpcCreditsPerFloor;
             SyncFloorStateFromTower();
             _events?.Publish(new FloorChangedEvent(PlayerState.CurrentFloor));
             return true;
@@ -559,7 +564,75 @@ namespace KingCardsSpire.Managers
         /// <summary>今日是否仍可访问 NPC（主界面按钮与进入 NPCView 的门禁）。</summary>
         public bool HasNpcVisitRemainingToday()
         {
-            return PlayerState.LastNpcInteractionDay != PlayerState.CurrentDay;
+            return HasNpcStoryVisitAvailableToday();
+        }
+
+        public bool HasHeroDialogueRemainingToday()
+        {
+            return PlayerState != null && PlayerState.LastHeroDialogueDay != PlayerState.CurrentDay;
+        }
+
+        public bool TryPrepareHeroDialogue(int heroSlotIndex, out string startId)
+        {
+            startId = null;
+            if (_gameOver || _runVictory || PlayerState == null)
+                return false;
+            if (heroSlotIndex < 0 || heroSlotIndex >= StoryDialogueRules.HeroSlotCount)
+                return false;
+            if (!HasHeroDialogueRemainingToday())
+                return false;
+
+            NormalizeStoryPersistence(PlayerState);
+            var completed = PlayerState.HeroDialogueProgress[heroSlotIndex];
+            if (!StoryDialogueRules.TryGetNextHeroStoryIndex(completed, PlayerState.CurrentFloor, out var nextStoryIndex))
+                return false;
+
+            var id = StoryDialogueRules.BuildHeroStoryStartId(heroSlotIndex, nextStoryIndex);
+            if (!HasDialogueStartLine(id))
+                return false;
+
+            startId = id;
+            return true;
+        }
+
+        public void CompleteHeroDialogue(int heroSlotIndex)
+        {
+            if (PlayerState == null || heroSlotIndex < 0 || heroSlotIndex >= StoryDialogueRules.HeroSlotCount)
+                return;
+
+            NormalizeStoryPersistence(PlayerState);
+            if (!StoryDialogueRules.TryGetNextHeroStoryIndex(
+                    PlayerState.HeroDialogueProgress[heroSlotIndex],
+                    PlayerState.CurrentFloor,
+                    out _))
+                return;
+
+            PlayerState.HeroDialogueProgress[heroSlotIndex]++;
+            PlayerState.LastHeroDialogueDay = PlayerState.CurrentDay;
+        }
+
+        public bool HasNpcStoryVisitAvailableToday()
+        {
+            if (PlayerState == null ||
+                PlayerState.LastNpcInteractionDay == PlayerState.CurrentDay ||
+                PlayerState.NpcDialogueCredits <= 0)
+                return false;
+
+            RefreshNewNpcEncounterScratch();
+            for (var i = 0; i < _npcNewEncounterScratch.Count; i++)
+            {
+                if (TryPrepareNpcDialogue(_npcNewEncounterScratch[i], out _))
+                    return true;
+            }
+
+            var met = PlayerState.MetNpcIds ?? Array.Empty<string>();
+            for (var i = 0; i < met.Length; i++)
+            {
+                if (TryPrepareNpcDialogue(met[i], out _))
+                    return true;
+            }
+
+            return false;
         }
 
         /// <summary>当前层及以下塔层中，是否存在尚未结识的 npcId。</summary>
@@ -581,22 +654,79 @@ namespace KingCardsSpire.Managers
             return true;
         }
 
-        /// <summary>消耗当日唯一一次 NPC 访问并记录已遇；对话系统未接入前为占位日志/事件。</summary>
-        public bool TryInteractWithNpc(string npcId)
+        public bool TryPrepareRandomNewNpcDialogue(out string pickedNpcId, out string startId)
         {
-            if (_gameOver || _runVictory || string.IsNullOrEmpty(npcId))
+            pickedNpcId = null;
+            startId = null;
+            RefreshNewNpcEncounterScratch();
+            if (_npcNewEncounterScratch.Count == 0)
                 return false;
 
-            if (PlayerState.LastNpcInteractionDay == PlayerState.CurrentDay)
+            var candidates = new List<string>(_npcNewEncounterScratch);
+            while (candidates.Count > 0)
             {
-                Debug.LogWarning("[GameManager] TryInteractWithNpc: 当日访问已消耗，不应从 UI 再次触发。");
-                return false;
+                var index = Random.Range(0, candidates.Count);
+                var id = candidates[index];
+                candidates.RemoveAt(index);
+                if (!TryPrepareNpcDialogue(id, out var preparedStartId))
+                    continue;
+
+                pickedNpcId = id;
+                startId = preparedStartId;
+                return true;
             }
 
+            return false;
+        }
+
+        public bool TryPrepareNpcDialogue(string npcId, out string startId)
+        {
+            startId = null;
+            if (_gameOver || _runVictory || PlayerState == null || string.IsNullOrEmpty(npcId))
+                return false;
+            if (PlayerState.LastNpcInteractionDay == PlayerState.CurrentDay || PlayerState.NpcDialogueCredits <= 0)
+                return false;
+
+            NormalizeStoryPersistence(PlayerState);
+            var completed = GetNpcCompletedCount(npcId);
+            if (!StoryDialogueRules.TryGetNextNpcStoryIndex(completed, out var nextStoryIndex))
+                return false;
+
+            var id = StoryDialogueRules.BuildNpcStoryStartId(npcId, nextStoryIndex);
+            if (!HasDialogueStartLine(id))
+                return false;
+
+            startId = id;
+            return true;
+        }
+
+        public void CompleteNpcDialogue(string npcId)
+        {
+            if (PlayerState == null || string.IsNullOrEmpty(npcId))
+                return;
+
+            NormalizeStoryPersistence(PlayerState);
+            if (PlayerState.LastNpcInteractionDay == PlayerState.CurrentDay || PlayerState.NpcDialogueCredits <= 0)
+                return;
+
+            var progress = GetOrCreateNpcDialogueProgress(npcId);
+            if (!StoryDialogueRules.TryGetNextNpcStoryIndex(progress.CompletedCount, out _))
+                return;
+
+            progress.CompletedCount++;
+            PlayerState.NpcDialogueCredits--;
             PlayerState.LastNpcInteractionDay = PlayerState.CurrentDay;
             AppendMetNpcIfMissing(npcId, PlayerState);
             _events?.Publish(new NpcEncounterStartedEvent(npcId));
-            Debug.Log($"[GameManager] NPC 遭遇占位: {npcId}");
+        }
+
+        /// <summary>旧入口兼容包装：立即完成一次 NPC 剧情推进并发布事件。</summary>
+        public bool TryInteractWithNpc(string npcId)
+        {
+            if (!TryPrepareNpcDialogue(npcId, out _))
+                return false;
+
+            CompleteNpcDialogue(npcId);
             return true;
         }
 
@@ -656,6 +786,69 @@ namespace KingCardsSpire.Managers
 
             if (player.MetNpcIds == null)
                 player.MetNpcIds = Array.Empty<string>();
+            NormalizeStoryPersistence(player);
+        }
+
+        private static void NormalizeStoryPersistence(PlayerData player)
+        {
+            if (player == null)
+                return;
+
+            if (player.HeroDialogueProgress == null ||
+                player.HeroDialogueProgress.Length != StoryDialogueRules.HeroSlotCount)
+            {
+                var normalized = new int[StoryDialogueRules.HeroSlotCount];
+                var existing = player.HeroDialogueProgress ?? Array.Empty<int>();
+                var copyCount = Math.Min(existing.Length, normalized.Length);
+                for (var i = 0; i < copyCount; i++)
+                    normalized[i] = Math.Max(0, existing[i]);
+                player.HeroDialogueProgress = normalized;
+            }
+
+            if (player.NpcDialogueProgress == null)
+                player.NpcDialogueProgress = Array.Empty<NpcDialogueProgress>();
+
+            for (var i = 0; i < player.NpcDialogueProgress.Length; i++)
+            {
+                var progress = player.NpcDialogueProgress[i];
+                if (progress != null && progress.CompletedCount < 0)
+                    progress.CompletedCount = 0;
+            }
+        }
+
+        private bool HasDialogueStartLine(string startId)
+        {
+            var cfg = ConfigManager.Instance;
+            return cfg != null && cfg.TryGetDialogueLine(startId, out _);
+        }
+
+        private int GetNpcCompletedCount(string npcId)
+        {
+            var progress = PlayerState.NpcDialogueProgress ?? Array.Empty<NpcDialogueProgress>();
+            for (var i = 0; i < progress.Length; i++)
+            {
+                var entry = progress[i];
+                if (entry != null && entry.NpcId == npcId)
+                    return Math.Max(0, entry.CompletedCount);
+            }
+
+            return 0;
+        }
+
+        private NpcDialogueProgress GetOrCreateNpcDialogueProgress(string npcId)
+        {
+            var progress = PlayerState.NpcDialogueProgress ?? Array.Empty<NpcDialogueProgress>();
+            for (var i = 0; i < progress.Length; i++)
+            {
+                var entry = progress[i];
+                if (entry != null && entry.NpcId == npcId)
+                    return entry;
+            }
+
+            var created = new NpcDialogueProgress { NpcId = npcId, CompletedCount = 0 };
+            var list = new List<NpcDialogueProgress>(progress) { created };
+            PlayerState.NpcDialogueProgress = list.ToArray();
+            return created;
         }
 
         /// <summary>将对话行 id 记入已解锁列表（去重）。</summary>

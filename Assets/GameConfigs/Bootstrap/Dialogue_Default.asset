@@ -193,7 +193,7 @@ MonoBehaviour:
     isChoice: 0
     nextId: 
     choices: []
-  - id: hero_talk_0
+  - id: hero_0_1
     timingKind: 3
     backgroundId: 1
     characterId: Hero/1
@@ -202,7 +202,7 @@ MonoBehaviour:
     isChoice: 0
     nextId: 
     choices: []
-  - id: hero_talk_1
+  - id: hero_1_1
     timingKind: 3
     backgroundId: 1
     characterId: Heroine1/1
@@ -211,7 +211,7 @@ MonoBehaviour:
     isChoice: 0
     nextId: 
     choices: []
-  - id: hero_talk_2
+  - id: hero_2_1
     timingKind: 3
     backgroundId: 1
     characterId: Heroine2/1
@@ -220,7 +220,7 @@ MonoBehaviour:
     isChoice: 0
     nextId: 
     choices: []
-  - id: npc_default_visit
+  - id: npc_npc_1_1_1
     timingKind: 4
     backgroundId: 2
     characterId: NPC/Avatar/1_1
@@ -251,21 +251,21 @@ MonoBehaviour:
       nextDialogueId: sample_choice_a
     - optionText: "\u5206\u652FB"
       nextDialogueId: sample_choice_b
-  - id: sample_choice_a
-    timingKind: 6
-    backgroundId: 1
-    characterId: Hero/1
-    speakerName: "\u793A\u4F8B"
-    bodyText: "\u4F60\u9009\u4E86 A\u3002"
+  - id: tutorial_battle_intro
+    timingKind: 1
+    backgroundId:
+    characterId:
+    speakerName:
+    bodyText: "\u6559\u7A0B\u5BF9\u8BDD1"
     isChoice: 0
     nextId: 
     choices: []
-  - id: sample_choice_b
-    timingKind: 6
-    backgroundId: 1
-    characterId: Hero/1
-    speakerName: "\u793A\u4F8B"
-    bodyText: "\u4F60\u9009\u4E86 B\u3002"
+  - id: tutorial_battle_force_king
+    timingKind: 1
+    backgroundId:
+    characterId:
+    speakerName:
+    bodyText: "\u5FC5\u987B\u51FA\u56FD\u738B"
     isChoice: 0
     nextId: 
     choices: []

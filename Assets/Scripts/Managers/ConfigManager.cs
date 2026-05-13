@@ -16,6 +16,9 @@ namespace KingCardsSpire.Managers
         private readonly List<GameConfig> _gameConfigs = new();
         private readonly List<TowerConfig> _towerConfigs = new();
         private readonly Dictionary<string, DialogueLineEntry> _dialogueLines = new();
+        private readonly Dictionary<string, HeroEntry> _heroes = new();
+        private readonly List<HeroEntry> _heroSlots = new();
+        private readonly Dictionary<string, NpcEntry> _npcs = new();
 
         public int CardCount => _cards.Count;
         public int BuffCount => _buffs.Count;
@@ -26,6 +29,10 @@ namespace KingCardsSpire.Managers
         public int TowerConfigCount => _towerConfigs.Count;
 
         public int DialogueLineCount => _dialogueLines.Count;
+
+        public int HeroCount => _heroes.Count;
+
+        public int NpcCount => _npcs.Count;
 
         protected override void Awake()
         {
@@ -71,6 +78,14 @@ namespace KingCardsSpire.Managers
             IList<DialogueConfig> dialogueList = null;
             yield return assets.LoadAssetsAsync<DialogueConfig>(AddressableLabels.ConfigDialogue, l => dialogueList = l);
             IndexDialogues(dialogueList);
+
+            IList<HeroConfig> heroList = null;
+            yield return assets.LoadAssetsAsync<HeroConfig>(AddressableLabels.ConfigHero, l => heroList = l);
+            IndexHeroes(heroList);
+
+            IList<NpcConfig> npcList = null;
+            yield return assets.LoadAssetsAsync<NpcConfig>(AddressableLabels.ConfigNpc, l => npcList = l);
+            IndexNpcs(npcList);
         }
 
         private void IndexCards(IList<CardConfig> list)
@@ -186,10 +201,81 @@ namespace KingCardsSpire.Managers
             }
         }
 
+        private void IndexHeroes(IList<HeroConfig> list)
+        {
+            _heroes.Clear();
+            _heroSlots.Clear();
+            if (list == null)
+                return;
+
+            for (var i = 0; i < list.Count; i++)
+            {
+                var db = list[i];
+                if (db == null || db.Heroes == null)
+                    continue;
+
+                for (var j = 0; j < db.Heroes.Count; j++)
+                {
+                    var entry = db.Heroes[j];
+                    if (entry == null || string.IsNullOrEmpty(entry.Id))
+                        continue;
+
+                    _heroes[entry.Id] = entry;
+                    if (entry.Id != StoryDialogueRules.NarratorCharacterId)
+                        _heroSlots.Add(entry);
+                }
+            }
+        }
+
+        private void IndexNpcs(IList<NpcConfig> list)
+        {
+            _npcs.Clear();
+            if (list == null)
+                return;
+
+            for (var i = 0; i < list.Count; i++)
+            {
+                var db = list[i];
+                if (db == null || db.Npcs == null)
+                    continue;
+
+                for (var j = 0; j < db.Npcs.Count; j++)
+                {
+                    var entry = db.Npcs[j];
+                    if (entry == null || string.IsNullOrEmpty(entry.NpcId))
+                        continue;
+
+                    _npcs[entry.NpcId] = entry;
+                }
+            }
+        }
+
         public bool TryGetDialogueLine(string id, out DialogueLineEntry line)
         {
             line = null;
             return !string.IsNullOrEmpty(id) && _dialogueLines.TryGetValue(id, out line);
+        }
+
+        public bool TryGetHero(string id, out HeroEntry entry)
+        {
+            entry = null;
+            return !string.IsNullOrEmpty(id) && _heroes.TryGetValue(id, out entry);
+        }
+
+        public bool TryGetHeroBySlot(int slotIndex, out HeroEntry entry)
+        {
+            entry = null;
+            if (slotIndex < 0 || slotIndex >= _heroSlots.Count)
+                return false;
+
+            entry = _heroSlots[slotIndex];
+            return entry != null;
+        }
+
+        public bool TryGetNpc(string npcId, out NpcEntry entry)
+        {
+            entry = null;
+            return !string.IsNullOrEmpty(npcId) && _npcs.TryGetValue(npcId, out entry);
         }
 
         public bool TryGetCard(string id, out CardConfigEntry config) => _cards.TryGetValue(id, out config);

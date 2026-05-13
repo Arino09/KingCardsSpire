@@ -13,6 +13,7 @@ namespace KingCardsSpire.Configs
         [SerializeField] private string[] enemyDeckCardIds = Array.Empty<string>();
         [SerializeField] private string[] npcIds = Array.Empty<string>();
         [SerializeField] private string[] rewardCardPoolIds = Array.Empty<string>();
+        [SerializeField] private int bossAiStrength;
 
         /// <summary>驻守奖励金币档位：按 spareDays 放大时的基数（占位）。</summary>
         [SerializeField] private int goldBonusPerSpareDay = 5;
@@ -21,6 +22,7 @@ namespace KingCardsSpire.Configs
         public string[] EnemyDeckCardIds => enemyDeckCardIds ?? Array.Empty<string>();
         public string[] NpcIds => npcIds ?? Array.Empty<string>();
         public string[] RewardCardPoolIds => rewardCardPoolIds ?? Array.Empty<string>();
+        public int BossAiStrength => Mathf.Max(0, bossAiStrength);
         public int GoldBonusPerSpareDay => goldBonusPerSpareDay;
     }
 }

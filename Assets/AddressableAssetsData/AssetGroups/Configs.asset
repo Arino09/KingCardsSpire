@@ -59,6 +59,17 @@ MonoBehaviour:
     m_SerializedLabels:
     - config_dialogue
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 8b580f9b5f4d9c445aa2f0f437b40a4b
+    m_Address: Assets/GameConfigs/Bootstrap/HeroConfig.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - config_hero
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a069008fab4707e47aa1b28315a81579
+    m_Address: Assets/GameConfigs/Bootstrap/NpcConfig.asset
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: 0b8713ba58b57bb49bd9906570780370, type: 2}
   m_SchemaSet:

@@ -1,0 +1,52 @@
+using KingCardsSpire.Models;
+using NUnit.Framework;
+
+namespace KingCardsSpire.Tests
+{
+    public sealed class StoryDialogueRulesTests
+    {
+        [Test]
+        public void BuildsAndParsesHeroStoryIds()
+        {
+            var id = StoryDialogueRules.BuildHeroStoryStartId(2, 7);
+
+            Assert.AreEqual("hero_2_7", id);
+            Assert.IsTrue(StoryDialogueRules.TryParseHeroStoryId(id, out var slot, out var storyIndex));
+            Assert.AreEqual(2, slot);
+            Assert.AreEqual(7, storyIndex);
+        }
+
+        [Test]
+        public void BuildsAndParsesNpcStoryIdsWithUnderscoreNpcIds()
+        {
+            var id = StoryDialogueRules.BuildNpcStoryStartId("1_2", 3);
+
+            Assert.AreEqual("npc_1_2_3", id);
+            Assert.IsTrue(StoryDialogueRules.TryParseNpcStoryId(id, out var npcId, out var storyIndex));
+            Assert.AreEqual("1_2", npcId);
+            Assert.AreEqual(3, storyIndex);
+        }
+
+        [Test]
+        public void ClampsHeroStoryAvailabilityByFloorAndCap()
+        {
+            Assert.IsTrue(StoryDialogueRules.TryGetNextHeroStoryIndex(2, 3, out var nextIndex));
+            Assert.AreEqual(3, nextIndex);
+
+            Assert.IsFalse(StoryDialogueRules.TryGetNextHeroStoryIndex(3, 3, out _));
+            Assert.IsFalse(StoryDialogueRules.TryGetNextHeroStoryIndex(7, 8, out _));
+        }
+
+        [Test]
+        public void NpcHubUsesConfiguredDisplayNameForMetNpc()
+        {
+            var vm = NpcHubViewModel.Build(
+                new[] { "1_1" },
+                newEncounterPoolEmpty: true,
+                id => id == "1_1" ? "林中商人" : id);
+
+            Assert.AreEqual(NpcHubButtonKind.NewEncounter, vm.Buttons[0].Kind);
+            Assert.AreEqual("林中商人", vm.Buttons[1].LabelText);
+        }
+    }
+}

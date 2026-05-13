@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using KingCardsSpire.Configs;
 using KingCardsSpire.Core;
 using KingCardsSpire.Managers;
@@ -77,7 +78,8 @@ namespace KingCardsSpire.Controllers
                     view.SetBackgroundSprite(null);
                 }
 
-                var portraitAddr = DialogueArtResolver.ResolveCharacterAddress(line.CharacterId);
+                ResolveCharacterPresentation(cfg, line, out var speakerName, out var portraitId);
+                var portraitAddr = DialogueArtResolver.ResolveCharacterAddress(portraitId);
                 if (!string.IsNullOrEmpty(portraitAddr))
                 {
                     portraitHandle = Addressables.LoadAssetAsync<Sprite>(portraitAddr);
@@ -93,7 +95,7 @@ namespace KingCardsSpire.Controllers
                     view.SetPortraitSprite(null);
                 }
 
-                view.ApplyTexts(line);
+                view.ApplyTexts(line, speakerName);
                 view.ConfigureMode(line.IsChoice, line.Choices);
 
                 if (line.IsChoice)
@@ -118,8 +120,14 @@ namespace KingCardsSpire.Controllers
                 yield return WaitForContinueOrSkip(view);
                 if (view.SkipRequested)
                 {
-                    skipWhole = true;
-                    break;
+                    if (!TryResolveTerminalLineId(cfg, line.NextId, out var terminalId))
+                    {
+                        skipWhole = true;
+                        break;
+                    }
+
+                    currentId = terminalId;
+                    continue;
                 }
 
                 if (string.IsNullOrEmpty(line.NextId))
@@ -203,34 +211,82 @@ namespace KingCardsSpire.Controllers
             return "boss_prefight";
         }
 
-        /// <summary>
-        /// 与参赛者「交谈」入口 id 解析顺序：
-        /// 1) <c>hero_talk_{slot}_f{层}</c>（同槽不同层可写不同入口）；
-        /// 2) <c>hero_talk_{slot}</c>。
-        /// </summary>
-        public static string ResolveHeroTalkStartId(ConfigManager cfg, int heroSlotIndex, int floorIndex1Based)
+        public static string BuildHeroStoryStartId(int heroSlotIndex, int storyIndex)
         {
-            if (cfg == null)
-                return $"hero_talk_{heroSlotIndex}";
-
-            var byFloor = $"hero_talk_{heroSlotIndex}_f{floorIndex1Based}";
-            if (cfg.TryGetDialogueLine(byFloor, out _))
-                return byFloor;
-
-            return $"hero_talk_{heroSlotIndex}";
+            return StoryDialogueRules.BuildHeroStoryStartId(heroSlotIndex, storyIndex);
         }
 
-        /// <summary>原住民遭遇入口 id；无专表行时回退默认。</summary>
-        public static string ResolveNpcVisitStartId(ConfigManager cfg, string npcId)
+        public static string BuildNpcStoryStartId(string npcId, int storyIndex)
         {
-            if (cfg == null || string.IsNullOrEmpty(npcId))
-                return "npc_default_visit";
+            return StoryDialogueRules.BuildNpcStoryStartId(npcId, storyIndex);
+        }
 
-            var key = $"npc_{npcId}_visit";
-            if (cfg.TryGetDialogueLine(key, out _))
-                return key;
+        public static bool TryParseHeroStoryId(string id, out int heroSlotIndex, out int storyIndex)
+        {
+            return StoryDialogueRules.TryParseHeroStoryId(id, out heroSlotIndex, out storyIndex);
+        }
 
-            return "npc_default_visit";
+        public static bool TryParseNpcStoryId(string id, out string npcId, out int storyIndex)
+        {
+            return StoryDialogueRules.TryParseNpcStoryId(id, out npcId, out storyIndex);
+        }
+
+        private static void ResolveCharacterPresentation(
+            ConfigManager cfg,
+            DialogueLineEntry line,
+            out string speakerName,
+            out string portraitId)
+        {
+            speakerName = line != null ? line.SpeakerName : string.Empty;
+            portraitId = line != null ? line.CharacterId : string.Empty;
+            var characterId = line != null ? line.CharacterId : string.Empty;
+            if (string.IsNullOrWhiteSpace(characterId))
+                return;
+
+            if (characterId == StoryDialogueRules.NarratorCharacterId)
+            {
+                speakerName = string.Empty;
+                portraitId = string.Empty;
+                return;
+            }
+
+            if (cfg != null && cfg.TryGetHero(characterId, out var hero))
+            {
+                speakerName = hero.DisplayName;
+                portraitId = hero.PortraitId;
+                return;
+            }
+
+            if (cfg != null && cfg.TryGetNpc(characterId, out var npc))
+            {
+                speakerName = npc.DisplayName;
+                portraitId = npc.PortraitId;
+            }
+        }
+
+        private static bool TryResolveTerminalLineId(ConfigManager cfg, string nextId, out string terminalId)
+        {
+            terminalId = null;
+            if (cfg == null || string.IsNullOrEmpty(nextId))
+                return false;
+
+            var visited = new HashSet<string>();
+            var currentId = nextId;
+            while (!string.IsNullOrEmpty(currentId) && visited.Add(currentId))
+            {
+                if (!cfg.TryGetDialogueLine(currentId, out var line))
+                    return false;
+
+                if (line.IsChoice || string.IsNullOrEmpty(line.NextId))
+                {
+                    terminalId = currentId;
+                    return true;
+                }
+
+                currentId = line.NextId;
+            }
+
+            return false;
         }
     }
 }

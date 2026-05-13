@@ -123,6 +123,8 @@ namespace KingCardsSpire.Views.UI
         /// <summary>本回合敌方出牌区实例（Prepare 后创建）。</summary>
         private CardView _enemyPlayCard;
 
+        private string _enemyPlayCardInstanceId;
+
         private Coroutine _tutorialFlowCoroutine;
 
         private bool _tutorialAllowPrepareEnemyPlay;
@@ -420,6 +422,7 @@ namespace KingCardsSpire.Views.UI
             {
                 ClearPlayAreaRoots();
                 _enemyPlayCard = null;
+                _enemyPlayCardInstanceId = null;
                 return;
             }
 
@@ -428,6 +431,7 @@ namespace KingCardsSpire.Views.UI
             {
                 ClearPlayAreaRoots();
                 _enemyPlayCard = null;
+                _enemyPlayCardInstanceId = null;
                 return;
             }
 
@@ -435,14 +439,9 @@ namespace KingCardsSpire.Views.UI
             {
                 ClearPlayAreaRoots();
                 _enemyPlayCard = null;
+                _enemyPlayCardInstanceId = null;
                 return;
             }
-
-            if (_enemyPlayCard != null && enemyPlayArea != null && enemyPlayArea.childCount > 0)
-                return;
-
-            ClearPlayAreaRoots();
-            _enemyPlayCard = null;
 
             var idx = _battle.PendingEnemyHandIndex;
             var state = BattleManager.Instance.CurrentBattle;
@@ -450,6 +449,14 @@ namespace KingCardsSpire.Views.UI
                 return;
 
             var card = state.EnemyHand[idx];
+            if (_enemyPlayCard != null && enemyPlayArea != null && enemyPlayArea.childCount > 0 &&
+                string.Equals(_enemyPlayCardInstanceId, card?.BattleInstanceId, StringComparison.Ordinal))
+                return;
+
+            ClearPlayAreaRoots();
+            _enemyPlayCard = null;
+            _enemyPlayCardInstanceId = null;
+
             CardConfigEntry cfg = null;
             if (_config != null && card != null && !string.IsNullOrEmpty(card.Id))
                 _config.TryGetCard(card.Id, out cfg);
@@ -467,6 +474,7 @@ namespace KingCardsSpire.Views.UI
             var enemyRestricted = bmEnemy != null && bmEnemy.IsEnemyCardRestrictedByLastPlay(card);
             cv.SetVisualState(enemyRestricted ? CardVisualState.Disabled : CardVisualState.Normal);
             _enemyPlayCard = cv;
+            _enemyPlayCardInstanceId = card?.BattleInstanceId;
         }
 
         /// <summary>清空双方出牌区下的所有子物体。</summary>
@@ -825,6 +833,7 @@ namespace KingCardsSpire.Views.UI
             if (_enemyPlayCard != null)
                 Destroy(_enemyPlayCard.gameObject);
             _enemyPlayCard = null;
+            _enemyPlayCardInstanceId = null;
 
             _roundVisualBusy = false;
 

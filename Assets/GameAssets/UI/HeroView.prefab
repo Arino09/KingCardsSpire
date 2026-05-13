@@ -314,6 +314,7 @@ MonoBehaviour:
   - "\u53C2\u8D5B\u8005\u4E00"
   - "\u53C2\u8D5B\u8005\u4E8C"
   - "\u53C2\u8D5B\u8005\u4E09"
+  heroDisplayNameTexts: []
 --- !u!1 &6759165679582657666
 GameObject:
   m_ObjectHideFlags: 0

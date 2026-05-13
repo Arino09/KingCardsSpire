@@ -33,6 +33,7 @@ namespace KingCardsSpire.Managers
         private string _lastPlayerInstanceId;
         private string _lastEnemyInstanceId;
         private bool _isBossBattle;
+        private int _bossAiStrength;
 
         private bool _isTutorialBattle;
 
@@ -108,9 +109,10 @@ namespace KingCardsSpire.Managers
 
             var playerCards = BuildPlayerDeck(player);
             var enemyCards = vsBoss ? BuildBossDeckFromTowerOrFallback() : BuildDefaultEnemyDeck();
+            var bossAiStrength = vsBoss ? ResolveBossAiStrengthFromTower() : 0;
 
             StartBattleInternal(playerCards, enemyCards, player?.CurrentWeather ?? WeatherType.WarmWind,
-                player?.XRayCount ?? 1, vsBoss, null, false);
+                player?.XRayCount ?? 1, vsBoss, bossAiStrength, null, false);
         }
 
         /// <summary>主角房友谊战：敌方卡组由 <see cref="HeroOpponentDeckGenerator"/> 占位生成，非 BOSS。</summary>
@@ -123,8 +125,8 @@ namespace KingCardsSpire.Managers
             var enemyCards = HeroOpponentDeckGenerator.BuildPlaceholderDeck(heroSlotId);
 
             StartBattleInternal(playerCards, enemyCards, player?.CurrentWeather ?? WeatherType.WarmWind,
-                player?.XRayCount ?? 1, isBossBattle: false, opponentDisplayNameOverride: opponentDisplayName,
-                false);
+                player?.XRayCount ?? 1, isBossBattle: false, bossAiStrength: 0,
+                opponentDisplayNameOverride: opponentDisplayName, tutorialBattle: false);
         }
 
         /// <summary>开场教学战：双方各 3 张国王/大臣/平民，对手显示名为「花」，暖风、固定透视平民、第一回合敌必出大臣。</summary>
@@ -143,24 +145,26 @@ namespace KingCardsSpire.Managers
                 NewRuntimeCard(WellKnownCardIds.Commoner, "平民", 1f)
             };
 
-            StartBattleInternal(playerDeck, enemyDeck, WeatherType.WarmWind, 1, false, "花", true);
+            StartBattleInternal(playerDeck, enemyDeck, WeatherType.WarmWind, 1, false, 0, "花", true);
         }
 
         public void StartBattle(IReadOnlyList<Card> playerDeck, IReadOnlyList<Card> enemyDeck,
             WeatherType weather, int xRayCount, bool isBossBattle = false,
             string opponentDisplayNameOverride = null)
         {
+            var bossAiStrength = isBossBattle ? ResolveBossAiStrengthFromTower() : 0;
             StartBattleInternal(playerDeck, enemyDeck, weather, xRayCount, isBossBattle,
-                opponentDisplayNameOverride, false);
+                bossAiStrength, opponentDisplayNameOverride, false);
         }
 
         private void StartBattleInternal(IReadOnlyList<Card> playerDeck, IReadOnlyList<Card> enemyDeck,
-            WeatherType weather, int xRayCount, bool isBossBattle, string opponentDisplayNameOverride = null,
-            bool tutorialBattle = false)
+            WeatherType weather, int xRayCount, bool isBossBattle, int bossAiStrength,
+            string opponentDisplayNameOverride = null, bool tutorialBattle = false)
         {
             ResetRuntime();
             _isTutorialBattle = tutorialBattle;
             _isBossBattle = isBossBattle;
+            _bossAiStrength = Mathf.Max(0, bossAiStrength);
             _opponentDisplayName = !string.IsNullOrEmpty(opponentDisplayNameOverride)
                 ? opponentDisplayNameOverride
                 : ResolveOpponentDisplayName(isBossBattle);
@@ -169,6 +173,8 @@ namespace KingCardsSpire.Managers
                 _playerHand.Add(CloneForBattle(c));
             foreach (var c in enemyDeck)
                 _enemyHand.Add(CloneForBattle(c));
+
+            ActivateOpeningEnemyAbilityCards();
 
             _weather = weather;
             _noRoundLimit = weather == WeatherType.WarmWind;
@@ -276,6 +282,11 @@ namespace KingCardsSpire.Managers
 
             _pendingPlayerHandIndex = playerHandIndex;
             _playerExponentialSacrificeResolved = !RequiresPlayerExponentialSacrifice();
+            if (TryRewriteEnemyPendingCardAgainstPlayer(playerHandIndex))
+            {
+                SyncBattleState();
+                EventManager.Instance?.Publish(new BattleStateChangedEvent());
+            }
             return true;
         }
 
@@ -516,6 +527,72 @@ namespace KingCardsSpire.Managers
             return _enemyHand[idx];
         }
 
+        private bool TryRewriteEnemyPendingCardAgainstPlayer(int playerHandIndex)
+        {
+            if (_pendingEnemyHandIndex < 0 || _pendingEnemyHandIndex >= _enemyHand.Count)
+                return false;
+            if (playerHandIndex < 0 || playerHandIndex >= _playerHand.Count)
+                return false;
+
+            var rule = BossAiStrengthRule.ForStrength(_bossAiStrength);
+            if (rule.SearchDepth <= 0 || rule.RewriteLeadRounds <= 0)
+                return false;
+            if (!ShouldEnemyAiRewriteCard(rule))
+                return false;
+            if (IsEnemyCardVisibleToPlayer(_enemyHand[_pendingEnemyHandIndex]))
+                return false;
+            if (rule.MistakeRate > 0f && Random.value < rule.MistakeRate)
+                return false;
+
+            if (!EnemyAiDecisionService.TryChooseBestEnemyHandIndex(_playerHand[playerHandIndex],
+                    _playerHand, _playerDiscard, _enemyHand, _enemyDiscard, rule, _weather,
+                    _roundsCompleted, _battleEffects.FinalMomentRestrictionActive, _lastEnemyInstanceId,
+                    _battleEffects, out var chosenIndex))
+                return false;
+
+            if (chosenIndex < 0 || chosenIndex >= _enemyHand.Count || chosenIndex == _pendingEnemyHandIndex)
+                return false;
+
+            _pendingEnemyHandIndex = chosenIndex;
+            return true;
+        }
+
+        private bool ShouldEnemyAiRewriteCard(BossAiStrengthRule rule)
+        {
+            var predictedRoundsRemaining = EstimateRoundsUntilBattleEnd();
+            return predictedRoundsRemaining > 0 &&
+                   predictedRoundsRemaining <= rule.RewriteLeadRounds;
+        }
+
+        private int EstimateRoundsUntilBattleEnd()
+        {
+            var roundsByHandEmpty = Mathf.Min(_playerHand.Count, _enemyHand.Count);
+            var roundsByLimit = int.MaxValue;
+            if (!_noRoundLimit && _maxRounds > 0)
+                roundsByLimit = Mathf.Max(0, _maxRounds - _roundsCompleted);
+
+            return Mathf.Min(roundsByHandEmpty, roundsByLimit);
+        }
+
+        private bool IsEnemyCardVisibleToPlayer(Card card)
+        {
+            if (card == null || CurrentBattle.EnemyVisible == null)
+                return false;
+            for (var i = 0; i < CurrentBattle.EnemyVisible.Length; i++)
+            {
+                var visible = CurrentBattle.EnemyVisible[i];
+                if (visible == null)
+                    continue;
+                if (!string.IsNullOrEmpty(card.BattleInstanceId) &&
+                    visible.BattleInstanceId == card.BattleInstanceId)
+                    return true;
+                if (ReferenceEquals(visible, card))
+                    return true;
+            }
+
+            return false;
+        }
+
         private void ApplyPreRoundSpecials(ref int playerIdx, ref int enemyIdx)
         {
             var playerInst = _playerHand[playerIdx].BattleInstanceId;
@@ -716,6 +793,21 @@ namespace KingCardsSpire.Managers
             OnCardDiscardedFromSide(c, false);
         }
 
+        private void ActivateOpeningEnemyAbilityCards()
+        {
+            for (var i = _enemyHand.Count - 1; i >= 0; i--)
+            {
+                var card = _enemyHand[i];
+                if (card == null || card.Type != CardType.Ability)
+                    continue;
+
+                MoveCardAtToDiscard(_enemyHand, i, _enemyDiscard);
+                OnCardDiscardedFromSide(card, false);
+                if (string.Equals(card.Id, WellKnownCardIds.FinalMoment, StringComparison.OrdinalIgnoreCase))
+                    _battleEffects.FinalMomentRestrictionActive = true;
+            }
+        }
+
         private void OnCardDiscardedFromSide(Card card, bool fromPlayerPerspective)
         {
             if (card == null)
@@ -724,9 +816,15 @@ namespace KingCardsSpire.Managers
             if (string.Equals(id, WellKnownCardIds.WarmDay, StringComparison.OrdinalIgnoreCase)
                 && fromPlayerPerspective)
                 _battleEffects.PlayerWarmDayActive = true;
+            if (string.Equals(id, WellKnownCardIds.WarmDay, StringComparison.OrdinalIgnoreCase)
+                && !fromPlayerPerspective)
+                _battleEffects.EnemyWarmDayActive = true;
+            if (string.Equals(id, WellKnownCardIds.Snowflake, StringComparison.OrdinalIgnoreCase)
+                && fromPlayerPerspective)
+                _battleEffects.EnemySnowflakeActive = true;
             if (string.Equals(id, WellKnownCardIds.Snowflake, StringComparison.OrdinalIgnoreCase)
                 && !fromPlayerPerspective)
-                _battleEffects.EnemySnowflakeActive = true;
+                _battleEffects.PlayerSnowflakeActive = true;
             if (string.Equals(id, WellKnownCardIds.ForgeBlade, StringComparison.OrdinalIgnoreCase)
                 && fromPlayerPerspective)
                 _battleEffects.PlayerForgeBladeActive = true;
@@ -982,6 +1080,7 @@ namespace KingCardsSpire.Managers
             _lastPlayerInstanceId = null;
             _lastEnemyInstanceId = null;
             _isBossBattle = false;
+            _bossAiStrength = 0;
             _isTutorialBattle = false;
             _opponentDisplayName = string.Empty;
             _pendingEnemyHandIndex = -1;
@@ -990,6 +1089,16 @@ namespace KingCardsSpire.Managers
             _restrictedNextRound = false;
             _playerExponentialSacrificeResolved = false;
             CurrentBattle = new BattleState();
+        }
+
+        private static int ResolveBossAiStrengthFromTower()
+        {
+            var gm = GameManager.Instance;
+            var cfg = ConfigManager.Instance;
+            var floor = gm != null ? gm.PlayerState.CurrentFloor : 1;
+            if (cfg != null && cfg.TryGetTowerFloor(floor, out var entry))
+                return entry.BossAiStrength;
+            return 0;
         }
 
         private static string ResolveOpponentDisplayName(bool vsBoss)
