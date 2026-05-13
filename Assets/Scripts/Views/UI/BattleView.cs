@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Text;
 using KingCardsSpire.Configs;
@@ -37,7 +38,6 @@ namespace KingCardsSpire.Views.UI
         [SerializeField] private Text opponentNameText;
         [SerializeField] private Text turnsText;
         [SerializeField] private Text weatherText;
-        [SerializeField] private Text xRayHintText;
 
         [Header("手牌")]
         [SerializeField] private CardView cardPrefab;
@@ -75,6 +75,13 @@ namespace KingCardsSpire.Views.UI
 
         [Tooltip("一般为敌方弃牌堆按钮所在 RectTransform（可与 enemyDiscardButton 同一物体）。")]
         [SerializeField] private RectTransform enemyDiscardPileAnchor;
+
+        [Header("开场教学战")]
+        [Tooltip("第一回合强引导：全屏暗层，手牌 Canvas 需叠在其上方；未绑定时仅依赖手牌区抬升。")]
+        [SerializeField] private GameObject tutorialHandDimmer;
+
+        [Tooltip("教学战败占位（全屏节点）；未绑定时跳过展示。")]
+        [SerializeField] private GameObject tutorialDefeatPlaceholder;
 
         /// <summary>战斗流程控制器（出牌、比大小、回合提交）。</summary>
         private BattleController _battle;
@@ -116,6 +123,22 @@ namespace KingCardsSpire.Views.UI
         /// <summary>本回合敌方出牌区实例（Prepare 后创建）。</summary>
         private CardView _enemyPlayCard;
 
+        private Coroutine _tutorialFlowCoroutine;
+
+        private bool _tutorialAllowPrepareEnemyPlay;
+
+        private bool _round3PreBattleDialogShown;
+
+        private bool? _pendingTutorialBattleVictory;
+
+        private bool _tutorialFirstRoundGuideActive;
+
+        private int _savedTutorialHandCanvasSortOrder;
+
+        private bool _hasSavedTutorialHandCanvasSort;
+
+        private const int TutorialHandCanvasSortBoost = 80;
+
         /// <summary>
         /// 面板初始化：解析服务、注册按钮；战斗状态订阅在 <see cref="OnOpen"/> 中进行。
         /// </summary>
@@ -137,10 +160,14 @@ namespace KingCardsSpire.Views.UI
         /// </summary>
         public override void Dispose()
         {
+            StopTutorialFlowCoroutine();
             ExitExponentialSacrificeUi(true);
             UnwireButtons();
             if (_events != null)
+            {
                 _events.Unsubscribe<BattleStateChangedEvent>(OnBattleStateChanged);
+                _events.Unsubscribe<BattleEndedEvent>(OnTutorialBattleEndedCapture);
+            }
 
             base.Dispose();
         }
@@ -157,6 +184,31 @@ namespace KingCardsSpire.Views.UI
             }
 
             _battle ??= ServiceLocator.Get<BattleController>();
+            var bm = BattleManager.Instance;
+
+            if (bm != null && bm.IsTutorialBattle && _battle != null && _battle.IsBattleActive)
+            {
+                _tutorialAllowPrepareEnemyPlay = false;
+                _round3PreBattleDialogShown = false;
+                _pendingTutorialBattleVictory = null;
+
+                if (_events != null)
+                {
+                    _events.Unsubscribe<BattleEndedEvent>(OnTutorialBattleEndedCapture);
+                    _events.Subscribe<BattleEndedEvent>(OnTutorialBattleEndedCapture);
+                }
+
+                StopTutorialFlowCoroutine();
+                _tutorialFlowCoroutine = StartCoroutine(OpeningTutorialBattleFlowRoutine());
+
+                ExitExponentialSacrificeUi(true);
+                RefreshBattleChromeOnly();
+                return;
+            }
+
+            if (_events != null)
+                _events.Unsubscribe<BattleEndedEvent>(OnTutorialBattleEndedCapture);
+
             if (_battle != null && !_battle.IsBattleActive)
                 _battle.RequestStartBattle();
 
@@ -172,8 +224,16 @@ namespace KingCardsSpire.Views.UI
             if (confirmPlayButton == null)
                 return;
 
+            var tutorialKingOk = true;
+            if (_tutorialFirstRoundGuideActive)
+            {
+                var st = BattleManager.Instance != null ? BattleManager.Instance.CurrentBattle : null;
+                var kingIdx = FindPlayerHandIndexForCardId(st?.PlayerHand, WellKnownCardIds.King);
+                tutorialKingOk = kingIdx >= 0 && _selectedPlayerHandIndex == kingIdx;
+            }
+
             var canConfirm = _battle != null && _battle.IsBattleActive && !_roundVisualBusy &&
-                             !_awaitingExponentialSacrifice && _selectedPlayerHandIndex >= 0;
+                             !_awaitingExponentialSacrifice && _selectedPlayerHandIndex >= 0 && tutorialKingOk;
             confirmPlayButton.interactable = canConfirm;
         }
 
@@ -281,29 +341,12 @@ namespace KingCardsSpire.Views.UI
 
             if (state != null)
             {
-                var cap = state.NoRoundLimit ? "无限制" : state.MaxRound.ToString();
-                turnsText.text = $"回合 {state.Round} / {cap}";
+                var cap = state.NoRoundLimit ? "∞" : state.MaxRound.ToString();
+                turnsText.text = $"{state.Round} / {cap}";
                 weatherText.text = WeatherDisplay.Format(state.BattleWeather);
                 opponentNameText.text = string.IsNullOrEmpty(state.OpponentDisplayName)
                     ? "对手"
                     : state.OpponentDisplayName;
-            }
-
-            if (state?.EnemyVisible != null && state.EnemyVisible.Length > 0)
-            {
-                var sb = new StringBuilder("透视: ");
-                foreach (var c in state.EnemyVisible)
-                {
-                    if (c == null)
-                        continue;
-                    sb.Append(string.IsNullOrEmpty(c.Name) ? c.Id : c.Name).Append(' ');
-                }
-
-                xRayHintText.text = sb.ToString().TrimEnd();
-            }
-            else
-            {
-                xRayHintText.text = string.Empty;
             }
         }
 
@@ -316,6 +359,12 @@ namespace KingCardsSpire.Views.UI
         private void RefreshAll()
         {
             RefreshBattleChromeOnly();
+
+            if (ShouldShowRoundThreePreBattleDialog())
+            {
+                StartCoroutine(RoundThreeDialogThenRefreshRoutine());
+                return;
+            }
 
             LayoutGroup layoutEnemy = null;
             LayoutGroup layoutPlayer = null;
@@ -344,6 +393,9 @@ namespace KingCardsSpire.Views.UI
             try
             {
                 var state = BattleManager.Instance.CurrentBattle;
+                if (!_roundVisualBusy && _battle != null && _battle.IsBattleActive)
+                    SetupPlayAreaRound();
+
                 RebuildEnemyHand(state?.EnemyHand);
                 RebuildPlayerHand(state?.PlayerHand);
             }
@@ -355,19 +407,24 @@ namespace KingCardsSpire.Views.UI
                     layoutPlayer.enabled = true;
             }
 
-            if (!_roundVisualBusy && _battle != null && _battle.IsBattleActive)
-                SetupPlayAreaRound();
-
             UpdateConfirmPlayButtonInteractable();
         }
 
         /// <summary>
-        /// 本回合需在敌方出牌区展示一张背面朝上的待翻开牌：由控制器 <c>PrepareEnemyPlay</c> 驱动，
-        /// 从敌方手牌按下标实例化；若无有效回合或准备失败则清空出牌区。
+        /// 本回合需在敌方出牌区展示一张待翻开牌：由控制器 <c>PrepareEnemyPlay</c> 驱动。
+        /// 被透视的牌（见 <see cref="BattleState.EnemyVisible"/>）自出现起即正面，与手牌区一致，整局保持可见（§2.2.4）。
         /// </summary>
         private void SetupPlayAreaRound()
         {
             if (_battle == null || !_battle.IsBattleActive)
+            {
+                ClearPlayAreaRoots();
+                _enemyPlayCard = null;
+                return;
+            }
+
+            var bm = BattleManager.Instance;
+            if (bm != null && bm.IsTutorialBattle && !_tutorialAllowPrepareEnemyPlay)
             {
                 ClearPlayAreaRoots();
                 _enemyPlayCard = null;
@@ -403,8 +460,12 @@ namespace KingCardsSpire.Views.UI
             cv.Apply(vm);
             if (cfg != null)
                 cv.LoadCardArtFromConfig(cfg);
-            cv.SetFaceDown(true);
+            var xRayFaceUp = IsEnemyCardRevealedInXRay(card, state.EnemyVisible);
+            cv.SetFaceDown(!xRayFaceUp);
             cv.OverrideClick(null);
+            var bmEnemy = BattleManager.Instance;
+            var enemyRestricted = bmEnemy != null && bmEnemy.IsEnemyCardRestrictedByLastPlay(card);
+            cv.SetVisualState(enemyRestricted ? CardVisualState.Disabled : CardVisualState.Normal);
             _enemyPlayCard = cv;
         }
 
@@ -426,28 +487,77 @@ namespace KingCardsSpire.Views.UI
         }
 
         /// <summary>
-        /// 按模型长度重建敌方手牌槽位：复用或新增 <see cref="CardView"/>，一律背面朝上并清空展示数据。
+        /// 按模型长度重建敌方手牌槽位：未透视的牌为背面；被透视的牌（<see cref="BattleState.EnemyVisible"/>）整局正面（§2.2.4）。
+        /// 本回合已移至出牌区的牌（<see cref="BattleController.PendingEnemyHandIndex"/>）不再在手牌区重复绘制。
         /// </summary>
         private void RebuildEnemyHand(Card[] hand)
         {
             var n = hand?.Length ?? 0;
+            var state = BattleManager.Instance != null ? BattleManager.Instance.CurrentBattle : null;
+            var visible = state?.EnemyVisible;
+            var pendingEnemy = _battle != null && _battle.IsBattleActive ? _battle.PendingEnemyHandIndex : -1;
+            var hideStagedInPlayArea = pendingEnemy >= 0 && _enemyPlayCard != null;
 
+            var slot = 0;
             for (var i = 0; i < n; i++)
             {
+                if (hideStagedInPlayArea && i == pendingEnemy)
+                    continue;
+
                 CardView cv;
-                if (i < enemyHandRoot.childCount)
-                    cv = enemyHandRoot.GetChild(i).GetComponent<CardView>();
+                if (slot < enemyHandRoot.childCount)
+                    cv = enemyHandRoot.GetChild(slot).GetComponent<CardView>();
                 else
                 {
                     cv = Instantiate(cardPrefab, enemyHandRoot, false);
                     cv.SetScale(EnemyHandCardScale);
                 }
 
-                cv.Clear();
-                cv.SetFaceDown(true);
+                var card = hand[i];
+                if (IsEnemyCardRevealedInXRay(card, visible))
+                {
+                    CardConfigEntry cfg = null;
+                    if (_config != null && card != null && !string.IsNullOrEmpty(card.Id))
+                        _config.TryGetCard(card.Id, out cfg);
+
+                    var vm = CardViewModel.FromCard(card, cfg);
+                    cv.Apply(vm);
+                    if (cfg != null)
+                        cv.LoadCardArtFromConfig(cfg);
+                    cv.SetFaceDown(false);
+                    cv.OverrideClick(null);
+                    var bmEnemy = BattleManager.Instance;
+                    var enemyRestricted = bmEnemy != null && bmEnemy.IsEnemyCardRestrictedByLastPlay(card);
+                    cv.SetVisualState(enemyRestricted ? CardVisualState.Disabled : CardVisualState.Normal);
+                }
+                else
+                {
+                    cv.Clear();
+                    cv.SetFaceDown(true);
+                }
+
+                slot++;
             }
 
-            TrimHandTail(enemyHandRoot, n);
+            TrimHandTail(enemyHandRoot, slot);
+        }
+
+        /// <summary>
+        /// 己方手牌单槽视觉：指数弃牌、上回合不可再出的置灰、选中高亮。
+        /// </summary>
+        private CardVisualState ResolvePlayerHandCardVisualState(Card card, int handIndex)
+        {
+            if (_awaitingExponentialSacrifice && _battle != null)
+            {
+                var pend = _battle.PendingPlayerHandIndex;
+                return handIndex == pend ? CardVisualState.Disabled : CardVisualState.Normal;
+            }
+
+            var bm = BattleManager.Instance;
+            if (bm != null && card != null && bm.IsPlayerCardRestrictedByLastPlay(card))
+                return CardVisualState.Disabled;
+
+            return handIndex == _selectedPlayerHandIndex ? CardVisualState.Selected : CardVisualState.Normal;
         }
 
         /// <summary>
@@ -461,6 +571,14 @@ namespace KingCardsSpire.Views.UI
             var n = hand?.Length ?? 0;
             if (_selectedPlayerHandIndex >= n)
                 _selectedPlayerHandIndex = -1;
+
+            if (n > 0 && _selectedPlayerHandIndex >= 0 && _selectedPlayerHandIndex < n)
+            {
+                var sel = hand[_selectedPlayerHandIndex];
+                var bmSel = BattleManager.Instance;
+                if (sel != null && bmSel != null && bmSel.IsPlayerCardRestrictedByLastPlay(sel))
+                    _selectedPlayerHandIndex = -1;
+            }
 
             var battleRef = _battle;
 
@@ -491,13 +609,17 @@ namespace KingCardsSpire.Views.UI
                 var capturedIndex = i;
                 cv.OverrideClick(() => OnPlayerHandCardClicked(battleRef, capturedIndex));
 
-                if (_awaitingExponentialSacrifice && battleRef != null)
+                cv.SetVisualState(ResolvePlayerHandCardVisualState(card, i));
+
+                var bm = BattleManager.Instance;
+                var restricted = card != null && bm != null && bm.IsPlayerCardRestrictedByLastPlay(card);
+                if (_tutorialFirstRoundGuideActive)
                 {
-                    var pend = battleRef.PendingPlayerHandIndex;
-                    cv.SetVisualState(i == pend ? CardVisualState.Disabled : CardVisualState.Normal);
+                    var kingIdx = FindPlayerHandIndexForCardId(hand, WellKnownCardIds.King);
+                    cv.SetClickInteractionEnabled(!restricted && (kingIdx < 0 || i == kingIdx));
                 }
                 else
-                    cv.SetVisualState(i == _selectedPlayerHandIndex ? CardVisualState.Selected : CardVisualState.Normal);
+                    cv.SetClickInteractionEnabled(!restricted);
             }
 
             TrimHandTail(playerHandRoot, n);
@@ -522,9 +644,11 @@ namespace KingCardsSpire.Views.UI
             UpdateConfirmPlayButtonInteractable();
         }
 
-        /// <summary>按 <see cref="_selectedPlayerHandIndex"/> 刷新己方手牌的高亮，不重建节点。</summary>
+        /// <summary>按 <see cref="_selectedPlayerHandIndex"/> 与上回合不可再出规则刷新己方手牌高亮。</summary>
         private void SyncPlayerHandSelectionVisuals()
         {
+            var state = BattleManager.Instance?.CurrentBattle;
+            var hand = state?.PlayerHand;
             var n = playerHandRoot != null ? playerHandRoot.childCount : 0;
             for (var i = 0; i < n; i++)
             {
@@ -532,7 +656,8 @@ namespace KingCardsSpire.Views.UI
                 if (cv == null)
                     continue;
 
-                cv.SetVisualState(i == _selectedPlayerHandIndex ? CardVisualState.Selected : CardVisualState.Normal);
+                var card = hand != null && i < hand.Length ? hand[i] : null;
+                cv.SetVisualState(ResolvePlayerHandCardVisualState(card, i));
             }
         }
 
@@ -663,12 +788,21 @@ namespace KingCardsSpire.Views.UI
             playerPlay.SetFaceDown(true);
             playerPlay.OverrideClick(null);
 
-            // 等待一帧，确保出牌区布局与渲染就绪后再同时翻面。
+            // 等待一帧，确保出牌区布局与渲染就绪后再翻面；敌方被透视的牌已正面，不再播翻面动画。
             yield return null;
 
-            yield return RunTwoEnumeratorsParallel(
-                _enemyPlayCard.PlayRevealFlipRoutine(),
-                playerPlay.PlayRevealFlipRoutine());
+            var enemyIdx = _battle.PendingEnemyHandIndex;
+            var enemyStaged = state.EnemyHand != null && enemyIdx >= 0 && enemyIdx < state.EnemyHand.Length
+                ? state.EnemyHand[enemyIdx]
+                : null;
+            var enemyXRayFaceUp = IsEnemyCardRevealedInXRay(enemyStaged, state.EnemyVisible);
+
+            if (enemyXRayFaceUp)
+                yield return playerPlay.PlayRevealFlipRoutine();
+            else
+                yield return RunTwoEnumeratorsParallel(
+                    _enemyPlayCard.PlayRevealFlipRoutine(),
+                    playerPlay.PlayRevealFlipRoutine());
 
             if (!_battle.CommitPendingRound(out var cmp, out var cerr))
             {
@@ -693,8 +827,19 @@ namespace KingCardsSpire.Views.UI
             _enemyPlayCard = null;
 
             _roundVisualBusy = false;
+
+            bool? tutorialOutcome = null;
+            if (_pendingTutorialBattleVictory.HasValue)
+            {
+                tutorialOutcome = _pendingTutorialBattleVictory.Value;
+                _pendingTutorialBattleVictory = null;
+            }
+
             RefreshAll();
             TryExitCasualBattleToMainHub();
+
+            if (tutorialOutcome.HasValue)
+                StartCoroutine(TutorialPostBattleFlowRoutine(tutorialOutcome.Value));
         }
 
         /// <summary>
@@ -707,6 +852,9 @@ namespace KingCardsSpire.Views.UI
                 return;
 
             var bm = BattleManager.Instance;
+            if (bm != null && bm.IsTutorialBattle)
+                return;
+
             if (bm == null)
                 return;
 
@@ -795,6 +943,213 @@ namespace KingCardsSpire.Views.UI
                     break;
                 yield return null;
             }
+        }
+
+        private void StopTutorialFlowCoroutine()
+        {
+            if (_tutorialFlowCoroutine == null)
+                return;
+
+            StopCoroutine(_tutorialFlowCoroutine);
+            _tutorialFlowCoroutine = null;
+        }
+
+        private IEnumerator OpeningTutorialBattleFlowRoutine()
+        {
+            yield return null;
+
+            var ui = UIManager.Instance;
+            var dialogue = ServiceLocator.Get<DialogueController>();
+
+            if (dialogue != null && ui != null)
+                yield return ui.StartCoroutine(dialogue.PlayDialogue(TutorialDialogueIds.BattleIntro, null));
+
+            RefreshAll();
+
+            if (dialogue != null && ui != null)
+                yield return ui.StartCoroutine(dialogue.PlayDialogue(TutorialDialogueIds.BattleForceKing, null));
+
+            _tutorialAllowPrepareEnemyPlay = true;
+            RefreshAll();
+
+            EnterTutorialFirstRoundGuide();
+
+            if (_events != null)
+                _events.Subscribe<BattleRoundResolvedEvent>(OnTutorialFirstRoundResolvedExitGuide);
+
+            while (_tutorialFirstRoundGuideActive)
+                yield return null;
+
+            if (_events != null)
+                _events.Unsubscribe<BattleRoundResolvedEvent>(OnTutorialFirstRoundResolvedExitGuide);
+
+            _tutorialFlowCoroutine = null;
+        }
+
+        private void OnTutorialBattleEndedCapture(BattleEndedEvent e)
+        {
+            var bm = BattleManager.Instance;
+            if (bm == null || !bm.IsTutorialBattle)
+                return;
+
+            _pendingTutorialBattleVictory = e.PlayerVictory;
+        }
+
+        private void OnTutorialFirstRoundResolvedExitGuide(BattleRoundResolvedEvent _)
+        {
+            if (!_tutorialFirstRoundGuideActive)
+                return;
+
+            ExitTutorialFirstRoundGuide();
+        }
+
+        private void EnterTutorialFirstRoundGuide()
+        {
+            _tutorialFirstRoundGuideActive = true;
+            if (tutorialHandDimmer != null)
+                tutorialHandDimmer.SetActive(true);
+
+            BoostPlayerHandCanvasForTutorial(true);
+            SetAuxiliaryBattleButtonsInteractable(false);
+            RefreshAll();
+            UpdateConfirmPlayButtonInteractable();
+        }
+
+        private void ExitTutorialFirstRoundGuide()
+        {
+            _tutorialFirstRoundGuideActive = false;
+            if (tutorialHandDimmer != null)
+                tutorialHandDimmer.SetActive(false);
+
+            BoostPlayerHandCanvasForTutorial(false);
+            SetAuxiliaryBattleButtonsInteractable(true);
+            RefreshAll();
+            UpdateConfirmPlayButtonInteractable();
+        }
+
+        private void BoostPlayerHandCanvasForTutorial(bool enable)
+        {
+            if (playerHandCanvasOverride == null)
+                return;
+
+            if (enable)
+            {
+                if (!_hasSavedTutorialHandCanvasSort)
+                {
+                    _savedTutorialHandCanvasSortOrder = playerHandCanvasOverride.sortingOrder;
+                    _hasSavedTutorialHandCanvasSort = true;
+                }
+
+                playerHandCanvasOverride.overrideSorting = true;
+                playerHandCanvasOverride.sortingOrder =
+                    _savedTutorialHandCanvasSortOrder + TutorialHandCanvasSortBoost;
+            }
+            else if (_hasSavedTutorialHandCanvasSort)
+            {
+                playerHandCanvasOverride.sortingOrder = _savedTutorialHandCanvasSortOrder;
+                playerHandCanvasOverride.overrideSorting = false;
+                _hasSavedTutorialHandCanvasSort = false;
+            }
+        }
+
+        private void SetAuxiliaryBattleButtonsInteractable(bool interactable)
+        {
+            if (settingsButton != null)
+                settingsButton.interactable = interactable;
+            if (enemyDiscardButton != null)
+                enemyDiscardButton.interactable = interactable;
+            if (playerDiscardButton != null)
+                playerDiscardButton.interactable = interactable;
+        }
+
+        private bool ShouldShowRoundThreePreBattleDialog()
+        {
+            var bm = BattleManager.Instance;
+            if (bm == null || !bm.IsTutorialBattle || !bm.IsBattleActive)
+                return false;
+
+            if (_round3PreBattleDialogShown)
+                return false;
+
+            var state = bm.CurrentBattle;
+            if (state == null || state.Round != 2)
+                return false;
+
+            if (state.PlayerHand == null || state.EnemyHand == null)
+                return false;
+
+            if (state.PlayerHand.Length == 0 || state.EnemyHand.Length == 0)
+                return false;
+
+            return true;
+        }
+
+        private IEnumerator RoundThreeDialogThenRefreshRoutine()
+        {
+            var dialogue = ServiceLocator.Get<DialogueController>();
+            var ui = UIManager.Instance;
+            if (dialogue != null && ui != null)
+                yield return ui.StartCoroutine(dialogue.PlayDialogue(TutorialDialogueIds.BattleRound3, null));
+
+            _round3PreBattleDialogShown = true;
+            RefreshAll();
+        }
+
+        private IEnumerator TutorialPostBattleFlowRoutine(bool playerVictory)
+        {
+            var ui = UIManager.Instance;
+            var dialogue = ServiceLocator.Get<DialogueController>();
+
+            if (!playerVictory && dialogue != null && ui != null)
+                yield return ui.StartCoroutine(dialogue.PlayDialogue(TutorialDialogueIds.BattleDefeat, null));
+
+            if (!playerVictory && tutorialDefeatPlaceholder != null)
+            {
+                tutorialDefeatPlaceholder.SetActive(true);
+                yield return new WaitForSecondsRealtime(0.6f);
+                tutorialDefeatPlaceholder.SetActive(false);
+            }
+
+            if (_events != null)
+                _events.Unsubscribe<BattleEndedEvent>(OnTutorialBattleEndedCapture);
+
+            if (_battle != null)
+                _battle.RequestEndBattle();
+
+            if (ui != null)
+                ui.Close(UIPanelId.Battle);
+
+            if (_events != null)
+                _events.Publish(new OpeningTutorialBattleFlowCompletedEvent(playerVictory));
+        }
+
+        private static bool IsEnemyCardRevealedInXRay(Card card, Card[] visibleSet)
+        {
+            if (card == null || visibleSet == null || visibleSet.Length == 0)
+                return false;
+
+            foreach (var v in visibleSet)
+            {
+                if (v != null && v.BattleInstanceId == card.BattleInstanceId)
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static int FindPlayerHandIndexForCardId(Card[] hand, string cardId)
+        {
+            if (hand == null || string.IsNullOrEmpty(cardId))
+                return -1;
+
+            for (var i = 0; i < hand.Length; i++)
+            {
+                var c = hand[i];
+                if (c != null && string.Equals(c.Id, cardId, StringComparison.OrdinalIgnoreCase))
+                    return i;
+            }
+
+            return -1;
         }
 
         /// <summary>

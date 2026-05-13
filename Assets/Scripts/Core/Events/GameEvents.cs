@@ -60,6 +60,14 @@ namespace KingCardsSpire.Core.Events
         }
     }
 
+    /// <summary>新档开场教学战流程结束（含战败对话与占位 UI 后）；由 <see cref="Views.UI.BattleView"/> 发布，<see cref="Views.UI.MainMenuView"/> 等待后分流 Hub / 主菜单。</summary>
+    public readonly struct OpeningTutorialBattleFlowCompletedEvent : IEvent
+    {
+        public readonly bool PlayerVictory;
+
+        public OpeningTutorialBattleFlowCompletedEvent(bool playerVictory) => PlayerVictory = playerVictory;
+    }
+
     public readonly struct WeatherChangedEvent : IEvent
     {
         public readonly WeatherType Weather;

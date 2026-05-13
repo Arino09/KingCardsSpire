@@ -12,7 +12,7 @@ namespace KingCardsSpire.Views.UI
     /// <summary>塔内商店：进货规则见 <see cref="GameManager.EnsureShopStock"/>。</summary>
     public sealed class ShopView : BaseView
     {
-        [SerializeField] private Text goldText;
+        // [SerializeField] private Text goldText;
         [SerializeField] private RectTransform slotRowsRoot;
         [SerializeField] private ShopSlotRowView slotRowPrefab;
         [SerializeField] private float cardScale = 0.22f;
@@ -70,7 +70,7 @@ namespace KingCardsSpire.Views.UI
         private void RefreshGoldText()
         {
             var gm = _game ?? GameManager.Instance;
-            goldText.text = gm != null ? $"${gm.PlayerState.Gold}" : string.Empty;
+            // goldText.text = gm != null ? $"${gm.PlayerState.Gold}" : string.Empty;
         }
 
         private void RebuildSlots()

@@ -1,6 +1,8 @@
+using System;
 using System.Collections;
 using KingCardsSpire.Controllers;
 using KingCardsSpire.Core;
+using KingCardsSpire.Core.Events;
 using KingCardsSpire.Managers;
 using KingCardsSpire.Models;
 using UnityEngine;
@@ -176,7 +178,47 @@ namespace KingCardsSpire.Views.UI
                 var dialogue = ServiceLocator.Get<DialogueController>();
                 if (dialogue != null)
                     yield return ui.StartCoroutine(dialogue.PlayDialogue("tutorial_opening", null));
-                view._game.SetOpeningTutorialCompletedAndSave();
+
+                var battleCtrl = ServiceLocator.Get<BattleController>();
+                if (battleCtrl != null)
+                    battleCtrl.RequestStartTutorialBattle();
+
+                yield return ui.OpenAsync(UIPanelId.Battle);
+
+                var events = EventManager.Instance;
+                if (events != null)
+                {
+                    var flowFinished = false;
+                    var playerVictory = false;
+
+                    void OnOpeningTutorialBattleFlowDone(OpeningTutorialBattleFlowCompletedEvent e)
+                    {
+                        playerVictory = e.PlayerVictory;
+                        flowFinished = true;
+                    }
+
+                    events.Subscribe<OpeningTutorialBattleFlowCompletedEvent>(OnOpeningTutorialBattleFlowDone);
+                    while (!flowFinished)
+                        yield return null;
+
+                    events.Unsubscribe<OpeningTutorialBattleFlowCompletedEvent>(OnOpeningTutorialBattleFlowDone);
+
+                    if (playerVictory)
+                        view._game.SetOpeningTutorialCompletedAndSave();
+
+                    ui.Close(UIPanelId.Battle);
+
+                    if (playerVictory)
+                        yield return ui.OpenAsync(UIPanelId.MainHub);
+                    else
+                        yield return ui.OpenAsync(UIPanelId.MainMenu);
+
+                    yield break;
+                }
+
+                ui.Close(UIPanelId.Battle);
+                yield return ui.OpenAsync(UIPanelId.MainMenu);
+                yield break;
             }
 
             yield return ui.OpenAsync(UIPanelId.MainHub);

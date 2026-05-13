@@ -34,6 +34,8 @@ namespace KingCardsSpire.Managers
         private string _lastEnemyInstanceId;
         private bool _isBossBattle;
 
+        private bool _isTutorialBattle;
+
         private string _opponentDisplayName = string.Empty;
 
         /// <summary>本回合已锁定的敌方手牌下标；-1 表示未准备。</summary>
@@ -54,11 +56,34 @@ namespace KingCardsSpire.Managers
 
         public bool IsBattleActive => _phase == Phase.InBattle;
 
+        /// <summary>当前是否为「开场教学战」（用于 UI 脚本化与第一回合敌出牌锁定）。</summary>
+        public bool IsTutorialBattle => _isTutorialBattle;
+
         /// <summary>本回合已锁定的敌方手牌下标，未准备时为 -1。</summary>
         public int PendingEnemyHandIndex => _pendingEnemyHandIndex;
 
         /// <summary>玩家已暂存的手牌下标，未选择时为 -1。</summary>
         public int PendingPlayerHandIndex => _pendingPlayerHandIndex;
+
+        /// <summary>
+        /// 该实例是否因「不可连续两次打出同一张牌」规则在本回合不可再出（与 <see cref="IsLegalPlay"/> 一致，用于 UI 置灰）。
+        /// </summary>
+        public bool IsPlayerCardRestrictedByLastPlay(Card card)
+        {
+            if (_phase != Phase.InBattle || card == null)
+                return false;
+
+            return !IsLegalPlay(card, _playerHand, _lastPlayerInstanceId);
+        }
+
+        /// <summary>敌方：同上规则，用于已透视可见的敌方手牌置灰。</summary>
+        public bool IsEnemyCardRestrictedByLastPlay(Card card)
+        {
+            if (_phase != Phase.InBattle || card == null)
+                return false;
+
+            return !IsLegalPlay(card, _enemyHand, _lastEnemyInstanceId);
+        }
 
         protected override void Awake()
         {
@@ -85,7 +110,7 @@ namespace KingCardsSpire.Managers
             var enemyCards = vsBoss ? BuildBossDeckFromTowerOrFallback() : BuildDefaultEnemyDeck();
 
             StartBattleInternal(playerCards, enemyCards, player?.CurrentWeather ?? WeatherType.WarmWind,
-                player?.XRayCount ?? 1, vsBoss, null);
+                player?.XRayCount ?? 1, vsBoss, null, false);
         }
 
         /// <summary>主角房友谊战：敌方卡组由 <see cref="HeroOpponentDeckGenerator"/> 占位生成，非 BOSS。</summary>
@@ -98,7 +123,27 @@ namespace KingCardsSpire.Managers
             var enemyCards = HeroOpponentDeckGenerator.BuildPlaceholderDeck(heroSlotId);
 
             StartBattleInternal(playerCards, enemyCards, player?.CurrentWeather ?? WeatherType.WarmWind,
-                player?.XRayCount ?? 1, isBossBattle: false, opponentDisplayNameOverride: opponentDisplayName);
+                player?.XRayCount ?? 1, isBossBattle: false, opponentDisplayNameOverride: opponentDisplayName,
+                false);
+        }
+
+        /// <summary>开场教学战：双方各 3 张国王/大臣/平民，对手显示名为「花」，暖风、固定透视平民、第一回合敌必出大臣。</summary>
+        public void StartTutorialBattle()
+        {
+            var playerDeck = new List<Card>
+            {
+                NewRuntimeCard(WellKnownCardIds.King, "国王", 3f),
+                NewRuntimeCard(WellKnownCardIds.Minister, "大臣", 2f),
+                NewRuntimeCard(WellKnownCardIds.Commoner, "平民", 1f)
+            };
+            var enemyDeck = new List<Card>
+            {
+                NewRuntimeCard(WellKnownCardIds.King, "国王", 3f),
+                NewRuntimeCard(WellKnownCardIds.Minister, "大臣", 2f),
+                NewRuntimeCard(WellKnownCardIds.Commoner, "平民", 1f)
+            };
+
+            StartBattleInternal(playerDeck, enemyDeck, WeatherType.WarmWind, 1, false, "花", true);
         }
 
         public void StartBattle(IReadOnlyList<Card> playerDeck, IReadOnlyList<Card> enemyDeck,
@@ -106,13 +151,15 @@ namespace KingCardsSpire.Managers
             string opponentDisplayNameOverride = null)
         {
             StartBattleInternal(playerDeck, enemyDeck, weather, xRayCount, isBossBattle,
-                opponentDisplayNameOverride);
+                opponentDisplayNameOverride, false);
         }
 
         private void StartBattleInternal(IReadOnlyList<Card> playerDeck, IReadOnlyList<Card> enemyDeck,
-            WeatherType weather, int xRayCount, bool isBossBattle, string opponentDisplayNameOverride = null)
+            WeatherType weather, int xRayCount, bool isBossBattle, string opponentDisplayNameOverride = null,
+            bool tutorialBattle = false)
         {
             ResetRuntime();
+            _isTutorialBattle = tutorialBattle;
             _isBossBattle = isBossBattle;
             _opponentDisplayName = !string.IsNullOrEmpty(opponentDisplayNameOverride)
                 ? opponentDisplayNameOverride
@@ -414,6 +461,22 @@ namespace KingCardsSpire.Managers
             index = -1;
             if (_enemyHand.Count == 0)
                 return false;
+
+            if (_isTutorialBattle && _roundsCompleted == 0)
+            {
+                for (var i = 0; i < _enemyHand.Count; i++)
+                {
+                    var c = _enemyHand[i];
+                    if (!string.Equals(c.Id, WellKnownCardIds.Minister, StringComparison.OrdinalIgnoreCase))
+                        continue;
+                    if (!IsLegalPlay(c, _enemyHand, _lastEnemyInstanceId))
+                        continue;
+                    if (_battleEffects.FinalMomentRestrictionActive && !IsAllowedUnderFinalMoment(c))
+                        continue;
+                    index = i;
+                    return true;
+                }
+            }
 
             var candidates = new List<int>();
             for (var i = 0; i < _enemyHand.Count; i++)
@@ -849,7 +912,30 @@ namespace KingCardsSpire.Managers
 
         private void ApplyXRay(int count)
         {
-            if (count <= 0 || _enemyHand.Count == 0)
+            if (_enemyHand.Count == 0)
+            {
+                CurrentBattle.EnemyVisible = Array.Empty<Card>();
+                return;
+            }
+
+            if (_isTutorialBattle)
+            {
+                for (var i = 0; i < _enemyHand.Count; i++)
+                {
+                    var c = _enemyHand[i];
+                    if (c != null &&
+                        string.Equals(c.Id, WellKnownCardIds.Commoner, StringComparison.OrdinalIgnoreCase))
+                    {
+                        CurrentBattle.EnemyVisible = new[] { c };
+                        return;
+                    }
+                }
+
+                CurrentBattle.EnemyVisible = Array.Empty<Card>();
+                return;
+            }
+
+            if (count <= 0)
             {
                 CurrentBattle.EnemyVisible = Array.Empty<Card>();
                 return;
@@ -896,6 +982,7 @@ namespace KingCardsSpire.Managers
             _lastPlayerInstanceId = null;
             _lastEnemyInstanceId = null;
             _isBossBattle = false;
+            _isTutorialBattle = false;
             _opponentDisplayName = string.Empty;
             _pendingEnemyHandIndex = -1;
             _pendingPlayerHandIndex = -1;

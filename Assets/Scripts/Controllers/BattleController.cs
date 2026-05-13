@@ -14,6 +14,11 @@ namespace KingCardsSpire.Controllers
             BattleManager.Instance?.StartBattleFromPlayerState(vsBoss);
         }
 
+        public void RequestStartTutorialBattle()
+        {
+            BattleManager.Instance?.StartTutorialBattle();
+        }
+
         public void RequestStartHeroDuel(string heroSlotId, string opponentDisplayName)
         {
             BattleManager.Instance?.StartHeroDuelFromPlayerState(heroSlotId, opponentDisplayName);

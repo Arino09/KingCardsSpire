@@ -24,6 +24,8 @@ namespace KingCardsSpire.Managers
 
         /// <summary>当前层、当前日的商店货架（文档 §4）。</summary>
         public ShopState ShopState { get; private set; } = new();
+        
+        public GameConfig GameConfig => ResolveGameConfig();
 
         private readonly List<ShopSlotState> _shopSlotsBuilder = new();
         private readonly List<CardConfigEntry> _shopCandidatesScratch = new();
