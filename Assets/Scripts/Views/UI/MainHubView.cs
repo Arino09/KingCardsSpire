@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Text;
+using KingCardsSpire.Configs;
 using KingCardsSpire.Controllers;
 using KingCardsSpire.Core;
 using KingCardsSpire.Core.Events;
@@ -20,7 +21,6 @@ namespace KingCardsSpire.Views.UI
     public sealed class MainHubView : BaseView
     {
         [Header("顶部状态 · Text")]
-        [SerializeField] private Text dayText;
         [SerializeField] private Text levelText;
         [SerializeField] private Text curDayText;
         [SerializeField] private Text weatherText;
@@ -308,30 +308,13 @@ namespace KingCardsSpire.Views.UI
 
         private void RefreshStatusTexts()
         {
-            var player = _game != null ? _game.PlayerState : null;
-            if (player == null)
-                return;
+            var player = _game.PlayerState;
 
-            if (dayText != null)
-                dayText.text = $"第{player.CurrentDay}天";
-
-            if (levelText != null)
-                levelText.text = $"层级{player.CurrentFloor}";
-
-            if (curDayText != null)
-            {
-                var remain = _game != null ? _game.GetEstimatedRemainingDaysOnFloor() : 0;
-                curDayText.text = string.Format("当前层级剩余{0}天", remain);
-            }
-
-            if (weatherText != null)
-                weatherText.text = WeatherDisplay.Format(player.CurrentWeather);
-
-            if (coinText != null)
-                coinText.text = $"${player.Gold}";
-
-            if (buffText != null)
-                buffText.text = $"初始Buff：{FormatBuff(player.SelectedBuff)}";
+            levelText.text = $"{player.CurrentFloor}/{GameManager.Instance.GameConfig.TowerFloors}";
+            curDayText.text = $"{player.FloorDay}/{GameManager.Instance.GetMaxDaysPerFloor()}";
+            weatherText.text = WeatherDisplay.Format(player.CurrentWeather);
+            coinText.text = player.Gold.ToString();
+            buffText.text = $"初始Buff：{FormatBuff(player.SelectedBuff)}";
         }
 
         private void RefreshHistory()

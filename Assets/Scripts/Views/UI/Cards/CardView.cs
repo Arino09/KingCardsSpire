@@ -56,7 +56,6 @@ namespace KingCardsSpire.Views.UI.Cards
             rectRoot.sizeDelta = new Vector2(842, 1180) * scale;
             rectBack.localScale = s;
             rectFront.localScale = s;
-            rectImage.localScale = s;
         }
 
         /// <summary>
@@ -86,6 +85,15 @@ namespace KingCardsSpire.Views.UI.Cards
             clickTarget.interactable = !faceDown;
 
             SetVisualState(faceDown ? CardVisualState.Disabled : CardVisualState.Normal);
+        }
+
+        /// <summary>不改变翻面状态；用于教程遮罩下禁用部分手牌点击。</summary>
+        public void SetClickInteractionEnabled(bool enabled)
+        {
+            if (_faceDown)
+                return;
+
+            clickTarget.interactable = enabled;
         }
 
         public void Apply(CardViewModel vm)

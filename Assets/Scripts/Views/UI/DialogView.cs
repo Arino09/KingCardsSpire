@@ -15,6 +15,7 @@ namespace KingCardsSpire.Views.UI
         [SerializeField] private Image portraitImage;
 
         [Header("文本")]
+        [SerializeField] private GameObject speakerNameObj;
         [SerializeField] private Text speakerNameText;
         [SerializeField] private Text bodyText;
 
@@ -74,6 +75,7 @@ namespace KingCardsSpire.Views.UI
         public void ApplyTexts(DialogueLineEntry line)
         {
             speakerNameText.text = line != null ? line.SpeakerName : string.Empty;
+            speakerNameObj.SetActive(line.SpeakerName != string.Empty);
             bodyText.text = line != null ? line.BodyText : string.Empty;
         }
 
