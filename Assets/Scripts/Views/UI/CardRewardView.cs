@@ -1,6 +1,5 @@
 using System.Collections;
 using System.Collections.Generic;
-using KingCardsSpire.Controllers;
 using KingCardsSpire.Core;
 using KingCardsSpire.Configs;
 using KingCardsSpire.Managers;
@@ -13,12 +12,13 @@ using UnityEngine.UI;
 namespace KingCardsSpire.Views.UI
 {
     /// <summary>
-    /// 击败驻守者后的五选一奖励：选项使用与战斗相同的 Card 预制体（<see cref="CardView"/>）。
-    /// 跳过卡牌按钮：领取列表中<strong>全部金币项</strong>、不领取任何卡牌后进层（见 <see cref="GameManager.TrySkipBossCardRewardsCollectGoldAndAdvance"/>）。
+    /// 驻守者五选一奖励，或常规战斗胜利后从敌方卡组中至多 3 张里选 1 张；选项使用与战斗相同的 Card 预制体（<see cref="CardView"/>）。
+    /// 驻守：跳过卡牌按钮领取列表中<strong>全部金币项</strong>（见 <see cref="GameManager.TrySkipBossCardRewardsCollectGoldAndAdvance"/>）。
+    /// 常规：跳过表示不获得卡牌，仅关闭本面板。
     /// </summary>
     public sealed class CardRewardView : BaseView
     {
-        private const int MaxOptions = 5;
+        private const int MaxBossOptions = 5;
 
         [SerializeField] private Text titleText;
         [SerializeField] private RectTransform cardOptionsRoot;
@@ -33,6 +33,9 @@ namespace KingCardsSpire.Views.UI
 
         private UnityAction _onSkipClicked;
 
+        /// <summary>本次打开是否为「常规战胜 · 敌方卡组三选一」模式。</summary>
+        private bool _casualVictoryRewardMode;
+
         public override void Initialize()
         {
             SetPanelId(UIPanelId.CardReward);
@@ -43,6 +46,7 @@ namespace KingCardsSpire.Views.UI
         protected override void OnOpen()
         {
             ClearSpawnedCards();
+            _casualVictoryRewardMode = ResolveCasualVictoryRewardMode();
             RefreshDisplay();
             BuildOptionCards();
             WireSkipButton();
@@ -61,11 +65,26 @@ namespace KingCardsSpire.Views.UI
             ClearSpawnedCards();
         }
 
+        private static bool ResolveCasualVictoryRewardMode()
+        {
+            var bm = BattleManager.Instance;
+            var pending = bm?.PendingCasualVictoryRewardCardIds;
+            return pending != null && pending.Count > 0;
+        }
+
         private void RefreshDisplay()
         {
-            var gm = _game ?? GameManager.Instance;
+            if (titleText == null)
+                return;
 
-            if (titleText != null && gm != null)
+            if (_casualVictoryRewardMode)
+            {
+                titleText.text = "战斗胜利 · 选择一张卡牌";
+                return;
+            }
+
+            var gm = _game ?? GameManager.Instance;
+            if (gm?.PlayerState != null)
                 titleText.text = $"第{gm.PlayerState.CurrentFloor}层 · 驻守奖励";
         }
 
@@ -73,7 +92,13 @@ namespace KingCardsSpire.Views.UI
         {
             if (cardOptionsRoot == null || cardOptionPrefab == null)
             {
-                Debug.LogWarning("[BossRewardView] 请绑定 cardOptionsRoot 与 cardOptionPrefab（如 Assets/GameAssets/UI/Cards/Card.prefab）。");
+                Debug.LogWarning("[CardRewardView] 请绑定 cardOptionsRoot 与 cardOptionPrefab（如 Assets/GameAssets/UI/Cards/Card.prefab）。");
+                return;
+            }
+
+            if (_casualVictoryRewardMode)
+            {
+                BuildCasualVictoryOptionCards();
                 return;
             }
 
@@ -81,7 +106,7 @@ namespace KingCardsSpire.Views.UI
             var list = gm?.PendingBossRewards;
             var count = list != null ? list.Count : 0;
 
-            for (var i = 0; i < MaxOptions && i < count; i++)
+            for (var i = 0; i < MaxBossOptions && i < count; i++)
             {
                 var opt = list[i];
                 if (opt == null)
@@ -102,7 +127,50 @@ namespace KingCardsSpire.Views.UI
                     cv.LoadCardArtFromConfig(cfg);
 
                 var idx = i;
-                cv.OverrideClick(() => StartCoroutine(OnOptionConfirmed(idx)));
+                cv.OverrideClick(() => StartCoroutine(OnBossOptionConfirmed(idx)));
+                _spawnedOptionCards.Add(cv);
+            }
+        }
+
+        private void BuildCasualVictoryOptionCards()
+        {
+            var bm = BattleManager.Instance;
+            var ids = bm?.PendingCasualVictoryRewardCardIds;
+            if (ids == null || ids.Count == 0)
+                return;
+
+            for (var i = 0; i < ids.Count; i++)
+            {
+                var cardId = ids[i];
+                if (string.IsNullOrEmpty(cardId))
+                    continue;
+
+                var cv = Instantiate(cardOptionPrefab, cardOptionsRoot, false);
+                cv.SetScale(cardOptionScale);
+                cv.SetFaceDown(false);
+
+                CardConfigEntry cfg = null;
+                if (_config != null)
+                    _config.TryGetCard(cardId, out cfg);
+
+                var vm = cfg != null
+                    ? CardViewModel.FromConfigOnly(cfg)
+                    : CardViewModel.FromBossRewardOption(
+                        new BossRewardOption
+                        {
+                            IsGold = false,
+                            GoldAmount = 0,
+                            CardId = cardId,
+                            CardDisplayName = cardId
+                        },
+                        null);
+                cv.Apply(vm);
+
+                if (cfg != null)
+                    cv.LoadCardArtFromConfig(cfg);
+
+                var idx = i;
+                cv.OverrideClick(() => StartCoroutine(OnCasualOptionConfirmed(idx)));
                 _spawnedOptionCards.Add(cv);
             }
         }
@@ -125,7 +193,13 @@ namespace KingCardsSpire.Views.UI
             if (skipCardRewardButton == null)
                 return;
 
-            _onSkipClicked = () => StartCoroutine(OnSkipConfirmed());
+            _onSkipClicked = () =>
+            {
+                if (_casualVictoryRewardMode)
+                    StartCoroutine(OnCasualSkipConfirmedRoutine());
+                else
+                    StartCoroutine(OnBossSkipConfirmed());
+            };
             skipCardRewardButton.onClick.AddListener(_onSkipClicked);
         }
 
@@ -136,7 +210,7 @@ namespace KingCardsSpire.Views.UI
             _onSkipClicked = null;
         }
 
-        private IEnumerator OnOptionConfirmed(int index)
+        private IEnumerator OnBossOptionConfirmed(int index)
         {
             var gm = GameManager.Instance;
             var ui = UIManager.Instance;
@@ -150,7 +224,27 @@ namespace KingCardsSpire.Views.UI
             yield return RunEndingDialogueIfVictoryRoutine(ui);
         }
 
-        private IEnumerator OnSkipConfirmed()
+        private IEnumerator OnCasualOptionConfirmed(int index)
+        {
+            var gm = GameManager.Instance;
+            var ui = UIManager.Instance;
+            var bm = BattleManager.Instance;
+            if (gm == null || ui == null || bm == null)
+                yield break;
+
+            var pending = bm.PendingCasualVictoryRewardCardIds;
+            if (pending == null || index < 0 || index >= pending.Count)
+                yield break;
+
+            var cardId = pending[index];
+            if (!gm.TryGrantCasualVictoryRewardCard(cardId))
+                yield break;
+
+            bm.ClearPendingCasualVictoryRewardOffer();
+            ui.Close(UIPanelId.CardReward);
+        }
+
+        private IEnumerator OnBossSkipConfirmed()
         {
             var gm = GameManager.Instance;
             var ui = UIManager.Instance;
@@ -162,6 +256,16 @@ namespace KingCardsSpire.Views.UI
 
             CloseRewardAndBattle(ui);
             yield return RunEndingDialogueIfVictoryRoutine(ui);
+        }
+
+        private IEnumerator OnCasualSkipConfirmedRoutine()
+        {
+            var bm = BattleManager.Instance;
+            var ui = UIManager.Instance;
+            bm?.ClearPendingCasualVictoryRewardOffer();
+            if (ui != null)
+                ui.Close(UIPanelId.CardReward);
+            yield break;
         }
 
         private static IEnumerator RunEndingDialogueIfVictoryRoutine(UIManager ui)

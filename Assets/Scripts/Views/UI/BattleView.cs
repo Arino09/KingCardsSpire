@@ -973,10 +973,21 @@ namespace KingCardsSpire.Views.UI
         {
             yield return null;
 
+            var ui = UIManager.Instance;
+            var bm = BattleManager.Instance;
+            var hasCasualOffer = bm != null && bm.PendingCasualVictoryRewardCardIds != null &&
+                                 bm.PendingCasualVictoryRewardCardIds.Count > 0;
+
+            if (ui != null && hasCasualOffer)
+            {
+                yield return ui.OpenAsync(UIPanelId.CardReward);
+                while (ui.IsPanelOpen(UIPanelId.CardReward))
+                    yield return null;
+            }
+
             if (_battle != null)
                 _battle.RequestEndBattle();
 
-            var ui = UIManager.Instance;
             if (ui != null)
                 ui.Close(UIPanelId.Battle);
         }

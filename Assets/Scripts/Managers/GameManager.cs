@@ -350,6 +350,53 @@ namespace KingCardsSpire.Managers
         }
 
         /// <summary>
+        /// 常规战斗胜利：玩家从当前 <see cref="BattleManager.PendingCasualVictoryRewardCardIds"/> 中确认的一张卡写入持有卡组（惊喜卡包与驻守奖励卡牌分支一致）。
+        /// </summary>
+        /// <returns>是否在待选列表内且成功解析配置并发放（含惊喜卡包随机）。</returns>
+        public bool TryGrantCasualVictoryRewardCard(string cardId)
+        {
+            if (_gameOver || _runVictory || PlayerState == null)
+                return false;
+            if (string.IsNullOrEmpty(cardId))
+                return false;
+
+            var bm = BattleManager.Instance;
+            var pending = bm?.PendingCasualVictoryRewardCardIds;
+            if (pending == null || pending.Count == 0)
+                return false;
+
+            var found = false;
+            for (var i = 0; i < pending.Count; i++)
+            {
+                if (string.Equals(pending[i], cardId, StringComparison.OrdinalIgnoreCase))
+                {
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found)
+                return false;
+
+            var cfgMgr = ConfigManager.Instance;
+            if (cfgMgr == null || !cfgMgr.TryGetCard(cardId, out var cc))
+            {
+                Debug.LogWarning($"[GameManager] 常规战胜奖励卡牌配置缺失: {cardId}");
+                return false;
+            }
+
+            if (HasBuff(BuffId.SurprisePack))
+                AppendRandomOwnedCardsFromSurprisePackRoll();
+            else
+            {
+                AppendOwnedCard(CardFromConfig(cc));
+                _events?.Publish(new CardAcquiredEvent(cc.Id));
+            }
+
+            return true;
+        }
+
+        /// <summary>
         /// 跳过卡牌奖励：发放本次待选列表中<strong>全部金币项</strong>（每笔单独调用 <see cref="AddGold"/>，雨季增收仍生效），
         /// 不领取任何卡牌；随后清空待选并进层。
         /// </summary>

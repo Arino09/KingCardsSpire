@@ -57,7 +57,13 @@ namespace KingCardsSpire.Managers
 
         private bool _playerChaoticRandomPlay;
 
+        /// <summary>常规战（非 BOSS、非教学）胜利后待展示的奖励 CardId（至多 3 个）；<see cref="ClearPendingCasualVictoryRewardOffer"/> 或下一场开战时清空。</summary>
+        private string[] _pendingCasualVictoryRewardCardIds;
+
         public BattleState CurrentBattle { get; private set; } = new();
+
+        /// <summary>供 <see cref="Views.UI.CardRewardView"/> 读取的常规战胜卡牌奖励选项；无待选时为 <c>null</c>。</summary>
+        public IReadOnlyList<string> PendingCasualVictoryRewardCardIds => _pendingCasualVictoryRewardCardIds;
 
         public bool IsBattleActive => _phase == Phase.InBattle;
 
@@ -205,6 +211,8 @@ namespace KingCardsSpire.Managers
             WeatherType weather, int xRayCount, bool isBossBattle, int bossAiStrength,
             string opponentDisplayNameOverride = null, bool tutorialBattle = false)
         {
+            _pendingCasualVictoryRewardCardIds = null;
+
             var chaoticExtraSnapshot = new List<Card>(_pendingChaoticExtraTemplates);
             _pendingChaoticExtraTemplates.Clear();
 
@@ -501,6 +509,12 @@ namespace KingCardsSpire.Managers
             ResetRuntime();
             SyncBattleState();
             EventManager.Instance?.Publish(new BattleStateChangedEvent());
+        }
+
+        /// <summary>常规战胜奖励界面关闭或放弃后清空待选，避免影响下一场战斗。</summary>
+        public void ClearPendingCasualVictoryRewardOffer()
+        {
+            _pendingCasualVictoryRewardCardIds = null;
         }
 
         private List<Card> BuildBossDeckFromTowerOrFallback()
@@ -1059,6 +1073,13 @@ namespace KingCardsSpire.Managers
             _phase = Phase.Idle;
             _pendingEnemyHandIndex = -1;
             _pendingPlayerHandIndex = -1;
+
+            if (playerVictory && !_isBossBattle && !_isTutorialBattle)
+                _pendingCasualVictoryRewardCardIds =
+                    CasualVictoryRewardPicker.BuildOfferCardIds(_enemyHand, _enemyDiscard);
+            else
+                _pendingCasualVictoryRewardCardIds = null;
+
             var boss = _isBossBattle;
             Debug.Log(
                 $"[BattleManager] 战斗结束 己方{(playerVictory ? "胜" : "败")} 原因={reason} BOSS战={boss}");
