@@ -11,7 +11,8 @@ using UnityEngine.UI;
 namespace KingCardsSpire.Views.UI
 {
     /// <summary>
-    /// 牌组仓库交换：左侧出战 <see cref="PlayerData.HandCards"/>，右侧仓库 <see cref="PlayerData.StoredCards"/>；预制体根挂本脚本并在 Inspector 绑定 Content 与 Card 预制体。
+    /// 牌组仓库交换：左侧出战 <see cref="PlayerData.HandCards"/>，右侧仓库 <see cref="PlayerData.StoredCards"/>；
+    /// 列标题显示「出战卡组（当前/10）」「卡牌仓库（当前/10）」。预制体根挂本脚本并在 Inspector 绑定 Content 与 Card 预制体。
     /// </summary>
     public sealed class DeckStorageView : BaseView
     {
@@ -54,8 +55,40 @@ namespace KingCardsSpire.Views.UI
             if (_viewModel == null)
                 return;
 
+            RefreshColumnHeaderTexts();
             RebuildSide(activeDeckGridRoot, _viewModel.ActiveCards, true);
             RebuildSide(storageGridRoot, _viewModel.StorageCards, false);
+        }
+
+        /// <summary>
+        /// 列标题为「出战卡组（当前/上限）」「卡牌仓库（当前/上限）」；依赖预制体结构：列表根为 ScrollView/Viewport/Content，
+        /// 其再上两级父节点为列根，且列根第一个子物体带 <see cref="Text"/>。
+        /// </summary>
+        private void RefreshColumnHeaderTexts()
+        {
+            var hand = _viewModel.ActiveCards?.Count ?? 0;
+            var store = _viewModel.StorageCards?.Count ?? 0;
+
+            TrySetScrollColumnHeaderText(activeDeckGridRoot, hand, GameManager.MaxBattleDeckCards, "出战卡组");
+            TrySetScrollColumnHeaderText(storageGridRoot, store, GameManager.MaxStorageCards, "卡牌仓库");
+        }
+
+        private static void TrySetScrollColumnHeaderText(RectTransform gridRoot, int currentCount, int maxCount,
+            string baseLabel)
+        {
+            if (gridRoot == null || string.IsNullOrEmpty(baseLabel))
+                return;
+
+            var column = gridRoot.parent?.parent?.parent as RectTransform;
+            if (column == null || column.childCount < 1)
+                return;
+
+            var titleTransform = column.GetChild(0);
+            var text = titleTransform.GetComponent<Text>();
+            if (text == null)
+                return;
+
+            text.text = $"{baseLabel}（{currentCount}/{maxCount}）";
         }
 
         private void RebuildSide(RectTransform root, IReadOnlyList<Card> cards, bool isActiveSide)

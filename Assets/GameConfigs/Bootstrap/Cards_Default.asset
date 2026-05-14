@@ -279,7 +279,7 @@ MonoBehaviour:
     isUnique: 0
   - id: four_qinglong
     displayName: "\u56DB\u8C61\u2014\u9752\u9F99"
-    level: 0
+    level: 2.6
     type: 1
     icon:
       m_AssetGUID: c773ed5c6a9c666489dba243cdf9f9fc
@@ -287,11 +287,11 @@ MonoBehaviour:
       m_SubObjectType: UnityEngine.Sprite, UnityEngine.CoreModule, Version=0.0.0.0,
         Culture=neutral, PublicKeyToken=null
       m_EditorAssetChanged: 0
-    description: "\u56DB\u8C61\u5168\u90E8\u5728\u573A\u65F6\u76F4\u63A5\u80DC\u5229"
+    description: "\u56DB\u8C61\u5168\u90E8\u6218\u80DC\u5BF9\u624B\u76F4\u63A5\u80DC\u5229"
     isUnique: 0
   - id: four_baihu
     displayName: "\u56DB\u8C61\u2014\u767D\u864E"
-    level: 0
+    level: 2
     type: 1
     icon:
       m_AssetGUID: dde02a7a678e6dd499c0bd2a76e2bfd1
@@ -299,11 +299,11 @@ MonoBehaviour:
       m_SubObjectType: UnityEngine.Sprite, UnityEngine.CoreModule, Version=0.0.0.0,
         Culture=neutral, PublicKeyToken=null
       m_EditorAssetChanged: 0
-    description: "\u56DB\u8C61\u5168\u90E8\u5728\u573A\u65F6\u76F4\u63A5\u80DC\u5229"
+    description: "\u56DB\u8C61\u5168\u90E8\u6218\u80DC\u5BF9\u624B\u76F4\u63A5\u80DC\u5229"
     isUnique: 0
   - id: four_zhuque
     displayName: "\u56DB\u8C61\u2014\u6731\u96C0"
-    level: 0
+    level: 1.9
     type: 1
     icon:
       m_AssetGUID: 58a19fe52ea6f224a9273435e89098bc
@@ -311,11 +311,11 @@ MonoBehaviour:
       m_SubObjectType: UnityEngine.Sprite, UnityEngine.CoreModule, Version=0.0.0.0,
         Culture=neutral, PublicKeyToken=null
       m_EditorAssetChanged: 0
-    description: "\u56DB\u8C61\u5168\u90E8\u5728\u573A\u65F6\u76F4\u63A5\u80DC\u5229"
+    description: "\u56DB\u8C61\u5168\u90E8\u6218\u80DC\u5BF9\u624B\u76F4\u63A5\u80DC\u5229"
     isUnique: 0
   - id: four_xuanwu
     displayName: "\u56DB\u8C61\u2014\u7384\u6B66"
-    level: 0
+    level: 1.4
     type: 1
     icon:
       m_AssetGUID: b369f8896f6b59640a363b41456f39c8
@@ -323,7 +323,7 @@ MonoBehaviour:
       m_SubObjectType: UnityEngine.Sprite, UnityEngine.CoreModule, Version=0.0.0.0,
         Culture=neutral, PublicKeyToken=null
       m_EditorAssetChanged: 0
-    description: "\u56DB\u8C61\u5168\u90E8\u5728\u573A\u65F6\u76F4\u63A5\u80DC\u5229"
+    description: "\u56DB\u8C61\u5168\u90E8\u6218\u80DC\u5BF9\u624B\u76F4\u63A5\u80DC\u5229"
     isUnique: 0
   - id: warm_day
     displayName: "\u6696\u65E5"

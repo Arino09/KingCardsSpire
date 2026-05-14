@@ -216,8 +216,6 @@ namespace KingCardsSpire.Views.UI
                     if (playerVictory)
                         view._game.SetOpeningTutorialCompletedAndSave();
 
-                    ui.Close(UIPanelId.Battle);
-
                     if (playerVictory)
                     {
                         yield return RunBuffDraftIfNeeded(view._game, ui);
@@ -226,11 +224,14 @@ namespace KingCardsSpire.Views.UI
                     else
                         yield return ui.OpenAsync(UIPanelId.MainMenu);
 
+                    // 在下一界面已叠在战斗之上后再关战斗，避免加载间隙闪屏（见 BattleView.TutorialPostBattleFlowRoutine）。
+                    ui.Close(UIPanelId.Battle);
+
                     yield break;
                 }
 
-                ui.Close(UIPanelId.Battle);
                 yield return ui.OpenAsync(UIPanelId.MainMenu);
+                ui.Close(UIPanelId.Battle);
                 yield break;
             }
 

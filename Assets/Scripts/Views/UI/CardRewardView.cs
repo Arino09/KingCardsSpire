@@ -13,12 +13,21 @@ using UnityEngine.UI;
 namespace KingCardsSpire.Views.UI
 {
     /// <summary>
-    /// 驻守者奖励（两档金币 + 至多 5 张 BOSS 卡组卡牌）或常规战斗胜利后从敌方卡组中至多 3 张里选 1 张；选项使用与战斗相同的 Card 预制体（<see cref="CardView"/>）。
+    /// 驻守者奖励、常规战胜三选一、主角房友谊赛三选一或「删仓库一张牌」奖励；选项使用与战斗相同的 Card 预制体（<see cref="CardView"/>）。
     /// 驻守：跳过卡牌按钮领取列表中<strong>全部金币项</strong>（见 <see cref="GameManager.TrySkipBossCardRewardsCollectGoldAndAdvance"/>）。
-    /// 常规：跳过表示不获得卡牌，仅关闭本面板。
+    /// 常规 / 友谊赛三选一：跳过表示不获得本次卡牌奖励，仅关闭本面板。
+    /// 友谊赛删仓库：跳过仍发放 5 金币且不删牌。
     /// </summary>
     public sealed class CardRewardView : BaseView
     {
+        private enum CardRewardSessionKind
+        {
+            BossRewards,
+            CasualVictory,
+            HeroDuelPickThree,
+            HeroDuelRemoveStorage
+        }
+
         [SerializeField] private Text titleText;
         [SerializeField] private RectTransform cardOptionsRoot;
         [SerializeField] private CardView cardOptionPrefab;
@@ -32,8 +41,7 @@ namespace KingCardsSpire.Views.UI
 
         private UnityAction _onSkipClicked;
 
-        /// <summary>本次打开是否为「常规战胜 · 敌方卡组三选一」模式。</summary>
-        private bool _casualVictoryRewardMode;
+        private CardRewardSessionKind _sessionKind;
 
         public override void Initialize()
         {
@@ -45,7 +53,7 @@ namespace KingCardsSpire.Views.UI
         protected override void OnOpen()
         {
             ClearSpawnedCards();
-            _casualVictoryRewardMode = ResolveCasualVictoryRewardMode();
+            _sessionKind = ResolveSessionKind();
             RefreshDisplay();
             BuildOptionCards();
             WireSkipButton();
@@ -64,11 +72,20 @@ namespace KingCardsSpire.Views.UI
             ClearSpawnedCards();
         }
 
-        private static bool ResolveCasualVictoryRewardMode()
+        private static CardRewardSessionKind ResolveSessionKind()
         {
+            var gm = GameManager.Instance;
+            if (gm != null && gm.IsHeroDuelStorageRemovalRewardPending)
+                return CardRewardSessionKind.HeroDuelRemoveStorage;
+
             var bm = BattleManager.Instance;
-            var pending = bm?.PendingCasualVictoryRewardCardIds;
-            return pending != null && pending.Count > 0;
+            if (bm?.PendingHeroDuelPickThreeCardIds != null && bm.PendingHeroDuelPickThreeCardIds.Count > 0)
+                return CardRewardSessionKind.HeroDuelPickThree;
+
+            if (bm?.PendingCasualVictoryRewardCardIds != null && bm.PendingCasualVictoryRewardCardIds.Count > 0)
+                return CardRewardSessionKind.CasualVictory;
+
+            return CardRewardSessionKind.BossRewards;
         }
 
         private void RefreshDisplay()
@@ -76,15 +93,25 @@ namespace KingCardsSpire.Views.UI
             if (titleText == null)
                 return;
 
-            if (_casualVictoryRewardMode)
+            switch (_sessionKind)
             {
-                titleText.text = "战斗胜利 · 选择一张卡牌";
-                return;
+                case CardRewardSessionKind.CasualVictory:
+                    titleText.text = "战斗胜利 · 选择一张卡牌";
+                    return;
+                case CardRewardSessionKind.HeroDuelPickThree:
+                    titleText.text = "友谊赛胜利 · 三选一卡牌";
+                    return;
+                case CardRewardSessionKind.HeroDuelRemoveStorage:
+                    titleText.text = "友谊赛胜利 · 删除仓库中的一张牌";
+                    return;
+                default:
+                {
+                    var gm = _game ?? GameManager.Instance;
+                    if (gm?.PlayerState != null)
+                        titleText.text = $"第{gm.PlayerState.CurrentFloor}层 · 驻守奖励";
+                    return;
+                }
             }
-
-            var gm = _game ?? GameManager.Instance;
-            if (gm?.PlayerState != null)
-                titleText.text = $"第{gm.PlayerState.CurrentFloor}层 · 驻守奖励";
         }
 
         private void BuildOptionCards()
@@ -95,9 +122,21 @@ namespace KingCardsSpire.Views.UI
                 return;
             }
 
-            if (_casualVictoryRewardMode)
+            if (_sessionKind == CardRewardSessionKind.CasualVictory)
             {
                 BuildCasualVictoryOptionCards();
+                return;
+            }
+
+            if (_sessionKind == CardRewardSessionKind.HeroDuelPickThree)
+            {
+                BuildHeroDuelPickThreeOptionCards();
+                return;
+            }
+
+            if (_sessionKind == CardRewardSessionKind.HeroDuelRemoveStorage)
+            {
+                BuildHeroDuelRemoveStorageOptionCards();
                 return;
             }
 
@@ -174,6 +213,92 @@ namespace KingCardsSpire.Views.UI
             }
         }
 
+        private void BuildHeroDuelPickThreeOptionCards()
+        {
+            var bm = BattleManager.Instance;
+            var ids = bm?.PendingHeroDuelPickThreeCardIds;
+            if (ids == null || ids.Count == 0)
+                return;
+
+            for (var i = 0; i < ids.Count; i++)
+            {
+                var cardId = ids[i];
+                if (string.IsNullOrEmpty(cardId))
+                    continue;
+
+                var cv = Instantiate(cardOptionPrefab, cardOptionsRoot, false);
+                cv.SetScale(cardOptionScale);
+                cv.SetFaceDown(false);
+
+                CardConfigEntry cfg = null;
+                if (_config != null)
+                    _config.TryGetCard(cardId, out cfg);
+
+                var vm = cfg != null
+                    ? CardViewModel.FromConfigOnly(cfg)
+                    : CardViewModel.FromBossRewardOption(
+                        new BossRewardOption
+                        {
+                            IsGold = false,
+                            GoldAmount = 0,
+                            CardId = cardId,
+                            CardDisplayName = cardId
+                        },
+                        null);
+                cv.Apply(vm);
+
+                if (cfg != null)
+                    cv.LoadCardArtFromConfig(cfg);
+
+                var idx = i;
+                cv.OverrideClick(() => StartCoroutine(OnHeroDuelPickThreeConfirmed(idx)));
+                _spawnedOptionCards.Add(cv);
+            }
+        }
+
+        private void BuildHeroDuelRemoveStorageOptionCards()
+        {
+            var gm = GameManager.Instance;
+            var stored = gm?.PlayerState?.StoredCards;
+            if (stored == null || stored.Length == 0)
+                return;
+
+            for (var i = 0; i < stored.Length; i++)
+            {
+                var c = stored[i];
+                if (c == null || string.IsNullOrEmpty(c.Id))
+                    continue;
+
+                var cv = Instantiate(cardOptionPrefab, cardOptionsRoot, false);
+                cv.SetScale(cardOptionScale);
+                cv.SetFaceDown(false);
+
+                CardConfigEntry cfg = null;
+                if (_config != null)
+                    _config.TryGetCard(c.Id, out cfg);
+
+                var vm = cfg != null
+                    ? CardViewModel.FromConfigOnly(cfg)
+                    : CardViewModel.FromBossRewardOption(
+                        new BossRewardOption
+                        {
+                            IsGold = false,
+                            GoldAmount = 0,
+                            CardId = c.Id,
+                            CardDisplayName = string.IsNullOrEmpty(c.Name) ? c.Id : c.Name
+                        },
+                        null);
+                cv.Apply(vm);
+
+                if (cfg != null)
+                    cv.LoadCardArtFromConfig(cfg);
+
+                var idx = i;
+                cv.OverrideClick(() => StartCoroutine(OnHeroDuelRemoveStorageConfirmed(idx)));
+                _spawnedOptionCards.Add(cv);
+            }
+        }
+
         private void ClearSpawnedCards()
         {
             for (var i = 0; i < _spawnedOptionCards.Count; i++)
@@ -194,10 +319,21 @@ namespace KingCardsSpire.Views.UI
 
             _onSkipClicked = () =>
             {
-                if (_casualVictoryRewardMode)
-                    StartCoroutine(OnCasualSkipConfirmedRoutine());
-                else
-                    StartCoroutine(OnBossSkipConfirmed());
+                switch (_sessionKind)
+                {
+                    case CardRewardSessionKind.BossRewards:
+                        StartCoroutine(OnBossSkipConfirmed());
+                        break;
+                    case CardRewardSessionKind.CasualVictory:
+                        StartCoroutine(OnCasualSkipConfirmedRoutine());
+                        break;
+                    case CardRewardSessionKind.HeroDuelPickThree:
+                        StartCoroutine(OnHeroDuelPickThreeSkipRoutine());
+                        break;
+                    case CardRewardSessionKind.HeroDuelRemoveStorage:
+                        StartCoroutine(OnHeroDuelRemoveStorageSkipRoutine());
+                        break;
+                }
             };
             skipCardRewardButton.onClick.AddListener(_onSkipClicked);
         }
@@ -243,6 +379,39 @@ namespace KingCardsSpire.Views.UI
             ui.Close(UIPanelId.CardReward);
         }
 
+        private IEnumerator OnHeroDuelPickThreeConfirmed(int index)
+        {
+            var gm = GameManager.Instance;
+            var ui = UIManager.Instance;
+            var bm = BattleManager.Instance;
+            if (gm == null || ui == null || bm == null)
+                yield break;
+
+            var pending = bm.PendingHeroDuelPickThreeCardIds;
+            if (pending == null || index < 0 || index >= pending.Count)
+                yield break;
+
+            var cardId = pending[index];
+            if (!gm.TryGrantHeroDuelPickThreeReward(cardId))
+                yield break;
+
+            bm.ClearPendingHeroDuelPickThreeOffer();
+            ui.Close(UIPanelId.CardReward);
+        }
+
+        private IEnumerator OnHeroDuelRemoveStorageConfirmed(int index)
+        {
+            var gm = GameManager.Instance;
+            var ui = UIManager.Instance;
+            if (gm == null || ui == null)
+                yield break;
+
+            if (!gm.TryCompleteHeroDuelStorageRemovalRewardAtStorageIndex(index))
+                yield break;
+
+            ui.Close(UIPanelId.CardReward);
+        }
+
         private IEnumerator OnBossSkipConfirmed()
         {
             var gm = GameManager.Instance;
@@ -264,6 +433,30 @@ namespace KingCardsSpire.Views.UI
             bm?.ClearPendingCasualVictoryRewardOffer();
             if (ui != null)
                 ui.Close(UIPanelId.CardReward);
+            yield break;
+        }
+
+        private IEnumerator OnHeroDuelPickThreeSkipRoutine()
+        {
+            var bm = BattleManager.Instance;
+            var ui = UIManager.Instance;
+            bm?.ClearPendingHeroDuelPickThreeOffer();
+            if (ui != null)
+                ui.Close(UIPanelId.CardReward);
+            yield break;
+        }
+
+        private IEnumerator OnHeroDuelRemoveStorageSkipRoutine()
+        {
+            var gm = GameManager.Instance;
+            var ui = UIManager.Instance;
+            if (gm == null || ui == null)
+                yield break;
+
+            if (!gm.TrySkipHeroDuelStorageRemovalReward())
+                yield break;
+
+            ui.Close(UIPanelId.CardReward);
             yield break;
         }
 

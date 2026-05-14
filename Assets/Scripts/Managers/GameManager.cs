@@ -66,7 +66,13 @@ namespace KingCardsSpire.Managers
         /// </summary>
         private bool _deferOpeningTutorialBattleIntro;
 
+        /// <summary>友谊赛槽位 2 胜场：待玩家在 <see cref="CardRewardView"/> 中从仓库删一张牌后结算 5 金。</summary>
+        private bool _heroDuelStorageRemovalRewardPending;
+
         public bool DeferOpeningTutorialBattleIntro => _deferOpeningTutorialBattleIntro;
+
+        /// <summary>友谊赛「删仓库一张牌」奖励界面是否待处理（由 <see cref="CardRewardView"/> 读取）。</summary>
+        public bool IsHeroDuelStorageRemovalRewardPending => _heroDuelStorageRemovalRewardPending;
 
         public void SetDeferOpeningTutorialBattleIntro(bool value)
         {
@@ -75,6 +81,12 @@ namespace KingCardsSpire.Managers
 
         /// <summary>出战卡组上限（文档 §3.2 / §2.2.1）。</summary>
         public const int MaxBattleDeckCards = 10;
+
+        /// <summary>仓库（StoredCards）张数上限。</summary>
+        public const int MaxStorageCards = 10;
+
+        /// <summary>出战 + 仓库合计持有张数上限。</summary>
+        public const int MaxTotalOwnedCards = 20;
 
         protected override void Awake()
         {
@@ -106,6 +118,7 @@ namespace KingCardsSpire.Managers
         private void OnBattleStartedClearNecklaceGoldFlag(BattleStartedEvent _)
         {
             _pendingBossVictoryGoldenNecklaceDoubleGold = false;
+            _heroDuelStorageRemovalRewardPending = false;
         }
 
         /// <summary>每层允许停留天数上限（配置 MaxDaysPerFloor）。</summary>
@@ -137,6 +150,7 @@ namespace KingCardsSpire.Managers
 
             _gameOver = false;
             _runVictory = false;
+            _heroDuelStorageRemovalRewardPending = false;
             PlayerState = data.Player ?? new PlayerData();
             FloorState = data.Floor ?? new FloorState();
             ShopState = data.Shop ?? new ShopState();
@@ -171,6 +185,7 @@ namespace KingCardsSpire.Managers
         {
             _gameOver = false;
             _runVictory = false;
+            _heroDuelStorageRemovalRewardPending = false;
 
             var gc = ResolveGameConfig();
             PlayerState = new PlayerData
@@ -373,10 +388,18 @@ namespace KingCardsSpire.Managers
             if (cc.IsUnique && OwnsCardId(cc.Id))
                 return false;
 
+            if (!CanReceiveNewOwnedCard(cc))
+                return false;
+
             if (!TrySpendGold(slot.BasePrice))
                 return false;
 
-            AppendOwnedCard(CardFromConfig(cc));
+            if (!TryAppendOwnedCard(CardFromConfig(cc)))
+            {
+                AddGold(slot.BasePrice);
+                return false;
+            }
+
             _events?.Publish(new CardAcquiredEvent(cc.Id));
 
             var unlimited = HasBuff(BuffId.UnlimitedSupply);
@@ -431,8 +454,10 @@ namespace KingCardsSpire.Managers
                         AppendRandomOwnedCardsFromSurprisePackRoll();
                     else
                     {
-                        AppendOwnedCard(CardFromConfig(cc));
-                        _events?.Publish(new CardAcquiredEvent(cc.Id));
+                        if (!TryAppendOwnedCard(CardFromConfig(cc)))
+                            Debug.LogWarning("[GameManager] 驻守卡牌奖励：持有已达上限，未能领取该卡。");
+                        else
+                            _events?.Publish(new CardAcquiredEvent(cc.Id));
                     }
                 }
                 else
@@ -485,7 +510,8 @@ namespace KingCardsSpire.Managers
                 AppendRandomOwnedCardsFromSurprisePackRoll();
             else
             {
-                AppendOwnedCard(CardFromConfig(cc));
+                if (!TryAppendOwnedCard(CardFromConfig(cc)))
+                    return false;
                 _events?.Publish(new CardAcquiredEvent(cc.Id));
             }
 
@@ -565,9 +591,12 @@ namespace KingCardsSpire.Managers
                 return;
 
             var take = Math.Min(MaxBattleDeckCards, list.Count);
+            var maxTransferToStorage = Mathf.Min(MaxStorageCards, Mathf.Max(0, MaxTotalOwnedCards - take));
+            var remaining = list.Count - take;
+            var storeCount = Mathf.Min(remaining, maxTransferToStorage);
             player.HandCards = list.GetRange(0, take).ToArray();
-            player.StoredCards = list.Count > take
-                ? list.GetRange(take, list.Count - take).ToArray()
+            player.StoredCards = storeCount > 0
+                ? list.GetRange(take, storeCount).ToArray()
                 : Array.Empty<Card>();
             player.OwnedCards = Array.Empty<Card>();
         }
@@ -604,26 +633,105 @@ namespace KingCardsSpire.Managers
                 p.OwnedCards = Array.Empty<Card>();
             }
 
-            if (p.HandCards.Length <= MaxBattleDeckCards)
-                return;
+            if (p.HandCards.Length > MaxBattleDeckCards)
+            {
+                var handList = new List<Card>(p.HandCards);
+                var excess = handList.Count - MaxBattleDeckCards;
+                var stay = handList.GetRange(0, MaxBattleDeckCards);
+                var move = handList.GetRange(MaxBattleDeckCards, excess);
+                var newStore = new List<Card>(move);
+                newStore.AddRange(p.StoredCards);
+                p.HandCards = stay.ToArray();
+                p.StoredCards = newStore.ToArray();
+            }
 
-            var handList = new List<Card>(p.HandCards);
-            var excess = handList.Count - MaxBattleDeckCards;
-            var stay = handList.GetRange(0, MaxBattleDeckCards);
-            var move = handList.GetRange(MaxBattleDeckCards, excess);
-            var newStore = new List<Card>(move);
-            newStore.AddRange(p.StoredCards);
-            p.HandCards = stay.ToArray();
-            p.StoredCards = newStore.ToArray();
+            TrimOwnedCollectionsToLimits();
         }
 
-        private void AppendOwnedCard(Card card)
+        /// <summary>
+        /// 将出战裁至 <see cref="MaxBattleDeckCards"/>、仓库裁至 <see cref="MaxStorageCards"/>，且合计不超过 <see cref="MaxTotalOwnedCards"/>。
+        /// </summary>
+        private void TrimOwnedCollectionsToLimits()
         {
-            if (card == null)
+            var p = PlayerState;
+            if (p == null)
                 return;
-            var list = new List<Card>(PlayerState.StoredCards ?? Array.Empty<Card>());
-            list.Add(card);
-            PlayerState.StoredCards = list.ToArray();
+
+            p.HandCards ??= Array.Empty<Card>();
+            p.StoredCards ??= Array.Empty<Card>();
+
+            var hand = new List<Card>(p.HandCards);
+            var storage = new List<Card>(p.StoredCards);
+
+            while (hand.Count > MaxBattleDeckCards)
+            {
+                storage.Insert(0, hand[hand.Count - 1]);
+                hand.RemoveAt(hand.Count - 1);
+            }
+
+            while (storage.Count > MaxStorageCards && hand.Count < MaxBattleDeckCards)
+            {
+                hand.Add(storage[0]);
+                storage.RemoveAt(0);
+            }
+
+            while (storage.Count > MaxStorageCards)
+                storage.RemoveAt(storage.Count - 1);
+
+            while (hand.Count + storage.Count > MaxTotalOwnedCards && storage.Count > 0)
+                storage.RemoveAt(storage.Count - 1);
+
+            while (hand.Count + storage.Count > MaxTotalOwnedCards && hand.Count > 0)
+                hand.RemoveAt(hand.Count - 1);
+
+            p.HandCards = hand.ToArray();
+            p.StoredCards = storage.ToArray();
+        }
+
+        /// <summary>新卡优先进仓库；仓库满且出战未满则进出战；已满则返回 false。</summary>
+        public bool TryAppendOwnedCard(Card card)
+        {
+            if (card == null || PlayerState == null || _gameOver || _runVictory)
+                return false;
+
+            PlayerState.HandCards ??= Array.Empty<Card>();
+            PlayerState.StoredCards ??= Array.Empty<Card>();
+
+            var hand = new List<Card>(PlayerState.HandCards);
+            var storage = new List<Card>(PlayerState.StoredCards);
+
+            if (hand.Count + storage.Count >= MaxTotalOwnedCards)
+                return false;
+
+            if (storage.Count < MaxStorageCards)
+                storage.Add(card);
+            else if (hand.Count < MaxBattleDeckCards)
+                hand.Add(card);
+            else
+                return false;
+
+            PlayerState.HandCards = hand.ToArray();
+            PlayerState.StoredCards = storage.ToArray();
+            PersistCurrentRunToDisk();
+            return true;
+        }
+
+        private bool CanReceiveNewOwnedCard(CardConfigEntry cc)
+        {
+            if (PlayerState == null || cc == null)
+                return false;
+
+            PlayerState.HandCards ??= Array.Empty<Card>();
+            PlayerState.StoredCards ??= Array.Empty<Card>();
+
+            var hc = PlayerState.HandCards.Length;
+            var sc = PlayerState.StoredCards.Length;
+            if (hc + sc >= MaxTotalOwnedCards)
+                return false;
+            if (sc >= MaxStorageCards && hc >= MaxBattleDeckCards)
+                return false;
+
+            return true;
         }
 
         private bool OwnsCardId(string cardId)
@@ -638,7 +746,8 @@ namespace KingCardsSpire.Managers
         }
 
         /// <summary>
-        /// <paramref name="fromActiveDeck"/> 为 true 时从出战移入仓库；为 false 时从仓库移入出战（出战已达 <see cref="MaxBattleDeckCards"/> 则失败）。
+        /// <paramref name="fromActiveDeck"/> 为 true 时从出战移入仓库（仓库已达 <see cref="MaxStorageCards"/> 则失败）；
+        /// 为 false 时从仓库移入出战（出战已达 <see cref="MaxBattleDeckCards"/> 则失败）。
         /// </summary>
         public bool TryMoveCardBetweenDeckAndStorage(bool fromActiveDeck, int index)
         {
@@ -658,6 +767,9 @@ namespace KingCardsSpire.Managers
 
                 var card = hand[index];
                 if (CardBattleRules.IsKing(card) || CardBattleRules.IsCommoner(card))
+                    return false;
+
+                if (storage.Count >= MaxStorageCards)
                     return false;
 
                 hand.RemoveAt(index);
@@ -821,6 +933,12 @@ namespace KingCardsSpire.Managers
             _pendingBossVictoryGoldenNecklaceDoubleGold =
                 e.PlayerVictory && e.GoldenNecklacePlayedThisBattle && e.IsBossBattle;
 
+            if (!e.IsBossBattle && e.PlayerVictory && e.IsHeroRoomDuel)
+            {
+                ApplyHeroRoomDuelVictoryIfNeeded(e.HeroRoomDuelSlotIndex);
+                return;
+            }
+
             if (!e.IsBossBattle || !e.PlayerVictory)
                 return;
 
@@ -846,6 +964,162 @@ namespace KingCardsSpire.Managers
             var options = BossRewardPicker.Generate(spareDays, entry, cfgMgr, e.BossVictoryRewardCardIds);
             _pendingBossRewards = options;
             _events?.Publish(new BossRewardOfferedEvent(PlayerState.CurrentFloor, options));
+        }
+
+        /// <summary>主角房友谊赛胜场：槽位 0 随机金币；1 三选一卡；2 删仓库一张 +5 金（仓库空则仅 5 金）。</summary>
+        private void ApplyHeroRoomDuelVictoryIfNeeded(int heroRoomDuelSlotIndex)
+        {
+            if (_gameOver || _runVictory || PlayerState == null)
+                return;
+
+            if (heroRoomDuelSlotIndex < 0 || heroRoomDuelSlotIndex >= StoryDialogueRules.HeroSlotCount)
+                return;
+
+            switch (heroRoomDuelSlotIndex)
+            {
+                case 0:
+                    AddGold(Random.Range(5, 21));
+                    PersistCurrentRunToDisk();
+                    return;
+                case 1:
+                {
+                    var ids = BuildHeroDuelPickThreeRandomCardIds();
+                    if (ids != null && ids.Count > 0)
+                        BattleManager.Instance?.SetPendingHeroDuelPickThreeOffer(ids);
+                    return;
+                }
+                case 2:
+                {
+                    var storage = PlayerState.StoredCards;
+                    if (storage == null || storage.Length == 0)
+                    {
+                        AddGold(5);
+                        PersistCurrentRunToDisk();
+                        return;
+                    }
+
+                    _heroDuelStorageRemovalRewardPending = true;
+                    return;
+                }
+            }
+        }
+
+        private List<string> BuildHeroDuelPickThreeRandomCardIds()
+        {
+            var cfgMgr = ConfigManager.Instance;
+            if (cfgMgr == null)
+                return null;
+
+            _surpriseRuntimePoolScratch.Clear();
+            cfgMgr.AppendAllCardsAsRuntime(_surpriseRuntimePoolScratch);
+            for (var j = _surpriseRuntimePoolScratch.Count - 1; j >= 0; j--)
+            {
+                var c = _surpriseRuntimePoolScratch[j];
+                if (c != null && c.IsUnique && OwnsCardId(c.Id))
+                    _surpriseRuntimePoolScratch.RemoveAt(j);
+            }
+
+            if (_surpriseRuntimePoolScratch.Count == 0)
+                return null;
+
+            var result = new List<string>(3);
+            for (var t = 0; t < 80 && result.Count < 3; t++)
+            {
+                var pick = _surpriseRuntimePoolScratch[Random.Range(0, _surpriseRuntimePoolScratch.Count)];
+                if (pick == null || string.IsNullOrEmpty(pick.Id))
+                    continue;
+
+                var dup = false;
+                for (var k = 0; k < result.Count; k++)
+                {
+                    if (string.Equals(result[k], pick.Id, StringComparison.OrdinalIgnoreCase))
+                    {
+                        dup = true;
+                        break;
+                    }
+                }
+
+                if (!dup)
+                    result.Add(pick.Id);
+            }
+
+            return result.Count > 0 ? result : null;
+        }
+
+        /// <summary>友谊赛三选一：确认后写入持有（惊喜卡包分支与常规战胜一致）。</summary>
+        public bool TryGrantHeroDuelPickThreeReward(string cardId)
+        {
+            if (_gameOver || _runVictory || PlayerState == null)
+                return false;
+            if (string.IsNullOrEmpty(cardId))
+                return false;
+
+            var bm = BattleManager.Instance;
+            var pending = bm?.PendingHeroDuelPickThreeCardIds;
+            if (pending == null || pending.Count == 0)
+                return false;
+
+            var found = false;
+            for (var i = 0; i < pending.Count; i++)
+            {
+                if (string.Equals(pending[i], cardId, StringComparison.OrdinalIgnoreCase))
+                {
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found)
+                return false;
+
+            var cfgMgr = ConfigManager.Instance;
+            if (cfgMgr == null || !cfgMgr.TryGetCard(cardId, out var cc))
+            {
+                Debug.LogWarning($"[GameManager] 友谊赛三选一奖励卡牌配置缺失: {cardId}");
+                return false;
+            }
+
+            if (HasBuff(BuffId.SurprisePack))
+                AppendRandomOwnedCardsFromSurprisePackRoll();
+            else
+            {
+                if (!TryAppendOwnedCard(CardFromConfig(cc)))
+                    return false;
+                _events?.Publish(new CardAcquiredEvent(cc.Id));
+            }
+
+            return true;
+        }
+
+        /// <summary>友谊赛删仓库：玩家点选仓库中一张牌后移除并发 5 金。</summary>
+        public bool TryCompleteHeroDuelStorageRemovalRewardAtStorageIndex(int storageIndex)
+        {
+            if (!_heroDuelStorageRemovalRewardPending || _gameOver || _runVictory || PlayerState == null)
+                return false;
+
+            PlayerState.StoredCards ??= Array.Empty<Card>();
+            var storage = new List<Card>(PlayerState.StoredCards);
+            if (storageIndex < 0 || storageIndex >= storage.Count)
+                return false;
+
+            storage.RemoveAt(storageIndex);
+            PlayerState.StoredCards = storage.ToArray();
+            _heroDuelStorageRemovalRewardPending = false;
+            AddGold(5);
+            PersistCurrentRunToDisk();
+            return true;
+        }
+
+        /// <summary>友谊赛删仓库：跳过删除仍发放 5 金。</summary>
+        public bool TrySkipHeroDuelStorageRemovalReward()
+        {
+            if (!_heroDuelStorageRemovalRewardPending || _gameOver || _runVictory || PlayerState == null)
+                return false;
+
+            _heroDuelStorageRemovalRewardPending = false;
+            AddGold(5);
+            PersistCurrentRunToDisk();
+            return true;
         }
 
         /// <summary>最后一层 BOSS 胜：关闭战斗与可能残留的奖励面板后播放 <c>ending_final</c>（与 <see cref="Views.UI.CardRewardView"/> 非最后一层收尾对齐）。</summary>
@@ -1508,14 +1782,17 @@ namespace KingCardsSpire.Managers
         {
             var k = Random.Range(0, 4);
             for (var i = 0; i < k; i++)
-                TryAppendOneRandomOwnedCardFromFullConfigPoolSurprise();
+            {
+                if (!TryAppendOneRandomOwnedCardFromFullConfigPoolSurprise())
+                    break;
+            }
         }
 
-        private void TryAppendOneRandomOwnedCardFromFullConfigPoolSurprise()
+        private bool TryAppendOneRandomOwnedCardFromFullConfigPoolSurprise()
         {
             var cfgMgr = ConfigManager.Instance;
             if (cfgMgr == null)
-                return;
+                return false;
 
             _surpriseRuntimePoolScratch.Clear();
             cfgMgr.AppendAllCardsAsRuntime(_surpriseRuntimePoolScratch);
@@ -1527,14 +1804,17 @@ namespace KingCardsSpire.Managers
             }
 
             if (_surpriseRuntimePoolScratch.Count == 0)
-                return;
+                return false;
 
             var pick = _surpriseRuntimePoolScratch[Random.Range(0, _surpriseRuntimePoolScratch.Count)];
-            if (cfgMgr.TryGetCard(pick.Id, out var cc))
-            {
-                AppendOwnedCard(CardFromConfig(cc));
-                _events?.Publish(new CardAcquiredEvent(cc.Id));
-            }
+            if (!cfgMgr.TryGetCard(pick.Id, out var cc))
+                return false;
+
+            if (!TryAppendOwnedCard(CardFromConfig(cc)))
+                return false;
+
+            _events?.Publish(new CardAcquiredEvent(cc.Id));
+            return true;
         }
 
         private static void NormalizeBuffPersistence(PlayerData player)

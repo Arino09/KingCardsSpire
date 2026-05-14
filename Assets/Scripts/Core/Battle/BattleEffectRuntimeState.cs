@@ -7,6 +7,24 @@ namespace KingCardsSpire.Core.Battle
     /// </summary>
     public sealed class BattleEffectRuntimeState
     {
+        /// <summary>己方：青龙/白虎/朱雀/玄武各自在「本回合作为出战牌且比大小获胜」时记 true；四类均 true 后本局直接胜。</summary>
+        public bool PlayerFourSymbolQinglongRoundWin;
+
+        public bool PlayerFourSymbolBaihuRoundWin;
+
+        public bool PlayerFourSymbolZhuqueRoundWin;
+
+        public bool PlayerFourSymbolXuanwuRoundWin;
+
+        /// <summary>敌方：同上；四类均 true 后本局直接判己方败。</summary>
+        public bool EnemyFourSymbolQinglongRoundWin;
+
+        public bool EnemyFourSymbolBaihuRoundWin;
+
+        public bool EnemyFourSymbolZhuqueRoundWin;
+
+        public bool EnemyFourSymbolXuanwuRoundWin;
+
         public Card LastEnemyPlayedSnapshot;
 
         public Card LastPlayerPlayedSnapshot;
@@ -111,6 +129,14 @@ namespace KingCardsSpire.Core.Battle
             EnemyPerfectMatchActive = false;
             PlayerDaydreamActive = false;
             EnemyDaydreamActive = false;
+            PlayerFourSymbolQinglongRoundWin = false;
+            PlayerFourSymbolBaihuRoundWin = false;
+            PlayerFourSymbolZhuqueRoundWin = false;
+            PlayerFourSymbolXuanwuRoundWin = false;
+            EnemyFourSymbolQinglongRoundWin = false;
+            EnemyFourSymbolBaihuRoundWin = false;
+            EnemyFourSymbolZhuqueRoundWin = false;
+            EnemyFourSymbolXuanwuRoundWin = false;
             ClearRoundConsumableFlags();
         }
     }

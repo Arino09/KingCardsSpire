@@ -61,14 +61,23 @@ namespace KingCardsSpire.Core.Events
         /// </summary>
         public readonly string[] BossVictoryRewardCardIds;
 
+        /// <summary>主角房友谊赛；与 <see cref="HeroRoomDuelSlotIndex"/> 配合用于胜场奖励分支。</summary>
+        public readonly bool IsHeroRoomDuel;
+
+        /// <summary>友谊赛对应参赛者槽位 0～2；非友谊战或未解析时为 -1。</summary>
+        public readonly int HeroRoomDuelSlotIndex;
+
         public BattleEndedEvent(bool playerVictory, BattleEndReason reason, bool isBossBattle = false,
-            bool goldenNecklacePlayedThisBattle = false, string[] bossVictoryRewardCardIds = null)
+            bool goldenNecklacePlayedThisBattle = false, string[] bossVictoryRewardCardIds = null,
+            bool isHeroRoomDuel = false, int heroRoomDuelSlotIndex = -1)
         {
             PlayerVictory = playerVictory;
             Reason = reason;
             IsBossBattle = isBossBattle;
             GoldenNecklacePlayedThisBattle = goldenNecklacePlayedThisBattle;
             BossVictoryRewardCardIds = bossVictoryRewardCardIds;
+            IsHeroRoomDuel = isHeroRoomDuel;
+            HeroRoomDuelSlotIndex = heroRoomDuelSlotIndex;
         }
     }
 

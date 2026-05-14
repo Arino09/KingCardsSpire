@@ -974,10 +974,14 @@ namespace KingCardsSpire.Views.UI
 
             var ui = UIManager.Instance;
             var bm = BattleManager.Instance;
+            var gm = GameManager.Instance;
             var hasCasualOffer = bm != null && bm.PendingCasualVictoryRewardCardIds != null &&
                                  bm.PendingCasualVictoryRewardCardIds.Count > 0;
+            var hasHeroPickThree = bm != null && bm.PendingHeroDuelPickThreeCardIds != null &&
+                                   bm.PendingHeroDuelPickThreeCardIds.Count > 0;
+            var hasHeroRemoveStorage = gm != null && gm.IsHeroDuelStorageRemovalRewardPending;
 
-            if (ui != null && hasCasualOffer)
+            if (ui != null && (hasCasualOffer || hasHeroPickThree || hasHeroRemoveStorage))
             {
                 yield return ui.OpenAsync(UIPanelId.CardReward);
                 while (ui.IsPanelOpen(UIPanelId.CardReward))
@@ -1246,9 +1250,8 @@ namespace KingCardsSpire.Views.UI
             if (_battle != null)
                 _battle.RequestEndBattle();
 
-            if (ui != null)
-                ui.Close(UIPanelId.Battle);
-
+            // 不在此处关闭战斗界面：由 MainMenuView 在打开主菜单/主塔界面之后再关，避免 Addressables
+            // 加载下一面板期间出现一帧「无全屏 UI」而闪底/闪屏。
             if (_events != null)
                 _events.Publish(new OpeningTutorialBattleFlowCompletedEvent(playerVictory));
         }

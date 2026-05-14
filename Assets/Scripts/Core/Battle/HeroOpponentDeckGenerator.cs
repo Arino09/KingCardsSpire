@@ -8,7 +8,7 @@ using UnityEngine;
 namespace KingCardsSpire.Core.Battle
 {
     /// <summary>
-    /// 主角房对战：敌方卡组生成（固定国王/大臣/平民 + 放回随机能力/功能/补充基础牌）。
+    /// 主角房对战：敌方卡组生成（固定国王/大臣/平民；约 20% 概率额外 1 张能力牌，否则 0 张；再放回随机功能牌与补充基础牌；不含消耗牌）。
     /// </summary>
     public static class HeroOpponentDeckGenerator
     {
@@ -44,16 +44,20 @@ namespace KingCardsSpire.Core.Battle
 
             if (cfg != null)
             {
-                var abilityCount = UnityEngine.Random.Range(0, 2);
+                const float abilityOneCardChance = 0.2f;
+                var abilityCount = UnityEngine.Random.value < abilityOneCardChance ? 1 : 0;
                 cfg.CollectShopCandidates(CardType.Ability, ownedScratch, pool);
+                FilterHeroOpponentConsumablesFromPool(pool);
                 AppendRandomWithReplacement(deck, cfg, pool, abilityCount);
 
                 var functionCount = UnityEngine.Random.Range(0, 4);
                 cfg.CollectShopCandidates(CardType.Function, ownedScratch, pool);
+                FilterHeroOpponentConsumablesFromPool(pool);
                 AppendRandomWithReplacement(deck, cfg, pool, functionCount);
 
                 var basicExtraCount = UnityEngine.Random.Range(0, 4);
                 cfg.CollectShopCandidates(CardType.Basic, ownedScratch, pool);
+                FilterHeroOpponentConsumablesFromPool(pool);
                 RemoveCoreTrioFromPool(pool);
                 AppendRandomWithReplacement(deck, cfg, pool, basicExtraCount);
             }
@@ -116,6 +120,23 @@ namespace KingCardsSpire.Core.Battle
             || string.Equals(id, WellKnownCardIds.Minister, StringComparison.OrdinalIgnoreCase)
             || string.Equals(id, WellKnownCardIds.Commoner, StringComparison.OrdinalIgnoreCase);
 
+        /// <summary>友谊战敌方额外牌池：排除一次性消耗牌（表类型误标时亦不会入池）。</summary>
+        private static void FilterHeroOpponentConsumablesFromPool(List<CardConfigEntry> pool)
+        {
+            if (pool == null)
+                return;
+
+            for (var i = pool.Count - 1; i >= 0; i--)
+            {
+                var e = pool[i];
+                if (e == null || e.Type == CardType.Consumable)
+                    pool.RemoveAt(i);
+            }
+        }
+
+        private static bool IsAllowedHeroOpponentExtraEntry(CardConfigEntry entry) =>
+            entry != null && entry.Type != CardType.Consumable;
+
         private static void AppendRandomWithReplacement(List<Card> deck, ConfigManager cfg,
             List<CardConfigEntry> pool, int count)
         {
@@ -127,7 +148,7 @@ namespace KingCardsSpire.Core.Battle
             for (var i = 0; i < indices.Count; i++)
             {
                 var entry = pool[indices[i]];
-                if (entry == null)
+                if (!IsAllowedHeroOpponentExtraEntry(entry))
                     continue;
 
                 var card = cfg.CreateRuntimeCard(entry);

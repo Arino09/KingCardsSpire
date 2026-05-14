@@ -12,10 +12,10 @@ namespace KingCardsSpire.Core.Battle
         /// <summary>达回合上限且双方总手牌等级和相等，平局。</summary>
         RoundLimitDraw = 4,
 
-        /// <summary>四象齐集直接获胜（功能卡）。</summary>
+        /// <summary>己方四象（青龙/白虎/朱雀/玄武）各在至少一回「出战且比大小胜」后集齐，本局直接胜。</summary>
         FourSymbolsComplete = 5,
 
-        /// <summary>敌方四象齐集，己方败。</summary>
+        /// <summary>敌方四象同上集齐，本局直接判己方败。</summary>
         FourSymbolsEnemyComplete = 6
     }
 }

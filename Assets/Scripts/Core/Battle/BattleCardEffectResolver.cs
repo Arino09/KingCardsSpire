@@ -13,30 +13,63 @@ namespace KingCardsSpire.Core.Battle
     {
         private const float Epsilon = 0.001f;
 
-        public static bool HandContainsAllFourSymbols(IReadOnlyList<Card> hand)
+        /// <summary>
+        /// 策划案：四象须「各自在出战且战胜对手的那一回」各记一次；四类均达成后本局直接胜/败（不再要求四张同时在手）。
+        /// </summary>
+        public static void RecordFourSymbolRoundProgress(BattleEffectRuntimeState state,
+            Card playerStaged, Card enemyStaged, BattleCompareResult result)
         {
-            if (hand == null || hand.Count < 4)
-                return false;
-            var q = false;
-            var b = false;
-            var z = false;
-            var x = false;
-            for (var i = 0; i < hand.Count; i++)
-            {
-                var id = hand[i]?.Id;
-                if (string.IsNullOrEmpty(id))
-                    continue;
-                if (string.Equals(id, WellKnownCardIds.FourQinglong, StringComparison.OrdinalIgnoreCase))
-                    q = true;
-                else if (string.Equals(id, WellKnownCardIds.FourBaihu, StringComparison.OrdinalIgnoreCase))
-                    b = true;
-                else if (string.Equals(id, WellKnownCardIds.FourZhuque, StringComparison.OrdinalIgnoreCase))
-                    z = true;
-                else if (string.Equals(id, WellKnownCardIds.FourXuanwu, StringComparison.OrdinalIgnoreCase))
-                    x = true;
-            }
+            if (state == null)
+                return;
 
-            return q && b && z && x;
+            if (result == BattleCompareResult.FirstWins)
+                MarkFourSymbolWinIfPlayed(state, playerStaged?.Id, true);
+            else if (result == BattleCompareResult.SecondWins)
+                MarkFourSymbolWinIfPlayed(state, enemyStaged?.Id, false);
+        }
+
+        public static bool PlayerHasAllFourSymbolRoundWins(BattleEffectRuntimeState state) =>
+            state != null
+            && state.PlayerFourSymbolQinglongRoundWin
+            && state.PlayerFourSymbolBaihuRoundWin
+            && state.PlayerFourSymbolZhuqueRoundWin
+            && state.PlayerFourSymbolXuanwuRoundWin;
+
+        public static bool EnemyHasAllFourSymbolRoundWins(BattleEffectRuntimeState state) =>
+            state != null
+            && state.EnemyFourSymbolQinglongRoundWin
+            && state.EnemyFourSymbolBaihuRoundWin
+            && state.EnemyFourSymbolZhuqueRoundWin
+            && state.EnemyFourSymbolXuanwuRoundWin;
+
+        private static void MarkFourSymbolWinIfPlayed(BattleEffectRuntimeState state, string playedId,
+            bool forPlayer)
+        {
+            if (state == null || string.IsNullOrEmpty(playedId))
+                return;
+
+            if (forPlayer)
+            {
+                if (string.Equals(playedId, WellKnownCardIds.FourQinglong, StringComparison.OrdinalIgnoreCase))
+                    state.PlayerFourSymbolQinglongRoundWin = true;
+                else if (string.Equals(playedId, WellKnownCardIds.FourBaihu, StringComparison.OrdinalIgnoreCase))
+                    state.PlayerFourSymbolBaihuRoundWin = true;
+                else if (string.Equals(playedId, WellKnownCardIds.FourZhuque, StringComparison.OrdinalIgnoreCase))
+                    state.PlayerFourSymbolZhuqueRoundWin = true;
+                else if (string.Equals(playedId, WellKnownCardIds.FourXuanwu, StringComparison.OrdinalIgnoreCase))
+                    state.PlayerFourSymbolXuanwuRoundWin = true;
+            }
+            else
+            {
+                if (string.Equals(playedId, WellKnownCardIds.FourQinglong, StringComparison.OrdinalIgnoreCase))
+                    state.EnemyFourSymbolQinglongRoundWin = true;
+                else if (string.Equals(playedId, WellKnownCardIds.FourBaihu, StringComparison.OrdinalIgnoreCase))
+                    state.EnemyFourSymbolBaihuRoundWin = true;
+                else if (string.Equals(playedId, WellKnownCardIds.FourZhuque, StringComparison.OrdinalIgnoreCase))
+                    state.EnemyFourSymbolZhuqueRoundWin = true;
+                else if (string.Equals(playedId, WellKnownCardIds.FourXuanwu, StringComparison.OrdinalIgnoreCase))
+                    state.EnemyFourSymbolXuanwuRoundWin = true;
+            }
         }
 
         /// <summary>

@@ -40,6 +40,9 @@ namespace KingCardsSpire.Managers
         /// <summary>主角房与参赛者的友谊战；胜利时不走常规战后选卡奖励。</summary>
         private bool _heroRoomDuel;
 
+        /// <summary>友谊赛对应参赛者槽位（0～2）；非友谊战为 -1。</summary>
+        private int _heroRoomDuelSlotIndex = -1;
+
         private string _opponentDisplayName = string.Empty;
 
         /// <summary>本回合已锁定的敌方手牌下标；-1 表示未准备。</summary>
@@ -65,10 +68,16 @@ namespace KingCardsSpire.Managers
         /// <summary>常规战（非 BOSS、非教学）胜利后待展示的奖励 CardId（至多 3 个）；<see cref="ClearPendingCasualVictoryRewardOffer"/> 或下一场开战时清空。</summary>
         private string[] _pendingCasualVictoryRewardCardIds;
 
+        /// <summary>友谊赛槽位 1 胜场：待 <see cref="Views.UI.CardRewardView"/> 展示的三选一 CardId。</summary>
+        private string[] _pendingHeroDuelPickThreeCardIds;
+
         public BattleState CurrentBattle { get; private set; } = new();
 
         /// <summary>供 <see cref="Views.UI.CardRewardView"/> 读取的常规战胜卡牌奖励选项；无待选时为 <c>null</c>。</summary>
         public IReadOnlyList<string> PendingCasualVictoryRewardCardIds => _pendingCasualVictoryRewardCardIds;
+
+        /// <summary>友谊赛三选一待选；无待选时为 <c>null</c>。</summary>
+        public IReadOnlyList<string> PendingHeroDuelPickThreeCardIds => _pendingHeroDuelPickThreeCardIds;
 
         public bool IsBattleActive => _phase == Phase.InBattle;
 
@@ -158,7 +167,7 @@ namespace KingCardsSpire.Managers
                 rawXRay = Mathf.Max(rawXRay, 2);
 
             StartBattleInternal(playerCards, enemyCards, player?.CurrentWeather ?? WeatherType.WarmWind,
-                rawXRay, vsBoss, bossAiStrength, null, false, false);
+                rawXRay, vsBoss, bossAiStrength, null, false, false, -1);
         }
 
         /// <summary>主角房友谊战：敌方卡组由 <see cref="HeroOpponentDeckGenerator.BuildDeck"/> 生成，非 BOSS。</summary>
@@ -174,9 +183,11 @@ namespace KingCardsSpire.Managers
             if (game != null && game.HasBuff(BuffId.XRayBoost))
                 rawXRay = Mathf.Max(rawXRay, 2);
 
+            var slotIdx = ParseHeroRoomDuelSlotIndex(heroSlotId);
             StartBattleInternal(playerCards, enemyCards, player?.CurrentWeather ?? WeatherType.WarmWind,
                 rawXRay, isBossBattle: false, bossAiStrength: 0,
-                opponentDisplayNameOverride: opponentDisplayName, tutorialBattle: false, heroRoomDuel: true);
+                opponentDisplayNameOverride: opponentDisplayName, tutorialBattle: false, heroRoomDuel: true,
+                heroRoomDuelSlotIndex: slotIdx);
         }
 
         /// <summary>开场教学战：双方各 3 张国王/大臣/平民，对手显示名为「花」，暖风、固定透视平民、第一回合敌必出大臣。</summary>
@@ -195,7 +206,8 @@ namespace KingCardsSpire.Managers
                 NewRuntimeCard(WellKnownCardIds.Commoner, "平民", 1f)
             };
 
-            StartBattleInternal(playerDeck, enemyDeck, WeatherType.WarmWind, 1, false, 0, "花", true, false);
+            StartBattleInternal(playerDeck, enemyDeck, WeatherType.WarmWind, 1, false, 0, "花", true, false,
+                -1);
         }
 
         public void StartBattle(IReadOnlyList<Card> playerDeck, IReadOnlyList<Card> enemyDeck,
@@ -209,14 +221,16 @@ namespace KingCardsSpire.Managers
 
             var bossAiStrength = isBossBattle ? ResolveBossAiStrengthFromTower() : 0;
             StartBattleInternal(playerDeck, enemyDeck, weather, x, isBossBattle,
-                bossAiStrength, opponentDisplayNameOverride, false, false);
+                bossAiStrength, opponentDisplayNameOverride, false, false, -1);
         }
 
         private void StartBattleInternal(IReadOnlyList<Card> playerDeck, IReadOnlyList<Card> enemyDeck,
             WeatherType weather, int xRayCount, bool isBossBattle, int bossAiStrength,
-            string opponentDisplayNameOverride = null, bool tutorialBattle = false, bool heroRoomDuel = false)
+            string opponentDisplayNameOverride = null, bool tutorialBattle = false, bool heroRoomDuel = false,
+            int heroRoomDuelSlotIndex = -1)
         {
             _pendingCasualVictoryRewardCardIds = null;
+            _pendingHeroDuelPickThreeCardIds = null;
 
             var chaoticExtraSnapshot = new List<Card>(_pendingChaoticExtraTemplates);
             _pendingChaoticExtraTemplates.Clear();
@@ -224,6 +238,7 @@ namespace KingCardsSpire.Managers
             ResetRuntime();
             _isTutorialBattle = tutorialBattle;
             _heroRoomDuel = heroRoomDuel;
+            _heroRoomDuelSlotIndex = heroRoomDuel ? heroRoomDuelSlotIndex : -1;
             _isBossBattle = isBossBattle;
             _bossAiStrength = Mathf.Max(0, bossAiStrength);
             _opponentDisplayName = !string.IsNullOrEmpty(opponentDisplayNameOverride)
@@ -480,25 +495,10 @@ namespace KingCardsSpire.Managers
             var playerCard = _playerHand[playerIdx];
             var enemyCard = _enemyHand[enemyIdx];
 
-            if (BattleCardEffectResolver.HandContainsAllFourSymbols(_enemyHand))
-            {
-                compareResult = default;
-                _pendingEnemyHandIndex = -1;
-                _pendingPlayerHandIndex = -1;
-                FinishBattle(false, BattleEndReason.FourSymbolsEnemyComplete);
-                return true;
-            }
-
-            if (BattleCardEffectResolver.HandContainsAllFourSymbols(_playerHand))
-            {
-                compareResult = BattleCompareResult.FirstWins;
-                _pendingEnemyHandIndex = -1;
-                _pendingPlayerHandIndex = -1;
-                FinishBattle(true, BattleEndReason.FourSymbolsComplete);
-                return true;
-            }
-
             compareResult = ComputeRoundCompareResult(playerCard, enemyCard);
+
+            BattleCardEffectResolver.RecordFourSymbolRoundProgress(_battleEffects, playerCard, enemyCard,
+                compareResult);
 
             ResolveRound(playerIdx, enemyIdx, playerCard, enemyCard, compareResult);
 
@@ -509,6 +509,21 @@ namespace KingCardsSpire.Managers
 
             _pendingEnemyHandIndex = -1;
             _pendingPlayerHandIndex = -1;
+
+            if (_phase == Phase.InBattle)
+            {
+                if (BattleCardEffectResolver.PlayerHasAllFourSymbolRoundWins(_battleEffects))
+                {
+                    FinishBattle(true, BattleEndReason.FourSymbolsComplete);
+                    return true;
+                }
+
+                if (BattleCardEffectResolver.EnemyHasAllFourSymbolRoundWins(_battleEffects))
+                {
+                    FinishBattle(false, BattleEndReason.FourSymbolsEnemyComplete);
+                    return true;
+                }
+            }
 
             return true;
         }
@@ -652,6 +667,32 @@ namespace KingCardsSpire.Managers
         public void ClearPendingCasualVictoryRewardOffer()
         {
             _pendingCasualVictoryRewardCardIds = null;
+        }
+
+        /// <summary>友谊赛三选一关闭或领取后清空。</summary>
+        public void ClearPendingHeroDuelPickThreeOffer()
+        {
+            _pendingHeroDuelPickThreeCardIds = null;
+        }
+
+        /// <summary>由 <see cref="GameManager"/> 在友谊赛胜场写入，供 <see cref="Views.UI.CardRewardView"/> 展示。</summary>
+        public void SetPendingHeroDuelPickThreeOffer(IReadOnlyList<string> ids)
+        {
+            _pendingHeroDuelPickThreeCardIds = null;
+            if (ids == null || ids.Count == 0)
+                return;
+
+            var list = new List<string>(3);
+            for (var i = 0; i < ids.Count && list.Count < 3; i++)
+            {
+                var id = ids[i];
+                if (!string.IsNullOrEmpty(id))
+                    list.Add(id);
+            }
+
+            if (list.Count == 0)
+                return;
+            _pendingHeroDuelPickThreeCardIds = list.ToArray();
         }
 
         private List<Card> BuildBossDeckFromTowerOrFallback()
@@ -1317,8 +1358,20 @@ namespace KingCardsSpire.Managers
                 $"[BattleManager] 战斗结束 己方{(playerVictory ? "胜" : "败")} 原因={reason} BOSS战={boss}");
             SyncBattleState();
             EventManager.Instance?.Publish(new BattleEndedEvent(playerVictory, reason, boss,
-                _battleEffects.PlayerGoldenNecklacePlayed, bossVictoryRewardCardIds));
+                _battleEffects.PlayerGoldenNecklacePlayed, bossVictoryRewardCardIds,
+                isHeroRoomDuel: _heroRoomDuel, heroRoomDuelSlotIndex: _heroRoomDuelSlotIndex));
             EventManager.Instance?.Publish(new BattleStateChangedEvent());
+        }
+
+        private static int ParseHeroRoomDuelSlotIndex(string heroSlotId)
+        {
+            if (string.IsNullOrEmpty(heroSlotId))
+                return -1;
+            if (!int.TryParse(heroSlotId, out var n))
+                return -1;
+            if (n < 0 || n >= StoryDialogueRules.HeroSlotCount)
+                return -1;
+            return n;
         }
 
         private static bool IsLegalPlay(Card card, IReadOnlyList<Card> hand, string lastInstanceId)
@@ -1413,6 +1466,7 @@ namespace KingCardsSpire.Managers
             _bossAiStrength = 0;
             _isTutorialBattle = false;
             _heroRoomDuel = false;
+            _heroRoomDuelSlotIndex = -1;
             _opponentDisplayName = string.Empty;
             _pendingEnemyHandIndex = -1;
             _pendingPlayerHandIndex = -1;

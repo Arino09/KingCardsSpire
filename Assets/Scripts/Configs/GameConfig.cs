@@ -13,7 +13,7 @@ namespace KingCardsSpire.Configs
         [SerializeField] private int initialXRayCount = 1;
 
         [Header("开局卡组")]
-        [Tooltip("新游戏时按顺序写入：前 10 张进入出战卡组 PlayerData.HandCards，其余进入仓库 PlayerData.StoredCards（须与 Card 配置表一致）。留空则开局出战与仓库均为空。")]
+        [Tooltip("新游戏时按顺序写入：前 10 张进入出战卡组 PlayerData.HandCards，其后至多 10 张进入仓库（出战+仓库合计至多 20 张）；超出部分不会写入。留空则开局出战与仓库均为空。")]
         [SerializeField] private string[] starterDeckCardIds = Array.Empty<string>();
 
         public string Id => id;
