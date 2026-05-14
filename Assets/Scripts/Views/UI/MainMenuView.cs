@@ -136,7 +136,7 @@ namespace KingCardsSpire.Views.UI
         }
 
         /// <summary>
-        /// 关闭主菜单后动态加载游戏主界面（MainHub）；协程挂在 <see cref="UIManager"/> 上以免随菜单销毁中断。
+        /// 先打开目标界面再关闭主菜单，避免 Addressables 加载间隙闪屏；协程挂在 <see cref="UIManager"/> 上以免随菜单销毁中断。
         /// </summary>
         private static IEnumerator RunContinueThenMainHub(MainMenuView view)
         {
@@ -165,25 +165,34 @@ namespace KingCardsSpire.Views.UI
             if (view._persistence == null || view._game == null || view._model == null)
                 yield break;
 
-            view._model.BeginNewRun(view._game, view._persistence);
-
             var ui = UIManager.Instance;
             if (ui == null)
                 yield break;
 
-            ui.Close(UIPanelId.MainMenu);
+            view._model.BeginNewRun(view._game, view._persistence);
 
             if (view._game != null && !view._game.PlayerState.HasCompletedOpeningTutorial)
             {
-                var dialogue = ServiceLocator.Get<DialogueController>();
-                if (dialogue != null)
-                    yield return ui.StartCoroutine(dialogue.PlayDialogue("tutorial_opening", null));
+                view._game.SetDeferOpeningTutorialBattleIntro(true);
 
                 var battleCtrl = ServiceLocator.Get<BattleController>();
                 if (battleCtrl != null)
                     battleCtrl.RequestStartTutorialBattle();
 
                 yield return ui.OpenAsync(UIPanelId.Battle);
+                ui.Close(UIPanelId.MainMenu);
+
+                try
+                {
+                    var dialogue = ServiceLocator.Get<DialogueController>();
+                    if (dialogue != null)
+                        yield return ui.StartCoroutine(dialogue.PlayDialogue("tutorial_opening", null));
+                }
+                finally
+                {
+                    if (view._game != null)
+                        view._game.SetDeferOpeningTutorialBattleIntro(false);
+                }
 
                 var events = EventManager.Instance;
                 if (events != null)
@@ -226,6 +235,7 @@ namespace KingCardsSpire.Views.UI
 
             yield return RunBuffDraftIfNeeded(view._game, ui);
             yield return ui.OpenAsync(UIPanelId.MainHub);
+            ui.Close(UIPanelId.MainMenu);
         }
 
         private static IEnumerator RunBuffDraftIfNeeded(GameManager game, UIManager ui)

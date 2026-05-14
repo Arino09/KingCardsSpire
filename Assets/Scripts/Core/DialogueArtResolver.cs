@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace KingCardsSpire.Core
@@ -7,18 +9,33 @@ namespace KingCardsSpire.Core
     /// </summary>
     public static class DialogueArtResolver
     {
-        public static string ResolveBackgroundAddress(string backgroundId)
+        /// <summary>
+        /// 背景图候选地址：已带 <c>.jpg</c>/<c>.png</c> 时仅一项；否则依次尝试 <c>.jpg</c>、<c>.png</c>（与 Addressables 主地址一致即可命中）。</summary>
+        public static IReadOnlyList<string> GetBackgroundAddressCandidates(string backgroundId)
         {
             if (string.IsNullOrWhiteSpace(backgroundId))
-                return null;
+                return Array.Empty<string>();
+
             var id = backgroundId.Trim().Replace('\\', '/');
             var baseAddress = id.Contains("/")
                 ? "Sprites/Character/NPCbg"
                 : "Sprites/UI/FloorBg";
-            if (id.EndsWith(".jpg", System.StringComparison.OrdinalIgnoreCase) ||
-                id.EndsWith(".png", System.StringComparison.OrdinalIgnoreCase))
-                return $"{baseAddress}/{id}";
-            return $"{baseAddress}/{id}.jpg";
+            if (id.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) ||
+                id.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
+                return new[] { $"{baseAddress}/{id}" };
+
+            return new[]
+            {
+                $"{baseAddress}/{id}.jpg",
+                $"{baseAddress}/{id}.png"
+            };
+        }
+
+        /// <summary>兼容旧调用：返回首个候选（无扩展名时为 <c>.jpg</c> 路径）。</summary>
+        public static string ResolveBackgroundAddress(string backgroundId)
+        {
+            var list = GetBackgroundAddressCandidates(backgroundId);
+            return list.Count > 0 ? list[0] : null;
         }
 
         public static string ResolveCharacterAddress(string characterId)
@@ -26,8 +43,8 @@ namespace KingCardsSpire.Core
             if (string.IsNullOrWhiteSpace(characterId))
                 return null;
             var id = characterId.Trim().Replace('\\', '/');
-            if (id.EndsWith(".png", System.StringComparison.OrdinalIgnoreCase) ||
-                id.EndsWith(".jpg", System.StringComparison.OrdinalIgnoreCase))
+            if (id.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ||
+                id.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase))
                 return $"Sprites/Character/{id}";
             return $"Sprites/Character/{id}.png";
         }

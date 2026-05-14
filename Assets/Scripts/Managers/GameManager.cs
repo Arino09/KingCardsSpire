@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices;
 using KingCardsSpire.Configs;
 using KingCardsSpire.Core;
 using KingCardsSpire.Core.Battle;
+using KingCardsSpire.Controllers;
 using KingCardsSpire.Core.Events;
 using KingCardsSpire.Models;
 using KingCardsSpire.Views.UI;
@@ -59,6 +60,18 @@ namespace KingCardsSpire.Managers
 
         public bool IsGameOver => _gameOver;
         public bool IsRunVictory => _runVictory;
+
+        /// <summary>
+        /// 为 true 时，开局教学战斗界面内的引导协程暂停，直至主菜单侧 <c>tutorial_opening</c> 播完（仅内存，不入档）。
+        /// </summary>
+        private bool _deferOpeningTutorialBattleIntro;
+
+        public bool DeferOpeningTutorialBattleIntro => _deferOpeningTutorialBattleIntro;
+
+        public void SetDeferOpeningTutorialBattleIntro(bool value)
+        {
+            _deferOpeningTutorialBattleIntro = value;
+        }
 
         /// <summary>出战卡组上限（文档 §3.2 / §2.2.1）。</summary>
         public const int MaxBattleDeckCards = 10;
@@ -150,6 +163,7 @@ namespace KingCardsSpire.Managers
             NormalizePlayerDeckPartition();
             NormalizePlayerAudioSettings(PlayerState);
             ApplyAudioFromCurrentPlayerState();
+            SetDeferOpeningTutorialBattleIntro(false);
         }
 
         /// <summary>新开局：重置玩家与第一层 FloorState，并滚动首日天气。</summary>
@@ -199,6 +213,7 @@ namespace KingCardsSpire.Managers
             RollDailyWeather();
             _events?.Publish(new GameStartedEvent());
             ApplyAudioFromCurrentPlayerState();
+            SetDeferOpeningTutorialBattleIntro(false);
         }
 
         /// <summary>击败驻守者后进层；返回是否仍在本 Run 内继续（false 可能表示已通关或条件不足）。</summary>
@@ -811,8 +826,19 @@ namespace KingCardsSpire.Managers
 
             FloorState.BossDefeated = true;
 
+            var gc = ResolveGameConfig();
+            var maxFloors = gc?.TowerFloors ?? 7;
+            // 最后一层驻守者：不弹出卡牌/金币驻守奖励，直接进层（通关）并播放大结局对白。
+            if (PlayerState.CurrentFloor >= maxFloors)
+            {
+                _pendingBossRewards = null;
+                EnterNextFloor();
+                StartCoroutine(RunFinalBossVictoryStoryRoutine());
+                return;
+            }
+
             var cfgMgr = ConfigManager.Instance;
-            var maxDays = ResolveGameConfig()?.MaxDaysPerFloor ?? 3;
+            var maxDays = gc?.MaxDaysPerFloor ?? 3;
             var spareDays = Mathf.Max(0, maxDays - PlayerState.FloorDay + 1);
             TowerFloorEntry entry = null;
             if (cfgMgr != null)
@@ -820,6 +846,29 @@ namespace KingCardsSpire.Managers
             var options = BossRewardPicker.Generate(spareDays, entry, cfgMgr, e.BossVictoryRewardCardIds);
             _pendingBossRewards = options;
             _events?.Publish(new BossRewardOfferedEvent(PlayerState.CurrentFloor, options));
+        }
+
+        /// <summary>最后一层 BOSS 胜：关闭战斗与可能残留的奖励面板后播放 <c>ending_final</c>（与 <see cref="Views.UI.CardRewardView"/> 非最后一层收尾对齐）。</summary>
+        private IEnumerator RunFinalBossVictoryStoryRoutine()
+        {
+            yield return null;
+
+            var ui = UIManager.Instance;
+            var dialogue = ServiceLocator.Get<DialogueController>();
+            var battle = ServiceLocator.Get<BattleController>();
+
+            if (ui != null)
+            {
+                ui.Close(UIPanelId.CardReward);
+                if (battle != null)
+                    battle.RequestEndBattle();
+                ui.Close(UIPanelId.Battle);
+            }
+
+            if (!IsRunVictory || dialogue == null || ui == null)
+                yield break;
+
+            yield return ui.StartCoroutine(dialogue.PlayDialogue("ending_final", null));
         }
 
         /// <summary>

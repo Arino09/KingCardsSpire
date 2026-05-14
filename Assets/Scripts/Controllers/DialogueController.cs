@@ -64,28 +64,54 @@ namespace KingCardsSpire.Controllers
                 ReleaseSpriteHandle(ref portraitHandle, ref hasPortrait);
 
                 ResolveCharacterPresentation(cfg, line, out var speakerName, out var portraitId);
-                var bgAddr = DialogueArtResolver.ResolveBackgroundAddress(line.BackgroundId);
+                var bgCandidates = DialogueArtResolver.GetBackgroundAddressCandidates(line.BackgroundId);
                 var portraitAddr = DialogueArtResolver.ResolveCharacterAddress(portraitId);
-                var needBg = !string.IsNullOrEmpty(bgAddr);
                 var needPortrait = !string.IsNullOrEmpty(portraitAddr);
-                if (needBg)
+                if (bgCandidates.Count > 0)
                 {
-                    bgHandle = Addressables.LoadAssetAsync<Sprite>(bgAddr);
-                    hasBg = true;
+                    for (var bi = 0; bi < bgCandidates.Count; bi++)
+                    {
+                        AsyncOperationHandle<Sprite> tryHandle = default;
+                        try
+                        {
+                            tryHandle = Addressables.LoadAssetAsync<Sprite>(bgCandidates[bi]);
+                        }
+                        catch (InvalidKeyException)
+                        {
+                            continue;
+                        }
+
+                        yield return tryHandle;
+                        if (tryHandle.Status == AsyncOperationStatus.Succeeded)
+                        {
+                            bgHandle = tryHandle;
+                            hasBg = true;
+                            break;
+                        }
+
+                        if (tryHandle.IsValid())
+                            Addressables.Release(tryHandle);
+                    }
                 }
 
                 if (needPortrait)
                 {
-                    portraitHandle = Addressables.LoadAssetAsync<Sprite>(portraitAddr);
-                    hasPortrait = true;
+                    try
+                    {
+                        portraitHandle = Addressables.LoadAssetAsync<Sprite>(portraitAddr);
+                        hasPortrait = true;
+                    }
+                    catch (InvalidKeyException)
+                    {
+                        portraitHandle = default;
+                        hasPortrait = false;
+                    }
                 }
 
-                if (needBg)
-                    yield return bgHandle;
-                if (needPortrait)
+                if (hasPortrait)
                     yield return portraitHandle;
 
-                if (needBg)
+                if (hasBg)
                 {
                     if (bgHandle.Status == AsyncOperationStatus.Succeeded)
                         view.SetBackgroundSprite(bgHandle.Result);
@@ -97,7 +123,7 @@ namespace KingCardsSpire.Controllers
                     view.SetBackgroundSprite(null);
                 }
 
-                if (needPortrait)
+                if (hasPortrait)
                 {
                     if (portraitHandle.Status == AsyncOperationStatus.Succeeded)
                         view.SetPortraitSprite(portraitHandle.Result);

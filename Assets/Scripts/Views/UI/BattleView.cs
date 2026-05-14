@@ -1072,6 +1072,10 @@ namespace KingCardsSpire.Views.UI
         {
             yield return null;
 
+            var game = GameManager.Instance;
+            while (game != null && game.DeferOpeningTutorialBattleIntro)
+                yield return null;
+
             var ui = UIManager.Instance;
             var dialogue = ServiceLocator.Get<DialogueController>();
 
