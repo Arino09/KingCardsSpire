@@ -75,6 +75,8 @@ namespace KingCardsSpire.Managers
             if (go == null)
                 yield break;
 
+            go.transform.SetAsLastSibling();
+
             var view = go.GetComponent<BaseView>();
             if (view == null)
                 view = go.AddComponent<FallbackPanelView>();
@@ -86,6 +88,8 @@ namespace KingCardsSpire.Managers
 
             _active[panelId] = view;
             _stack.Push(view);
+            // 给布局与部分子控件一帧完成首帧刷新，减轻「预制体默认态 → 首帧后布局」的跳变感。
+            yield return null;
         }
 
         /// <summary>

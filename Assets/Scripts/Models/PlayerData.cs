@@ -71,10 +71,10 @@ namespace KingCardsSpire.Models
         /// <summary>当前游戏日内已完成的原住民剧情推进次数（统计用；是否可再推进仅由 <see cref="NpcDialogueCredits"/> 决定）。跨天在 <see cref="GameManager.AdvanceDay"/> 中清零。</summary>
         public int NpcStoryVisitsUsedToday;
 
-        /// <summary>可用于推进原住民剧情的剩余次数；第一层开局 6；第 2 层起每层再贡献 3 点（进层当日 +1，本层内每结束当日 +1，共 3 笔），未用完可跨天、跨层保留。</summary>
+        /// <summary>可用于推进原住民剧情的剩余次数；第一层为 6 点分 3 笔到账（开局 2 + 本层内两次休息各 2）；第 2 层起为进层与按日分期累计，未用完可跨层保留。</summary>
         public int NpcDialogueCredits;
 
-        /// <summary>第 2 层起：本层尚未通过「结束当日」发放的原住民配额笔数（进层时已发首笔 +1，此处通常为 2，每 <see cref="GameManager.AdvanceDay"/> 一次减一并 +1 点）。第一层为 0。</summary>
+        /// <summary>本层尚未通过「结束当日」发放的原住民分期笔数（第一层与更高层均为 2：对应第 2、第 3 笔到账）。第一层开局已发首笔。</summary>
         public int NpcCreditInstallmentsRemaining;
 
         /// <summary>音乐 / 音效音量；旧档无此字段时由 GameManager 规范化。</summary>

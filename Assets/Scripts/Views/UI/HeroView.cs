@@ -174,13 +174,13 @@ namespace KingCardsSpire.Views.UI
             if (ui == null || ctrl == null)
                 yield break;
 
-            ui.Close(UIPanelId.HeroRoom);
             var gm = GameManager.Instance;
             if (gm != null && gm.HasBuff(BuffId.ChaoticBattlefield))
                 yield return gm.RunChaoticBattlefieldPreBattlePickRoutine();
 
             ctrl.RequestStartHeroDuel(heroSlotId, opponentDisplayName);
             yield return ui.OpenAsync(UIPanelId.Battle);
+            ui.Close(UIPanelId.HeroRoom);
         }
 
         private void HideChoiceDialog()

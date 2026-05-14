@@ -25,14 +25,15 @@ namespace KingCardsSpire.Views.UI
 
         public Button Button => button;
 
-        private void Start()
-        {
-            avatar.enabled = false;
-        }
-
         /// <summary>将列表项外观绑定到视图模型（异步拉取头像）。</summary>
         public void Apply(NpcHubButtonSpec spec)
         {
+            if (avatar != null)
+            {
+                avatar.sprite = null;
+                avatar.enabled = false;
+            }
+
             CancelLoadAndRelease();
 
             switch (spec.Kind)

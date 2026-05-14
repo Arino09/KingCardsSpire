@@ -11,16 +11,25 @@ namespace KingCardsSpire.Models
         /// <summary>除第一层外，每层通过「进层 + 本层内结束当日」累计发放的「原住民剧情推进」总次数（分笔发放，见 <see cref="NpcCreditsOnFloorEnterSlice"/>）。</summary>
         public const int NpcCreditsPerFloor = 3;
 
-        /// <summary>第一层开局一次性发放的总配额。</summary>
+        /// <summary>第一层「原住民剧情推进」总配额（分 3 笔发放：开局 + 本层内两次结束当日，每笔 <see cref="NpcCreditsFirstFloorDaySlice"/>）。</summary>
         public const int NpcCreditsFirstFloor = 6;
+
+        /// <summary>第一层：每个发放日（开局或某次 <c>AdvanceDay</c>）写入的点数，共 3 日 × 每日 2 点。</summary>
+        public const int NpcCreditsFirstFloorDaySlice = 2;
 
         /// <summary>第 2 层及以后：进入该层当日立刻发放的配额（首日合计为上一层的剩余 + 本项）。</summary>
         public const int NpcCreditsOnFloorEnterSlice = 1;
 
-        /// <summary>进层首日之后，在本层每次 <c>AdvanceDay</c> 再发放的笔数；与 <see cref="NpcCreditsOnFloorEnterSlice"/> 合计为 <see cref="NpcCreditsPerFloor"/>。</summary>
+        /// <summary>在「首日已发一笔」之后，本层内每次 <c>AdvanceDay</c> 再发放的笔数；与首日笔合计为该层总配额（第一层为 <see cref="NpcCreditsFirstFloor"/> / <see cref="NpcCreditsFirstFloorDaySlice"/>，其余层为 <see cref="NpcCreditsPerFloor"/> / <see cref="NpcCreditsOnFloorEnterSlice"/>）。</summary>
         public const int NpcCreditInstallmentCountAfterEnter = 2;
 
         public const string NarratorCharacterId = "0";
+
+        /// <summary>本层内每次分期应增加的 <see cref="PlayerData.NpcDialogueCredits"/> 数量（第一层 2，第 2 层起 1）。</summary>
+        public static int GetNpcInstallmentCreditSlice(int floor1Based)
+        {
+            return floor1Based == 1 ? NpcCreditsFirstFloorDaySlice : NpcCreditsOnFloorEnterSlice;
+        }
 
         /// <summary>
         /// 若将某层「累计应发放」的原住民次数换算为常数：第一层为 <see cref="NpcCreditsFirstFloor"/>；第 2 层起每层合计为 <see cref="NpcCreditsPerFloor"/>（实际按进层 + 按日分期写入 <see cref="PlayerData.NpcDialogueCredits"/>）。

@@ -183,8 +183,8 @@ namespace KingCardsSpire.Managers
                 MetNpcIds = Array.Empty<string>(),
                 LastNpcInteractionDay = 0,
                 NpcStoryVisitsUsedToday = 0,
-                NpcDialogueCredits = StoryDialogueRules.GetNpcCreditsAwardedForFloor(1),
-                NpcCreditInstallmentsRemaining = 0
+                NpcDialogueCredits = StoryDialogueRules.NpcCreditsFirstFloorDaySlice,
+                NpcCreditInstallmentsRemaining = StoryDialogueRules.NpcCreditInstallmentCountAfterEnter
             };
 
             NormalizePlayerAudioSettings(PlayerState);
@@ -227,8 +227,10 @@ namespace KingCardsSpire.Managers
             if (PlayerState.CurrentFloor >= 2)
             {
                 // 本层若仍有未触发的按日分期，进层时一次性折成点数，避免提前过层浪费配额。
+                var prevFloor = PlayerState.CurrentFloor - 1;
+                var prevSlice = StoryDialogueRules.GetNpcInstallmentCreditSlice(prevFloor);
                 PlayerState.NpcDialogueCredits +=
-                    PlayerState.NpcCreditInstallmentsRemaining * StoryDialogueRules.NpcCreditsOnFloorEnterSlice;
+                    PlayerState.NpcCreditInstallmentsRemaining * prevSlice;
                 PlayerState.NpcDialogueCredits += StoryDialogueRules.NpcCreditsOnFloorEnterSlice;
                 PlayerState.NpcCreditInstallmentsRemaining = StoryDialogueRules.NpcCreditInstallmentCountAfterEnter;
             }
@@ -272,10 +274,11 @@ namespace KingCardsSpire.Managers
         {
             if (_gameOver || _runVictory || PlayerState == null)
                 return;
-            if (PlayerState.CurrentFloor < 2 || PlayerState.NpcCreditInstallmentsRemaining <= 0)
+            if (PlayerState.NpcCreditInstallmentsRemaining <= 0)
                 return;
 
-            PlayerState.NpcDialogueCredits += StoryDialogueRules.NpcCreditsOnFloorEnterSlice;
+            var slice = StoryDialogueRules.GetNpcInstallmentCreditSlice(PlayerState.CurrentFloor);
+            PlayerState.NpcDialogueCredits += slice;
             PlayerState.NpcCreditInstallmentsRemaining--;
         }
 
@@ -1066,9 +1069,7 @@ namespace KingCardsSpire.Managers
             if (player.NpcStoryVisitsUsedToday < 0)
                 player.NpcStoryVisitsUsedToday = 0;
 
-            if (player.CurrentFloor < 2)
-                player.NpcCreditInstallmentsRemaining = 0;
-            else if (player.NpcCreditInstallmentsRemaining < 0)
+            if (player.NpcCreditInstallmentsRemaining < 0)
                 player.NpcCreditInstallmentsRemaining = 0;
             else if (player.NpcCreditInstallmentsRemaining > StoryDialogueRules.NpcCreditInstallmentCountAfterEnter)
                 player.NpcCreditInstallmentsRemaining = StoryDialogueRules.NpcCreditInstallmentCountAfterEnter;

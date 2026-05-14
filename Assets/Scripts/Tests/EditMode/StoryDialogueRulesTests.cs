@@ -14,6 +14,12 @@ namespace KingCardsSpire.Tests
             Assert.AreEqual(
                 StoryDialogueRules.NpcCreditsPerFloor,
                 StoryDialogueRules.NpcCreditsOnFloorEnterSlice + StoryDialogueRules.NpcCreditInstallmentCountAfterEnter);
+            Assert.AreEqual(
+                StoryDialogueRules.NpcCreditsFirstFloor,
+                StoryDialogueRules.NpcCreditsFirstFloorDaySlice *
+                (1 + StoryDialogueRules.NpcCreditInstallmentCountAfterEnter));
+            Assert.AreEqual(2, StoryDialogueRules.GetNpcInstallmentCreditSlice(1));
+            Assert.AreEqual(1, StoryDialogueRules.GetNpcInstallmentCreditSlice(2));
         }
 
         [Test]
@@ -59,11 +65,30 @@ namespace KingCardsSpire.Tests
         {
             var vm = NpcHubViewModel.Build(
                 new[] { "1_1" },
-                newEncounterPoolEmpty: true,
+                newEncounterPoolEmpty: false,
                 id => id == "1_1" ? "林中商人" : id);
 
             Assert.AreEqual(NpcHubButtonKind.NewEncounter, vm.Buttons[0].Kind);
             Assert.AreEqual("林中商人", vm.Buttons[1].LabelText);
+        }
+
+        [Test]
+        public void NpcHubHidesNewEncounterWhenEightMetOrPoolEmpty()
+        {
+            var eight = new[] { "1", "2", "3", "4", "5", "6", "7", "8" };
+            var vmFull = NpcHubViewModel.Build(eight, true, id => id);
+            Assert.AreEqual(8, vmFull.Buttons.Count);
+            for (var i = 0; i < vmFull.Buttons.Count; i++)
+                Assert.AreEqual(NpcHubButtonKind.MetNpc, vmFull.Buttons[i].Kind, $"index {i}");
+
+            var seven = new[] { "1", "2", "3", "4", "5", "6", "7" };
+            var vmLast = NpcHubViewModel.Build(seven, false, id => id);
+            Assert.AreEqual(8, vmLast.Buttons.Count);
+            Assert.AreEqual(NpcHubButtonKind.NewEncounter, vmLast.Buttons[0].Kind);
+
+            var vmNoNew = NpcHubViewModel.Build(seven, true, id => id);
+            Assert.AreEqual(7, vmNoNew.Buttons.Count);
+            Assert.AreEqual(NpcHubButtonKind.MetNpc, vmNoNew.Buttons[0].Kind);
         }
     }
 }

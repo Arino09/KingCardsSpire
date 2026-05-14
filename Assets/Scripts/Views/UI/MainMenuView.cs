@@ -156,8 +156,8 @@ namespace KingCardsSpire.Views.UI
             if (ui == null)
                 yield break;
 
-            ui.Close(UIPanelId.MainMenu);
             yield return ui.OpenAsync(UIPanelId.MainHub);
+            ui.Close(UIPanelId.MainMenu);
         }
 
         private static IEnumerator RunNewGameThenMainHub(MainMenuView view)

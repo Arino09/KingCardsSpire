@@ -2264,7 +2264,7 @@ MonoBehaviour:
     speakerName: "\u64CD\u7EB5\u8005"
     bodyText: "\u201C\u4F60\u53C8\u6765\u4E86\u3002\u600E\u4E48\uFF0C\u8FD9\u6B21\u60F3\u95EE\u70B9\u4EC0\u4E48\uFF1F\u201D"
     isChoice: 0
-    nextId: npc_5_2_2
+    nextId: npc_5_2_3
     choices: []
   - id: npc_5_2_3
     timingKind: 4
@@ -2340,7 +2340,7 @@ MonoBehaviour:
     choices: []
   - id: npc_5_2_11
     timingKind: 4
-    backgroundId: NPC5/4
+    backgroundId: NPC5/3
     characterId: 
     speakerName: "\u64CD\u7EB5\u8005"
     bodyText: "\u201C\u9664\u975E\u8F93\u5165\u89E3\u9501\u5BC6\u7801\uFF0C\u5426\u5219\u6574\u5EA7\u5854\u90FD\u73A9\u5B8C\u3002\u81F3\u4E8E\u90A3\u4E2A\u5BC6\u7801\uFF0C\u53EA\u6709\u5EFA\u7B51\u5E08\u77E5\u9053\u3002\u201D\n\u201C\u6240\u4EE5\u6211\u529D\u4F60\u4E00\u53E5\uFF0C\u770B\u5230\u90A3\u4E9B\u6309\u94AE\u5343\u4E07\u522B\u4E71\u6309\u3002\u201D\n"
@@ -2511,7 +2511,7 @@ MonoBehaviour:
     choices: []
   - id: npc_6_2_6
     timingKind: 4
-    backgroundId: NPC6/3
+    backgroundId: NPC6/4
     characterId: 
     speakerName: "\u6539\u9769\u8005"
     bodyText: "\u201C\u7B2C\u4E09\u5927\u9646\u5C31\u5DEE\u5F97\u8FDC\u4E86\uFF0C\u4ED6\u4EEC\u624D\u521A\u521A\u8FDB\u5165\u63A5\u89E6\u2018\u7535\u2019\u7684\u65F6\u4EE3\u3002\u4F60\u53EF\u4EE5\u628A\u7535\u7406\u89E3\u6210\u96F7\u96E8\u5929\u6C14\u65F6\u5929\u4E0A\u7A81\u7136\u4EAE\u8D77\u7684\u90A3\u79CD\u5149\uFF0C\u800C\u4ED6\u4EEC\u73B0\u5728\u624D\u521A\u5F00\u59CB\u5B66\u7740\u5982\u4F55\u5229\u7528\u8FD9\u79CD\u529B\u91CF\u3002\u201D"
@@ -2597,7 +2597,7 @@ MonoBehaviour:
     speakerName: "\u4F60"
     bodyText: "\u201C\u4F60\u8BA4\u8BC6\u6211\uFF1F\u201D"
     isChoice: 0
-    nextId: 
+    nextId: npc_7_1_7
     choices: []
   - id: npc_7_1_7
     timingKind: 4
