@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using KingCardsSpire.Core;
 using KingCardsSpire.Configs;
+using KingCardsSpire.Controllers;
 using KingCardsSpire.Managers;
 using KingCardsSpire.Models;
 using KingCardsSpire.Views.UI.Cards;
@@ -12,14 +13,12 @@ using UnityEngine.UI;
 namespace KingCardsSpire.Views.UI
 {
     /// <summary>
-    /// 驻守者五选一奖励，或常规战斗胜利后从敌方卡组中至多 3 张里选 1 张；选项使用与战斗相同的 Card 预制体（<see cref="CardView"/>）。
+    /// 驻守者奖励（两档金币 + 至多 5 张 BOSS 卡组卡牌）或常规战斗胜利后从敌方卡组中至多 3 张里选 1 张；选项使用与战斗相同的 Card 预制体（<see cref="CardView"/>）。
     /// 驻守：跳过卡牌按钮领取列表中<strong>全部金币项</strong>（见 <see cref="GameManager.TrySkipBossCardRewardsCollectGoldAndAdvance"/>）。
     /// 常规：跳过表示不获得卡牌，仅关闭本面板。
     /// </summary>
     public sealed class CardRewardView : BaseView
     {
-        private const int MaxBossOptions = 5;
-
         [SerializeField] private Text titleText;
         [SerializeField] private RectTransform cardOptionsRoot;
         [SerializeField] private CardView cardOptionPrefab;
@@ -106,7 +105,7 @@ namespace KingCardsSpire.Views.UI
             var list = gm?.PendingBossRewards;
             var count = list != null ? list.Count : 0;
 
-            for (var i = 0; i < MaxBossOptions && i < count; i++)
+            for (var i = 0; i < count; i++)
             {
                 var opt = list[i];
                 if (opt == null)

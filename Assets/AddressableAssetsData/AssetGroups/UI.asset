@@ -117,6 +117,12 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d796352e0056eb3408b70337f87b7e02
+    m_Address: UI/BuffRewardView
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - ui_panel
+    FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: 0b8713ba58b57bb49bd9906570780370, type: 2}
   m_SchemaSet:

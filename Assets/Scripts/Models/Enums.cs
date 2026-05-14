@@ -18,21 +18,18 @@ namespace KingCardsSpire.Models
     }
 
     /// <summary>
-    /// 初始 Buff 十选一（文档 §2.4）。
+    /// 初始 Buff 池（文档 §2.4）。
     /// </summary>
     public enum BuffId
     {
         None = 0,
-        Socialite = 1,
-        RichSecondGen = 2,
-        UnlimitedSupply = 3,
-        RandomCommoner = 4,
-        RandomKing = 5,
-        SurprisePack = 6,
-        HighSalaryJob = 7,
-        ThiefInstinct = 8,
-        XRayBoost = 9,
-        ChaoticBattlefield = 10
+        RichSecondGen = 1,
+        UnlimitedSupply = 2,
+        RandomCommoner = 3,
+        RandomKing = 4,
+        SurprisePack = 5,
+        XRayBoost = 6,
+        ChaoticBattlefield = 7
     }
 
     public enum UIPanelId
@@ -50,6 +47,6 @@ namespace KingCardsSpire.Models
         CardList = 10,
         NpcHub = 11,
         Dialog = 12,
-        BuffDraft = 13
+        BuffRewardView = 13
     }
 }

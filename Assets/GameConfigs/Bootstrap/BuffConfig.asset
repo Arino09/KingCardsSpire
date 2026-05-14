@@ -1,0 +1,43 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0911231a0f8483544a5ece35e1563001, type: 3}
+  m_Name: BuffConfig
+  m_EditorClassIdentifier: 
+  buffs:
+  - id: 1
+    buffId: 1
+    displayName: "\u5BCC\u4E8C\u4EE3"
+    description: "\u91D1\u5E01\u589E\u52A050%"
+  - id: 2
+    buffId: 2
+    displayName: "\u65E0\u9650\u4F9B\u5E94"
+    description: "\u5546\u5E97\u5361\u724C\u4E0D\u4F1A\u552E\u7F44"
+  - id: 3
+    buffId: 3
+    displayName: "\u968F\u673A\u5E73\u6C11"
+    description: "\u5E73\u6C11\u5361\u6BCF\u6B21\u5BF9\u5F08\u80FD\u529B\u503C\u968F\u673A\u53D8\u4E3A0~2"
+  - id: 4
+    buffId: 4
+    displayName: "\u968F\u673A\u56FD\u738B"
+    description: "\u56FD\u738B\u5361\u6BCF\u6B21\u5BF9\u5F08\u80FD\u529B\u503C\u968F\u673A\u53D8\u4E3A0~4"
+  - id: 5
+    buffId: 5
+    displayName: "\u60CA\u559C\u5361\u5305"
+    description: "\u83B7\u5F97\u5361\u724C\u6570\u91CF\u57280~3\u4E2D\u968F\u673A"
+  - id: 6
+    buffId: 6
+    displayName: "\u900F\u89C6\u589E\u5F3A"
+    description: "\u521D\u59CB\u53EF\u770B\u7A7F\u654C\u4EBA2\u5F20\u724C"
+  - id: 7
+    buffId: 7
+    displayName: "\u6DF7\u4E71\u6218\u573A"
+    description: "\u6218\u6597\u5F00\u59CB\u524D\u9009\u62E93\u5F20\u724C\u52A0\u5165\u4F60\u7684\u624B\u724C\u3002\\n\u4F60\u7684\u624B\u724C\u4F1A\u968F\u673A\u6253\u51FA\u3002"

@@ -220,8 +220,8 @@ namespace KingCardsSpire.Views.UI
                 yield break;
 
             gm.TryBuildBuffDraftOffer();
-            yield return ui.OpenAsync(UIPanelId.BuffDraft);
-            while (ui.IsPanelOpen(UIPanelId.BuffDraft))
+            yield return ui.OpenAsync(UIPanelId.BuffRewardView);
+            while (ui.IsPanelOpen(UIPanelId.BuffRewardView))
                 yield return null;
 
             RefreshStatusTexts();
@@ -353,7 +353,7 @@ namespace KingCardsSpire.Views.UI
             {
                 if (i > 0)
                     sb.Append("、");
-                sb.Append(FormatBuff(arr[i]));
+                sb.Append( ConfigManager.Instance.ResolveBuffDisplayName(arr[i]));
             }
 
             return sb.ToString();
@@ -380,25 +380,6 @@ namespace KingCardsSpire.Views.UI
                 sb.Append("暂无历史记录（推进进度或存档后将显示）。");
 
             historyText.text = sb.ToString().TrimEnd();
-        }
-
-        private static string FormatBuff(BuffId buff)
-        {
-            return buff switch
-            {
-                BuffId.None => "无",
-                BuffId.Socialite => "社交达人",
-                BuffId.RichSecondGen => "富二代",
-                BuffId.UnlimitedSupply => "无限供应",
-                BuffId.RandomCommoner => "随机平民",
-                BuffId.RandomKing => "随机国王",
-                BuffId.SurprisePack => "惊喜卡包",
-                BuffId.HighSalaryJob => "高薪工作",
-                BuffId.ThiefInstinct => "盗贼本能",
-                BuffId.XRayBoost => "透视增强",
-                BuffId.ChaoticBattlefield => "混乱战场",
-                _ => buff.ToString()
-            };
         }
 
         private void OnDeckClicked()

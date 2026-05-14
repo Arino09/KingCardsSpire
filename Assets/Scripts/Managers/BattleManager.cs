@@ -1081,11 +1081,16 @@ namespace KingCardsSpire.Managers
                 _pendingCasualVictoryRewardCardIds = null;
 
             var boss = _isBossBattle;
+            string[] bossVictoryRewardCardIds = null;
+            if (playerVictory && boss && !_isTutorialBattle)
+                bossVictoryRewardCardIds =
+                    CasualVictoryRewardPicker.BuildBossVictoryOfferCardIds(_enemyHand, _enemyDiscard);
+
             Debug.Log(
                 $"[BattleManager] 战斗结束 己方{(playerVictory ? "胜" : "败")} 原因={reason} BOSS战={boss}");
             SyncBattleState();
             EventManager.Instance?.Publish(new BattleEndedEvent(playerVictory, reason, boss,
-                _battleEffects.PlayerGoldenNecklacePlayed));
+                _battleEffects.PlayerGoldenNecklacePlayed, bossVictoryRewardCardIds));
             EventManager.Instance?.Publish(new BattleStateChangedEvent());
         }
 

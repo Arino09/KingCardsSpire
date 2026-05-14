@@ -56,13 +56,19 @@ namespace KingCardsSpire.Core.Events
         /// <summary>本局是否打出过金色项链（获胜后可由经济系统用于金币倍率）。</summary>
         public readonly bool GoldenNecklacePlayedThisBattle;
 
+        /// <summary>
+        /// 驻守 BOSS 战胜时：从本局 BOSS 卡组（手牌+弃牌）筛出的卡牌奖励候选 Id（至多 5，已排除国王/平民）；否则为 <c>null</c>。
+        /// </summary>
+        public readonly string[] BossVictoryRewardCardIds;
+
         public BattleEndedEvent(bool playerVictory, BattleEndReason reason, bool isBossBattle = false,
-            bool goldenNecklacePlayedThisBattle = false)
+            bool goldenNecklacePlayedThisBattle = false, string[] bossVictoryRewardCardIds = null)
         {
             PlayerVictory = playerVictory;
             Reason = reason;
             IsBossBattle = isBossBattle;
             GoldenNecklacePlayedThisBattle = goldenNecklacePlayedThisBattle;
+            BossVictoryRewardCardIds = bossVictoryRewardCardIds;
         }
     }
 

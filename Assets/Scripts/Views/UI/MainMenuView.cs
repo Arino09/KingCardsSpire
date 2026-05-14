@@ -236,8 +236,8 @@ namespace KingCardsSpire.Views.UI
                 yield break;
 
             game.TryBuildBuffDraftOffer();
-            yield return ui.OpenAsync(UIPanelId.BuffDraft);
-            while (ui.IsPanelOpen(UIPanelId.BuffDraft))
+            yield return ui.OpenAsync(UIPanelId.BuffRewardView);
+            while (ui.IsPanelOpen(UIPanelId.BuffRewardView))
                 yield return null;
         }
 

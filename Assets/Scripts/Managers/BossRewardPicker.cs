@@ -6,17 +6,14 @@ using UnityEngine;
 namespace KingCardsSpire.Managers
 {
     /// <summary>
-    /// 驻守者 5 选 1 奖励生成（占位档位：spareDays 越大金币档位越高）。
+    /// 驻守者奖励：两档 SpareDay 相关金币 + 至多 5 张从本局 BOSS 卡组（手牌+弃牌）筛出的卡牌；卡牌不足时不补金币。卡牌列表由战斗结束事件携带。
     /// </summary>
     public static class BossRewardPicker
     {
-        private const int OptionCount = 5;
-
         public static BossRewardOption[] Generate(int spareDays, TowerFloorEntry floorOrNull,
-            ConfigManager cfg)
+            ConfigManager cfg, IReadOnlyList<string> bossVictoryRewardCardIdsOrNull)
         {
             var floor = floorOrNull;
-            var pool = floor?.RewardCardPoolIds;
             var goldBase = Mathf.Max(1, floor?.GoldBonusPerSpareDay ?? 5) * Mathf.Max(1, spareDays + 1);
 
             var options = new List<BossRewardOption>();
@@ -25,12 +22,11 @@ namespace KingCardsSpire.Managers
             options.Add(MakeGold(goldBase, usedKeys));
             options.Add(MakeGold(goldBase + 15, usedKeys));
 
-            if (pool != null && cfg != null)
+            if (bossVictoryRewardCardIdsOrNull != null && cfg != null)
             {
-                foreach (var cardId in pool)
+                for (var i = 0; i < bossVictoryRewardCardIdsOrNull.Count; i++)
                 {
-                    if (options.Count >= OptionCount)
-                        break;
+                    var cardId = bossVictoryRewardCardIdsOrNull[i];
                     if (string.IsNullOrEmpty(cardId) || !cfg.TryGetCard(cardId, out var cc))
                         continue;
                     var key = "c:" + cardId;
@@ -45,9 +41,6 @@ namespace KingCardsSpire.Managers
                     });
                 }
             }
-
-            while (options.Count < OptionCount)
-                options.Add(MakeGold(goldBase + 8 * options.Count, usedKeys));
 
             return options.ToArray();
         }

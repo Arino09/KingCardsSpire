@@ -77,5 +77,44 @@ namespace KingCardsSpire.Tests
                 Assert.IsTrue(id == "a" || id == "b" || id == "c" || id == "d");
             }
         }
+
+        [Test]
+        public void BuildBossVictory_ReturnsNullWhenOnlyKingAndCommoner()
+        {
+            var hand = new List<Card>
+            {
+                new Card { Id = WellKnownCardIds.King },
+                new Card { Id = WellKnownCardIds.Commoner }
+            };
+
+            var result = CasualVictoryRewardPicker.BuildBossVictoryOfferCardIds(hand, null);
+
+            Assert.IsNull(result);
+        }
+
+        [Test]
+        public void BuildBossVictory_WhenSixEligible_ReturnsFiveDistinctIds()
+        {
+            var hand = new List<Card>
+            {
+                new Card { Id = "a" },
+                new Card { Id = "b" },
+                new Card { Id = "c" }
+            };
+            var discard = new List<Card>
+            {
+                new Card { Id = "d" },
+                new Card { Id = "e" },
+                new Card { Id = "f" }
+            };
+
+            Random.InitState(42);
+            var result = CasualVictoryRewardPicker.BuildBossVictoryOfferCardIds(hand, discard);
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual(5, result.Length);
+            var set = new HashSet<string>(result);
+            Assert.AreEqual(5, set.Count);
+        }
     }
 }

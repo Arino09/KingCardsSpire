@@ -10,7 +10,8 @@ namespace KingCardsSpire.Managers
     public sealed class ConfigManager : PersistentMonoSingleton<ConfigManager>
     {
         private readonly Dictionary<string, CardConfigEntry> _cards = new();
-        private readonly Dictionary<string, BuffConfig> _buffs = new();
+        private readonly Dictionary<string, BuffConfigEntry> _buffs = new();
+        private readonly Dictionary<BuffId, BuffConfigEntry> _buffsByBuffId = new();
         private readonly Dictionary<string, WeatherConfig> _weathers = new();
         private readonly List<ShopConfig> _shopConfigs = new();
         private readonly List<GameConfig> _gameConfigs = new();
@@ -114,14 +115,26 @@ namespace KingCardsSpire.Managers
         private void IndexBuffs(IList<BuffConfig> list)
         {
             _buffs.Clear();
+            _buffsByBuffId.Clear();
             if (list == null)
                 return;
-            foreach (var b in list)
+            foreach (var db in list)
             {
-                if (b == null || string.IsNullOrEmpty(b.Id))
+                if (db == null)
                     continue;
-                if (!_buffs.ContainsKey(b.Id))
-                    _buffs.Add(b.Id, b);
+                var rows = db.Buffs;
+                if (rows == null)
+                    continue;
+                for (var i = 0; i < rows.Count; i++)
+                {
+                    var b = rows[i];
+                    if (b == null || string.IsNullOrEmpty(b.Id))
+                        continue;
+                    if (!_buffs.ContainsKey(b.Id))
+                        _buffs.Add(b.Id, b);
+                    if (b.BuffId != BuffId.None && !_buffsByBuffId.ContainsKey(b.BuffId))
+                        _buffsByBuffId.Add(b.BuffId, b);
+                }
             }
         }
 
@@ -296,25 +309,35 @@ namespace KingCardsSpire.Managers
             }
         }
 
-        public bool TryGetBuff(string id, out BuffConfig config) => _buffs.TryGetValue(id, out config);
+        public bool TryGetBuff(string id, out BuffConfigEntry config) => _buffs.TryGetValue(id, out config);
 
-        /// <summary>按 <see cref="BuffConfig.BuffId"/> 查找策划 Buff 资产（用于 Buff 草案展示等）。</summary>
-        public bool TryGetBuffByBuffId(BuffId buffId, out BuffConfig config)
+        /// <summary>按 <see cref="BuffConfigEntry.BuffId"/> 查找表行（用于 Buff 草案展示等）。</summary>
+        public bool TryGetBuffByBuffId(BuffId buffId, out BuffConfigEntry config)
         {
             config = null;
             if (buffId == BuffId.None)
                 return false;
+            return _buffsByBuffId.TryGetValue(buffId, out config);
+        }
 
-            foreach (var kv in _buffs)
-            {
-                if (kv.Value != null && kv.Value.BuffId == buffId)
-                {
-                    config = kv.Value;
-                    return true;
-                }
-            }
+        /// <summary>从 Buff 表取显示名；表无条目或 DisplayName 为空时退回枚举名；<see cref="BuffId.None"/> 为空串。</summary>
+        public string ResolveBuffDisplayName(BuffId buffId)
+        {
+            if (buffId == BuffId.None)
+                return string.Empty;
+            if (TryGetBuffByBuffId(buffId, out var cfg) && cfg != null && !string.IsNullOrEmpty(cfg.DisplayName))
+                return cfg.DisplayName;
+            return buffId.ToString();
+        }
 
-            return false;
+        /// <summary>从 Buff 表取描述；无表项或字段为空时为空串。</summary>
+        public string ResolveBuffDescription(BuffId buffId)
+        {
+            if (buffId == BuffId.None)
+                return string.Empty;
+            if (TryGetBuffByBuffId(buffId, out var cfg) && cfg != null)
+                return cfg.Description ?? string.Empty;
+            return string.Empty;
         }
 
         /// <summary>将全部配置卡转为运行时 <see cref="Card"/> 列表（图鉴/混乱战场全卡池）。</summary>

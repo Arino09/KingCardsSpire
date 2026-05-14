@@ -5,6 +5,7 @@ using KingCardsSpire.Configs;
 using KingCardsSpire.Core;
 using KingCardsSpire.Core.Events;
 using KingCardsSpire.Models;
+using KingCardsSpire.Views.UI;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
@@ -36,7 +37,6 @@ namespace KingCardsSpire.Managers
 
         private static readonly BuffId[] DraftableBuffIds =
         {
-            BuffId.Socialite,
             BuffId.RichSecondGen,
             BuffId.UnlimitedSupply,
             BuffId.RandomCommoner,
@@ -610,7 +610,7 @@ namespace KingCardsSpire.Managers
             TowerFloorEntry entry = null;
             if (cfgMgr != null)
                 cfgMgr.TryGetTowerFloor(PlayerState.CurrentFloor, out entry);
-            var options = BossRewardPicker.Generate(spareDays, entry, cfgMgr);
+            var options = BossRewardPicker.Generate(spareDays, entry, cfgMgr, e.BossVictoryRewardCardIds);
             _pendingBossRewards = options;
             _events?.Publish(new BossRewardOfferedEvent(PlayerState.CurrentFloor, options));
         }
@@ -975,7 +975,8 @@ namespace KingCardsSpire.Managers
             PersistCurrentRunToDisk();
         }
 
-        public int GetMaxNpcStoryVisitsPerDay() => 1 + (HasBuff(BuffId.Socialite) ? 1 : 0);
+        /// <summary>每日可推进原住民剧情次数上限（与 UI 访问次数一致）。</summary>
+        public int GetMaxNpcStoryVisitsPerDay() => 1;
 
         public bool HasBuff(BuffId id)
         {

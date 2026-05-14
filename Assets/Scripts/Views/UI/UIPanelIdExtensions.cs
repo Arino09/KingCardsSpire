@@ -21,6 +21,7 @@ namespace KingCardsSpire.Views.UI
                 UIPanelId.NpcHub => "UI/NPCView",
                 UIPanelId.Dialog => "UI/DialogView",
                 UIPanelId.HeroRoom => "UI/HeroView",
+                UIPanelId.BuffRewardView => "UI/BuffRewardView",
                 _ => string.Empty
             };
         }
