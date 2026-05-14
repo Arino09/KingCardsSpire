@@ -193,15 +193,6 @@ MonoBehaviour:
     isChoice: 0
     nextId: 
     choices: []
-  - id: hero_0_1
-    timingKind: 3
-    backgroundId: 1
-    characterId: Hero/1
-    speakerName: "\u53C2\u8D5B\u8005\u4E00"
-    bodyText: "\u6211\u662F\u4E00\u53F7\u53C2\u8D5B\u8005\uFF0C\u6709\u7A7A\u6765\u804A\u804A\u5417\uFF1F"
-    isChoice: 0
-    nextId: 
-    choices: []
   - id: hero_1_1
     timingKind: 3
     backgroundId: 1
@@ -311,6 +302,978 @@ MonoBehaviour:
     characterId: Heroine1/1
     speakerName: "\u82B1"
     bodyText: "\u201C\u8FD9\u6B21\u4F60\u7684\u9009\u62E9\u53D1\u751F\u4E86\u53D8\u5316\uFF0C\u662F\u56E0\u4E3A\u4EC0\u4E48\uFF1F\u6709\u8DA3\u3002\u201D\r\n\u201C\u5E0C\u671B\u4F60\u80FD\u6D3B\u5230\u6700\u540E\uFF0C\u6211\u5F88\u671F\u5F85\u201D"
+    isChoice: 0
+    nextId: 
+    choices: []
+  - id: hero_0_1
+    timingKind: 3
+    backgroundId: hero1_1
+    characterId: 
+    speakerName: "\u5927\u53D4"
+    bodyText: "\u201C\u6765\u53C2\u52A0\u8FD9\u573A\u7ADE\u8D5B\u7684\u4EBA\uFF0C\u611F\u89C9\u4E00\u4E2A\u6BD4\u4E00\u4E2A\u5389\u5BB3\u3002\u201D\r\n\u201C\u5C24\u5176\u662F\u90A3\u4E2A\u53EB\u82B1\u7684\u5973\u5B69\uFF0C\u5979\u51FA\u724C\u524D\u597D\u50CF\u5C31\u5DF2\u7ECF\u77E5\u9053\u81EA\u5DF1\u4F1A\u8D62\u4E86\u4E00\u6837\uFF0C\u8FDE\u4E00\u70B9\u72B9\u8C6B\u90FD\u6CA1\u6709\u3002\u201D\r\n\u201C\u8FD8\u6709\uFF0C\u5931\u8D25\u7684\u4EBA\u7ADF\u7136\u771F\u7684\u4F1A\u88AB\u5904\u51B3\u2026\u2026\u8001\u5B9E\u8BF4\uFF0C\u6211\u73B0\u5728\u90FD\u4E0D\u77E5\u9053\u81EA\u5DF1\u5230\u5E95\u80FD\u8D70\u5230\u54EA\u4E00\u6B65\u3002\u201D"
+    isChoice: 0
+    nextId: hero_0_1_2
+    choices: []
+  - id: hero_0_1_2
+    timingKind: 3
+    backgroundId: hero1_2
+    characterId: 
+    speakerName: "\u5927\u53D4"
+    bodyText: "\u4ED6\u8BF4\u7740\uFF0C\u4F4E\u5934\u6253\u5F00\u4E86\u624B\u4E2D\u7684\u6000\u8868\u3002\r\n\u4F60\u770B\u89C1\u91CC\u9762\u5939\u7740\u4E00\u5F20\u7167\u7247\uFF0C\u7167\u7247\u4E0A\u662F\u4E00\u540D\u5973\u4EBA\u548C\u4E00\u4E2A\u5C0F\u7537\u5B69\u3002"
+    isChoice: 0
+    nextId: hero_0_1_3
+    choices: []
+  - id: hero_0_1_3
+    timingKind: 3
+    backgroundId: hero1_2
+    characterId: 
+    speakerName: "\u4F60"
+    bodyText: "\u201C\u4F60\u7684\u7231\u4EBA\u548C\u5B69\u5B50\uFF1F\u201D"
+    isChoice: 0
+    nextId: hero_0_1_4
+    choices: []
+  - id: hero_0_1_4
+    timingKind: 3
+    backgroundId: hero1_1
+    characterId: 
+    speakerName: 
+    bodyText: "\u5927\u53D4\u62AC\u8D77\u5934\uFF0C\u770B\u4E86\u4F60\u4E00\u773C\uFF0C\u53EA\u662F\u7B11\u4E86\u7B11\uFF0C\u6CA1\u6709\u8BF4\u8BDD\u3002"
+    isChoice: 0
+    nextId: 
+    choices: []
+  - id: hero_0_2
+    timingKind: 3
+    backgroundId: hero1_1
+    characterId: 
+    speakerName: "\u4F60"
+    bodyText: "\u201C\u4E0A\u6B21\u8FD8\u6CA1\u6B63\u5F0F\u8BA4\u8BC6\u3002\u201D\r\n\u201C\u6211\u662F\u6765\u81EA\u7B2C\u4E94\u5927\u9646\u7684\u98CE\u95F4\uFF0C\u4E00\u540D\u4FA6\u63A2\u3002\u201D"
+    isChoice: 0
+    nextId: hero_0_2_1
+    choices: []
+  - id: hero_0_2_1
+    timingKind: 3
+    backgroundId: hero1_1
+    characterId: 
+    speakerName: "\u9F99\u4E4B\u4ECB"
+    bodyText: "\u201C\u9F99\u4E4B\u4ECB\uFF0C\u6765\u81EA\u7B2C\u4E09\u5927\u9646\uFF0C\u662F\u4E2A\u96C7\u4F63\u5175\u3002\u201D\r"
+    isChoice: 0
+    nextId: hero_0_2_2
+    choices: []
+  - id: hero_0_2_2
+    timingKind: 3
+    backgroundId: hero1_1
+    characterId: 
+    speakerName: "\u4F60"
+    bodyText: "\u201C\u96C7\u4F63\u5175\u4E5F\u4F1A\u6765\u53C2\u52A0\u8FD9\u79CD\u6BD4\u8D5B\uFF1F\u201D\r"
+    isChoice: 0
+    nextId: hero_0_2_3
+    choices: []
+  - id: hero_0_2_3
+    timingKind: 3
+    backgroundId: hero1_1
+    characterId: 
+    speakerName: "\u9F99\u4E4B\u4ECB"
+    bodyText: "\u201C\u6709\u4EBA\u51FA\u4E86\u5F88\u9AD8\u7684\u60AC\u8D4F\uFF0C\u6211\u5C31\u6765\u4E86\u3002\u201D\u9F99\u4E4B\u4ECB\u82E6\u7B11\u4E86\u4E00\u4E0B\u3002\r\n\r\u201C\u4E0D\u8FC7\u6211\u73B0\u5728\u591A\u5C11\u6709\u70B9\u540E\u6094\u4E86\u3002\u201D\r"
+    isChoice: 0
+    nextId: hero_0_2_4
+    choices: []
+  - id: hero_0_2_4
+    timingKind: 3
+    backgroundId: hero1_1
+    characterId: 
+    speakerName: "\u4F60"
+    bodyText: "\r\u201C\u4E3A\u4EC0\u4E48\uFF1F\u201D\r"
+    isChoice: 0
+    nextId: hero_0_2_5
+    choices: []
+  - id: hero_0_2_5
+    timingKind: 3
+    backgroundId: hero1_1
+    characterId: 
+    speakerName: "\u9F99\u4E4B\u4ECB"
+    bodyText: "\r\u201C\u6211\u672C\u6765\u4EE5\u4E3A\uFF0C\u8FD9\u662F\u9760\u5200\u67AA\u8BF4\u8BDD\u7684\u5730\u65B9\u3002\u201D\r\n\u201C\u6CA1\u60F3\u5230\uFF0C\u6BD4\u7684\u5C45\u7136\u662F\u8111\u5B50\u3002\u201D\r\n\u201C\u800C\u8FD9\u4E1C\u897F\uFF0C\u504F\u504F\u4E0D\u662F\u6211\u6700\u64C5\u957F\u7684\u3002\u201D\r"
+    isChoice: 0
+    nextId: 
+    choices: []
+  - id: hero_0_3
+    timingKind: 3
+    backgroundId: hero1_1
+    characterId: 
+    speakerName: "\u9F99\u4E4B\u4ECB"
+    bodyText: "\r\"\u4FA6\u63A2\uFF0C\u6211\u7ED9\u4F60\u8BB2\u4E2A\u6545\u4E8B\u5427\u3002\"\n\u201C\u6211\u4EE5\u524D\u5E26\u8FC7\u4E00\u652F\u96C7\u4F63\u5175\u5C0F\u961F\uFF0C\u90FD\u662F\u8DDF\u7740\u6211\u4E00\u8D77\u51FA\u751F\u5165\u6B7B\u7684\u5144\u5F1F\u3002\u201D\r\n\u201C\u540E\u6765\u6709\u4E00\u6B21\u4EFB\u52A1\uFF0C\u6211\u88AB\u4EBA\u5356\u4E86\u3002\u201D\r\n\u201C\u7B49\u6211\u53CD\u5E94\u8FC7\u6765\u7684\u65F6\u5019\uFF0C\u961F\u91CC\u7684\u4EBA\u5DF2\u7ECF\u6B7B\u5F97\u5DEE\u4E0D\u591A\u4E86\uFF0C\u6700\u540E\u53EA\u5269\u4E0B\u6211\u4E00\u4E2A\u3002\u201D\n\r"
+    isChoice: 0
+    nextId: hero_0_3_1
+    choices: []
+  - id: hero_0_3_1
+    timingKind: 3
+    backgroundId: hero1_1
+    characterId: 
+    speakerName: "\u9F99\u4E4B\u4ECB"
+    bodyText: "\r\u201C\u4E5F\u662F\u4ECE\u90A3\u4EE5\u540E\uFF0C\u6211\u6709\u4E86\u4E00\u4E2A\u80FD\u529B\u3002\u201D\r\n\r\u201C\u53EA\u8981\u6709\u4EBA\u5728\u6211\u9762\u524D\u8BF4\u8C0E\uFF0C\u6211\u5C31\u80FD\u611F\u89C9\u5230\u3002\u201D\r\n\u201C\u6240\u4EE5\u6211\u4E0D\u559C\u6B22\u8FD9\u5EA7\u5854\u3002\u201D\n\r"
+    isChoice: 0
+    nextId: hero_0_3_2
+    choices: []
+  - id: hero_0_3_2
+    timingKind: 3
+    backgroundId: hero1_1
+    characterId: 
+    speakerName: "\u4F60"
+    bodyText: "\r\u201C\u4E3A\u4EC0\u4E48\uFF1F\u201D"
+    isChoice: 0
+    nextId: hero_0_3_3
+    choices: []
+  - id: hero_0_3_3
+    timingKind: 3
+    backgroundId: hero1_1
+    characterId: 
+    speakerName: "\u9F99\u4E4B\u4ECB"
+    bodyText: "\r\u201C\u56E0\u4E3A\u8FD9\u91CC\u6709\u592A\u591A\u865A\u5047\u7684\u4EBA\u4E86\u3002\u201D\r\n\u201C\u4ED6\u4EEC\u660E\u660E\u5728\u8BF4\u8C0E\uFF0C\u5374\u8FD8\u80FD\u88C5\u5F97\u50CF\u771F\u7684\u4E00\u6837\u3002\u201D"
+    isChoice: 0
+    nextId: 
+    choices: []
+  - id: hero_0_4
+    timingKind: 3
+    backgroundId: hero1_1
+    characterId: 
+    speakerName: "\u9F99\u4E4B\u4ECB"
+    bodyText: "\u201C\u8FD9\u5EA7\u5854\u4E0D\u5BF9\u52B2\u3002\u201D\n\u201C\u90A3\u4E9B\u8BF4\u8C0E\u7684\u4EBA\uFF0C\u597D\u50CF\u7F16\u4E86\u4E00\u5F20\u5DE8\u5927\u7684\u7F51\uFF0C\u51E0\u4E4E\u6EF4\u6C34\u4E0D\u6F0F\u3002\u201D"
+    isChoice: 0
+    nextId: hero_0_4_1
+    choices: []
+  - id: hero_0_4_1
+    timingKind: 3
+    backgroundId: hero1_1
+    characterId: 
+    speakerName: "\u4F60"
+    bodyText: "\u201C\u4F60\u53D1\u73B0\u4EC0\u4E48\u4E86\uFF1F\u201D"
+    isChoice: 0
+    nextId: hero_0_4_2
+    choices: []
+  - id: hero_0_4_2
+    timingKind: 3
+    backgroundId: hero1_1
+    characterId: 
+    speakerName: "\u9F99\u4E4B\u4ECB"
+    bodyText: "\u201C\u6211\u6000\u7591\uFF0C\u5854\u91CC\u7684\u9A7B\u5B88\u8005\u5728\u6709\u610F\u8BA9\u6211\u4EEC\u767B\u4E0A\u5854\u9876\u3002\u201D"
+    isChoice: 0
+    nextId: hero_0_4_3
+    choices: []
+  - id: hero_0_4_3
+    timingKind: 3
+    backgroundId: hero1_1
+    characterId: 
+    speakerName: "\u9F99\u4E4B\u4ECB"
+    bodyText: "\u201C\u8FD9\u5EA7\u5854\u4E0D\u5BF9\u52B2\u3002\u201D\n\u201C\u90A3\u4E9B\u8BF4\u8C0E\u7684\u4EBA\uFF0C\u597D\u50CF\u7F16\u4E86\u4E00\u5F20\u5DE8\u5927\u7684\u7F51\uFF0C\u51E0\u4E4E\u6EF4\u6C34\u4E0D\u6F0F\u3002\u201D"
+    isChoice: 0
+    nextId: hero_0_4_4
+    choices: []
+  - id: hero_0_4_4
+    timingKind: 3
+    backgroundId: hero1_1
+    characterId: 
+    speakerName: "\u9F99\u4E4B\u4ECB"
+    bodyText: "\u201C\u5982\u679C\u6700\u540E\u771F\u7684\u8D70\u5230\u90A3\u4E00\u6B65\uFF0C\u6211\u5E0C\u671B\u4F60\u80FD\u628A\u80DC\u5229\u8BA9\u7ED9\u6211\u3002\u201D\n\u201C\u6211\u4F1A\u6210\u4E3A\u5854\u4E3B\u3002\u201D\r\n\u201C\u800C\u6211\u5411\u4F60\u4FDD\u8BC1\uFF0C\u53EA\u8981\u6211\u8D62\u4E86\uFF0C\u6211\u7EDD\u4E0D\u4F1A\u4F24\u5BB3\u4F60\u3002\u201D"
+    isChoice: 0
+    nextId: hero_0_4_5
+    choices: []
+  - id: hero_0_4_5
+    timingKind: 3
+    backgroundId: hero1_1
+    characterId: 
+    speakerName: "\u9F99\u4E4B\u4ECB"
+    bodyText: "\u201C\u6211\u7684\u59BB\u5B50\u548C\u5B69\u5B50\u90FD\u8FD8\u5728\u7B2C\u4E09\u5927\u9646\u7B49\u7740\u6211\u3002\u201D\r\n\u201C\u6211\u4E0D\u4F1A\u62FF\u8FD9\u79CD\u4E8B\u9A97\u4F60\u3002\u201D"
+    isChoice: 0
+    nextId: 
+    choices: []
+  - id: hero_0_5
+    timingKind: 3
+    backgroundId: hero1_1
+    characterId: 
+    speakerName: "\u9F99\u4E4B\u4ECB"
+    bodyText: "\u201C\u8003\u8651\u5F97\u600E\u4E48\u6837\uFF1F\u201D"
+    isChoice: 0
+    nextId: hero_0_5_1
+    choices: []
+  - id: hero_0_5_1
+    timingKind: 3
+    backgroundId: hero1_1
+    characterId: 
+    speakerName: "\u9F99\u4E4B\u4ECB"
+    bodyText: "\u201C\u8003\u8651\u5F97\u600E\u4E48\u6837\uFF1F\u201D"
+    isChoice: 0
+    nextId: hero_0_5_2
+    choices: []
+  - id: hero_0_5_2
+    timingKind: 3
+    backgroundId: hero1_1
+    characterId: 
+    speakerName: "\u4F60"
+    bodyText: "\u201C\u4F60\u771F\u7684\u90A3\u4E48\u60F3\u5F53\u4E0A\u5854\u4E3B\u5417\uFF1F\u201D"
+    isChoice: 0
+    nextId: hero_0_5_3
+    choices: []
+  - id: hero_0_5_3
+    timingKind: 3
+    backgroundId: hero1_1
+    characterId: 
+    speakerName: "\u9F99\u4E4B\u4ECB"
+    bodyText: "\u201C\u5F53\u7136\u3002\u4E3A\u4E86\u90A3\u7B14\u60AC\u8D4F\uFF0C\u4E5F\u4E3A\u4E86\u7ED9\u6211\u7684\u59BB\u5B50\u548C\u5B69\u5B50\u4E00\u4E2A\u50CF\u6837\u7684\u5BB6\uFF0C\u8FD9\u4EF6\u4E8B\u6211\u5FC5\u987B\u505A\u5230\u3002\u201D"
+    isChoice: 0
+    nextId: hero_0_5_4
+    choices: []
+  - id: hero_0_5_4
+    timingKind: 3
+    backgroundId: hero1_1
+    characterId: 
+    speakerName: "\u4F60"
+    bodyText: "\u201C\u53EF\u4F60\u6000\u8868\u91CC\u85CF\u7740\u7684\uFF0C\u4E0D\u6B62\u8FD9\u4E00\u5F20\u7167\u7247\u5427\u3002\u201D\n\u201C\u53E6\u4E00\u5F20\u7167\u7247\u4E0A\uFF0C\u662F\u4E00\u4E2A\u957F\u5927\u4E86\u4E00\u4E9B\u7684\u7537\u5B69\uFF0C\u4E0B\u9762\u5199\u7740\u2018\u9F99\u4E4B\u4ECB\uFF0C15\u5C81\u2019\u3002\u65C1\u8FB9\u90A3\u4E2A\u5973\u4EBA\u4E5F\u5728\u7B11\uFF0C\u53EA\u4E0D\u8FC7\u6BD4\u73B0\u5728\u8FD9\u5F20\u7167\u7247\u91CC\u8001\u4E86\u4E00\u4E9B\u3002\u201D"
+    isChoice: 0
+    nextId: hero_0_5_5
+    choices: []
+  - id: hero_0_5_5
+    timingKind: 3
+    backgroundId: hero1_1
+    characterId: 
+    speakerName: "\u4F60"
+    bodyText: "\u201C\u90A3\u4E0D\u662F\u4F60\u7684\u59BB\u5B50\u548C\u5B69\u5B50\u3002\u201D\r\n\u201C\u90A3\u662F\u4F60\u548C\u4F60\u7684\u6BCD\u4EB2\u3002\u201D"
+    isChoice: 0
+    nextId: hero_0_5_6
+    choices: []
+  - id: hero_0_5_6
+    timingKind: 3
+    backgroundId: hero1_1
+    characterId: 
+    speakerName: "\u9F99\u4E4B\u4ECB"
+    bodyText: "\u201C\u6CA1\u9519\uFF0C\u6000\u8868\u91CC\u7684\u5B69\u5B50\u662F\u6211\uFF0C\u90A3\u4E2A\u5973\u4EBA\u662F\u6211\u7684\u6BCD\u4EB2\u3002\u201D\r\n\u201C\u5728\u6211\u5F88\u5C0F\u7684\u65F6\u5019\uFF0C\u5979\u5C31\u88AB\u5854\u5E26\u8D70\u4E86\u3002\u201D\r\n\u201C\u4ECE\u90A3\u5929\u5F00\u59CB\uFF0C\u6211\u5C31\u4E00\u76F4\u60F3\u6BC1\u6389\u8FD9\u5EA7\u5854\u3002\u201D"
+    isChoice: 0
+    nextId: hero_0_5_7
+    choices: []
+  - id: hero_0_5_7
+    timingKind: 3
+    backgroundId: hero1_1
+    characterId: 
+    speakerName: "\u9F99\u4E4B\u4ECB"
+    bodyText: "\u201C\u7B2C\u4E09\u5927\u9646\u7684\u638C\u6743\u8005\u662F\u5854\u7684\u4FE1\u5949\u8005\uFF0C\u6211\u7684\u96C7\u4F63\u5175\u5C0F\u961F\u4E5F\u4E00\u76F4\u529D\u6211\u4E0D\u8981\u548C\u5854\u4F5C\u5BF9\u3002\u201D\n\u201C\u6240\u4EE5\uFF0C\u6839\u672C\u6CA1\u6709\u4EC0\u4E48\u80CC\u53DB\u8005\uFF0C\u4E5F\u6CA1\u6709\u4EC0\u4E48\u8BF4\u8C0E\u8005\u3002\u201D\r\n\u201C\u8BF4\u8C0E\u7684\u4EBA\uFF0C\u4ECE\u5934\u5230\u5C3E\u90FD\u662F\u6211\u81EA\u5DF1\u3002\u201D"
+    isChoice: 0
+    nextId: hero_0_5_8
+    choices: []
+  - id: hero_0_5_8
+    timingKind: 3
+    backgroundId: hero1_1
+    characterId: 
+    speakerName: "\u9F99\u4E4B\u4ECB"
+    bodyText: "\u201C\u4E0D\u8FC7\u6709\u4E00\u4EF6\u4E8B\u662F\u771F\u7684\u3002\u201D\n\u201C\u6211\u5FC5\u987B\u8D62\u3002\u201D\r\n\u201C\u6211\u8981\u6210\u4E3A\u5854\u4E3B\uFF0C\u6211\u8981\u4E3A\u6211\u7684\u6BCD\u4EB2\u62A5\u4EC7\u3002\u201D\n\u201C\u73B0\u5728\uFF0C\u4F60\u8FD8\u613F\u610F\u5E2E\u6211\u5417\uFF1F\u201D"
+    isChoice: 0
+    nextId: hero_0_5_9
+    choices: []
+  - id: hero_0_5_9
+    timingKind: 3
+    backgroundId: hero1_1
+    characterId: 
+    speakerName: "\u4F60"
+    bodyText: "\u201C\u4E0D\uFF0C\u6211\u4E5F\u6709\u5FC5\u987B\u6210\u4E3A\u5854\u4E3B\u7684\u7406\u7531\u3002\u201D"
+    isChoice: 0
+    nextId: 
+    choices: []
+  - id: hero_0_6
+    timingKind: 3
+    backgroundId: hero1_1
+    characterId: 
+    speakerName: "\u9F99\u4E4B\u4ECB"
+    bodyText: "\u201C\u4E0B\u4E00\u5C42\uFF0C\u5C31\u662F\u9876\u5C42\u4E86\u3002\u201D\n\u201C\u5144\u5F1F\uFF0C\u770B\u6765\u6211\u4EEC\u90FD\u5DF2\u7ECF\u6CA1\u6709\u9000\u8DEF\u4E86\u3002\u201D"
+    isChoice: 0
+    nextId: hero_0_6_1
+    choices: []
+  - id: hero_0_6_1
+    timingKind: 3
+    backgroundId: hero1_1
+    characterId: 
+    speakerName: "\u4F60"
+    bodyText: "\u201C\u6211\u4EEC\u90FD\u6709\u5404\u81EA\u5FC5\u987B\u5B8C\u6210\u7684\u4E8B\uFF0C\u4E5F\u90FD\u6709\u4E0D\u80FD\u540E\u9000\u7684\u7406\u7531\u3002\u201D\n\u201C\u4E0A\u9762\u89C1\u3002\u201D\n"
+    isChoice: 0
+    nextId: hero_0_6_2
+    choices: []
+  - id: hero_0_6_2
+    timingKind: 3
+    backgroundId: hero1_1
+    characterId: 
+    speakerName: "\u9F99\u4E4B\u4ECB"
+    bodyText: "\u201C\u4E0A\u9762\u89C1\u3002\u201D\n"
+    isChoice: 0
+    nextId: 
+    choices: []
+  - id: hero_0_7
+    timingKind: 3
+    backgroundId: hero1_1
+    characterId: 
+    speakerName: "\u9F99\u4E4B\u4ECB"
+    bodyText: "\u201C\u6765\u5427\uFF0C\u98CE\u95F4\u3002\u201D\r\n\u201C\u4E3A\u4E86\u6211\u4EEC\u5FC3\u91CC\u575A\u6301\u7684\u4E1C\u897F\uFF0C\u72E0\u72E0\u5E72\u4E00\u573A\u3002\u201D"
+    isChoice: 0
+    nextId: 
+    choices: []
+  - id: hero_1_1
+    timingKind: 3
+    backgroundId: hero2
+    characterId: 
+    speakerName: "\u82B1"
+    bodyText: "\u201C\u521A\u624D\u90A3\u4E00\u5C40\uFF0C\u4F60\u7684\u9009\u62E9\u548C\u6211\u9884\u60F3\u7684\u4E0D\u592A\u4E00\u6837\u3002\u201D"
+    isChoice: 0
+    nextId: hero_1_1_1
+    choices: []
+  - id: hero_1_1_1
+    timingKind: 3
+    backgroundId: hero2
+    characterId: 
+    speakerName: "\u4F60"
+    bodyText: "\u201C\u9884\u60F3\uFF1F\u201D"
+    isChoice: 0
+    nextId: hero_1_1_2
+    choices: []
+  - id: hero_1_1_2
+    timingKind: 3
+    backgroundId: hero2
+    characterId: 
+    speakerName: "\u82B1"
+    bodyText: "\u201C\u53EA\u662F\u76F4\u89C9\u800C\u5DF2\u3002\u201D\n\u201C\u4E0D\u8FC7\uFF0C\u80FD\u5728\u90A3\u4E48\u77ED\u7684\u65F6\u95F4\u91CC\u505A\u51FA\u90A3\u79CD\u9009\u62E9\uFF0C\u4F60\u5E94\u8BE5\u4E0D\u53EA\u662F\u9760\u8FD0\u6C14\u3002\u201D"
+    isChoice: 0
+    nextId: hero_1_1_3
+    choices: []
+  - id: hero_1_1_3
+    timingKind: 3
+    backgroundId: hero2
+    characterId: 
+    speakerName: "\u82B1"
+    bodyText: "\u201C\u80FD\u88AB\u9009\u8FDB\u8FD9\u5EA7\u5854\u7684\u4EBA\uFF0C\u591A\u534A\u90FD\u6709\u4E9B\u4E0D\u80FD\u8BF4\u7684\u4E1C\u897F\u3002\u201D\r\n\u201C\u4F60\u5E94\u8BE5\u4E5F\u6709\u5427\uFF0C\u67D0\u79CD\u7279\u6B8A\u80FD\u529B\u3002\u201D"
+    isChoice: 0
+    nextId: hero_1_1_4
+    choices: []
+  - id: hero_1_1_4
+    timingKind: 3
+    backgroundId: hero2
+    characterId: 
+    speakerName: "\u82B1"
+    bodyText: "\u201C\u522B\u7D27\u5F20\uFF0C\u6211\u6CA1\u6709\u903C\u4F60\u627F\u8BA4\u7684\u610F\u601D\u3002\u201D\r\n\u201C\u6211\u53EA\u662F\u60F3\u63D0\u9192\u4F60\uFF0C\u8FD9\u79CD\u4E1C\u897F\u65E2\u7136\u662F\u5E95\u724C\uFF0C\u5C31\u522B\u8F7B\u6613\u8BA9\u522B\u4EBA\u770B\u51FA\u6765\u3002\u201D"
+    isChoice: 0
+    nextId: hero_1_1_5
+    choices: []
+  - id: hero_1_1_5
+    timingKind: 3
+    backgroundId: hero2
+    characterId: 
+    speakerName: "\u4F60"
+    bodyText: "\u201C\u542C\u8D77\u6765\uFF0C\u4F60\u5728\u8FD9\u65B9\u9762\u5F88\u6709\u7ECF\u9A8C\u3002\u201D\n\u201C\u591A\u8C22\u63D0\u9192\uFF0C\u6211\u4F1A\u8BB0\u4F4F\u7684\u3002\u201D"
+    isChoice: 0
+    nextId: hero_1_1_6
+    choices: []
+  - id: hero_1_1_6
+    timingKind: 3
+    backgroundId: hero2
+    characterId: 
+    speakerName: "\u82B1"
+    bodyText: "\u201C\u8BB0\u4F4F\u5C31\u597D\u3002\u201D\n\u201C\u6BD5\u7ADF\u50CF\u4F60\u8FD9\u6837\u7684\u5BB6\u4F19\uFF0C\u8981\u662F\u592A\u65E9\u9000\u573A\uFF0C\u5C31\u592A\u53EF\u60DC\u4E86\u3002\u201D"
+    isChoice: 0
+    nextId: 
+    choices: []
+  - id: hero_1_2
+    timingKind: 3
+    backgroundId: hero2
+    characterId: 
+    speakerName: "\u82B1"
+    bodyText: "\u201C\u53C8\u89C1\u9762\u4E86\u3002\u4E0A\u6B21\u60C5\u51B5\u7279\u6B8A\uFF0C\u8FD8\u6CA1\u6765\u5F97\u53CA\u6B63\u5F0F\u8BA4\u8BC6\u3002\u201D\n\u201C\u6211\u662F\u82B1\uFF0C\u6765\u81EA\u7B2C\u4E00\u5927\u9646\u3002\u201D"
+    isChoice: 0
+    nextId: hero_1_2_1
+    choices: []
+  - id: hero_1_2_1
+    timingKind: 3
+    backgroundId: hero2
+    characterId: 
+    speakerName: "\u4F60"
+    bodyText: "\u201C\u6211\u77E5\u9053\u3002\u7B2C\u4E00\u5927\u9646\u7684\u5929\u624D\u5C11\u5973\uFF0C\u88AB\u8A89\u4E3A\u6700\u5F3A\u8D4C\u5F92\uFF0C\u53EA\u8981\u5750\u4E0A\u8D4C\u684C\uFF0C\u5C31\u4ECE\u6765\u6CA1\u6709\u8F93\u8FC7\u3002\u201D"
+    isChoice: 0
+    nextId: hero_1_2_2
+    choices: []
+  - id: hero_1_2_2
+    timingKind: 3
+    backgroundId: hero2
+    characterId: 
+    speakerName: "\u82B1"
+    bodyText: "\u201C\u770B\u6765\uFF0C\u4F60\u5DF2\u7ECF\u67E5\u8FC7\u6211\u7684\u5E95\u7EC6\u4E86\u3002\u201D"
+    isChoice: 0
+    nextId: hero_1_2_3
+    choices: []
+  - id: hero_1_2_3
+    timingKind: 3
+    backgroundId: hero2
+    characterId: 
+    speakerName: "\u4F60"
+    bodyText: "\u201C\u804C\u4E1A\u4E60\u60EF\u7F62\u4E86\u3002\u201D"
+    isChoice: 0
+    nextId: hero_1_2_4
+    choices: []
+  - id: hero_1_2_4
+    timingKind: 3
+    backgroundId: hero2
+    characterId: 
+    speakerName: "\u82B1"
+    bodyText: "\u201C\u65E2\u7136\u5982\u6B64\uFF0C\u90A3\u6211\u4E5F\u6B63\u5F0F\u4ECB\u7ECD\u4E00\u4E0B\u4F60\u5427\u3002\u201D\n\u201C\u7B2C\u4E94\u5927\u9646\uFF0C\u5E0C\u7FBD\u56FD\u7B2C\u4E00\u4FA6\u63A2\uFF0C\u81EA\u5B9A\u4E49\u540D\u5B57\u3002\u4F20\u95FB\u4F60\u7ECF\u624B\u7684\u6848\u5B50\uFF0C\u4ECE\u6765\u6CA1\u6709\u89E3\u4E0D\u5F00\u7684\u771F\u76F8\u3002\u50CF\u4F60\u8FD9\u6837\u7684\u4EBA\uFF0C\u5C45\u7136\u4F1A\u4EB2\u81EA\u6765\u53C2\u52A0\u8FD9\u79CD\u8D4C\u4E0A\u6027\u547D\u7684\u7ADE\u9009\uFF0C\u5012\u662F\u6BD4\u4F20\u95FB\u91CC\u66F4\u6709\u610F\u601D\u3002\u201D"
+    isChoice: 0
+    nextId: hero_1_2_5
+    choices: []
+  - id: hero_1_2_5
+    timingKind: 3
+    backgroundId: hero2
+    characterId: 
+    speakerName: "\u4F60"
+    bodyText: "\u201D\u90A3\u4F60\u5462\uFF1F\u7B2C\u4E00\u5927\u9646\u6700\u5F3A\u8D4C\u5F92\uFF0C\u660E\u660E\u65E9\u5C31\u6CA1\u4EC0\u4E48\u5C40\u503C\u5F97\u4F60\u4EB2\u81EA\u4E0B\u6CE8\u4E86\uFF0C\u5374\u8FD8\u662F\u6765\u4E86\u8FD9\u91CC\u3002\u80FD\u8BA9\u4F60\u628A\u547D\u4E5F\u62BC\u4E0A\u7684\u4E1C\u897F\uFF0C\u5E94\u8BE5\u4E0D\u53EA\u662F\u80DC\u8D1F\u5427\u3002\u201C"
+    isChoice: 0
+    nextId: hero_1_2_6
+    choices: []
+  - id: hero_1_2_6
+    timingKind: 3
+    backgroundId: hero2
+    characterId: 
+    speakerName: "\u82B1"
+    bodyText: "\u201C\u65E2\u7136\u5982\u6B64\uFF0C\u90A3\u5C31\u7EA6\u597D\u5427\u3002\u201D\n\u201C\u522B\u6B7B\u5728\u534A\u8DEF\u4E0A\u3002\u5982\u679C\u4F60\u771F\u7684\u548C\u4F20\u95FB\u4E2D\u4E00\u6837\u5389\u5BB3\uFF0C\u90A3\u5C31\u4E00\u76F4\u8D62\u4E0B\u53BB\uFF0C\u76F4\u5230\u5854\u9876\u3002\u201D"
+    isChoice: 0
+    nextId: hero_1_2_7
+    choices: []
+  - id: hero_1_2_7
+    timingKind: 3
+    backgroundId: hero2
+    characterId: 
+    speakerName: "\u4F60"
+    bodyText: "\u201C\u597D\u3002\u7B49\u5230\u4E86\u5854\u9876\uFF0C\u6211\u4EEC\u518D\u5206\u80DC\u8D1F\u3002\u201D"
+    isChoice: 0
+    nextId: 
+    choices: []
+  - id: hero_1_3
+    timingKind: 3
+    backgroundId: hero2
+    characterId: 
+    speakerName: "\u4F60"
+    bodyText: "\u201C\u82B1\uFF0C\u6211\u603B\u89C9\u5F97\u8FD9\u573A\u6BD4\u8D5B\u6709\u4E9B\u592A\u5BB9\u6613\u4E86\u3002\u201D"
+    isChoice: 0
+    nextId: hero_1_3_1
+    choices: []
+  - id: hero_1_3_1
+    timingKind: 3
+    backgroundId: hero2
+    characterId: 
+    speakerName: "\u82B1"
+    bodyText: "\u201C\u4F60\u4E5F\u770B\u51FA\u6765\u4E86\u5417\uFF1F\u201D\r\n\u201C\u8FD9\u573A\u7ADE\u9009\uFF0C\u786E\u5B9E\u5F88\u4E0D\u5BF9\u52B2\u3002\u201D\r\n\u201C\u76F4\u5230\u4ECA\u5929\uFF0C\u90FD\u8FD8\u6CA1\u6709\u4EFB\u4F55\u4E00\u4E2A\u53C2\u8D5B\u8005\u88AB\u5904\u51B3\u3002\u201D"
+    isChoice: 0
+    nextId: hero_1_3_2
+    choices: []
+  - id: hero_1_3_2
+    timingKind: 3
+    backgroundId: hero2
+    characterId: 
+    speakerName: "\u82B1"
+    bodyText: "\u201C\u90A3\u4E9B\u539F\u4F4F\u6C11\u4F1A\u4E3B\u52A8\u7ED9\u6211\u4EEC\u7EBF\u7D22\uFF0C\u751A\u81F3\u8FDE\u9A7B\u5B88\u8005\uFF0C\u4E5F\u50CF\u662F\u5728\u6709\u610F\u5E2E\u52A9\u6211\u4EEC\u3002\u201D\r\n\u201C\u5C31\u62FF\u8FD9\u4E00\u5C42\u6765\u8BF4\uFF0C\u6700\u540E\u4E00\u8F6E\u7684\u65F6\u5019\uFF0C\u4ED6\u660E\u660E\u77E5\u9053\u6211\u624B\u91CC\u5269\u7684\u662F\u56FD\u738B\uFF0C\u5374\u8FD8\u662F\u6CA1\u6709\u51FA\u5E73\u6C11\u3002\u201D"
+    isChoice: 0
+    nextId: hero_1_3_3
+    choices: []
+  - id: hero_1_3_3
+    timingKind: 3
+    backgroundId: hero2
+    characterId: 
+    speakerName: "\u4F60"
+    bodyText: "\u201C\u4E5F\u5C31\u662F\u8BF4\uFF0C\u4ED6\u4EEC\u672C\u6765\u53EF\u4EE5\u62E6\u4F4F\u6211\u4EEC\u3002\u201D"
+    isChoice: 0
+    nextId: hero_1_3_4
+    choices: []
+  - id: hero_1_3_4
+    timingKind: 3
+    backgroundId: hero2
+    characterId: 
+    speakerName: "\u82B1"
+    bodyText: "\u201C\u6CA1\u9519\u3002\u201D\n\u201C\u5982\u679C\u6211\u518D\u67E5\u5230\u522B\u7684\u6D88\u606F\uFF0C\u4F1A\u7B2C\u4E00\u65F6\u95F4\u544A\u8BC9\u4F60\u3002\u201D"
+    isChoice: 0
+    nextId: 
+    choices: []
+  - id: hero_1_4
+    timingKind: 3
+    backgroundId: hero2
+    characterId: 
+    speakerName: "\u4F60"
+    bodyText: "\u201C\u9A6C\u4E0A\u5C31\u8981\u5230\u5854\u9876\u4E86\u3002\u201D"
+    isChoice: 0
+    nextId: hero_1_4_1
+    choices: []
+  - id: hero_1_4_1
+    timingKind: 3
+    backgroundId: hero2
+    characterId: 
+    speakerName: "\u82B1"
+    bodyText: "\u201C\u662F\u554A\u3002\u201D\n\u201C\u6211\u5DF2\u7ECF\u57FA\u672C\u53EF\u4EE5\u786E\u5B9A\uFF0C\u5854\u91CC\u786E\u5B9E\u6709\u4E00\u4E9B\u4EBA\u5728\u5E2E\u52A9\u6211\u4EEC\u3002\u201D"
+    isChoice: 0
+    nextId: hero_1_4_2
+    choices: []
+  - id: hero_1_4_2
+    timingKind: 3
+    backgroundId: hero2
+    characterId: 
+    speakerName: "\u4F60"
+    bodyText: "\u201C\u4F60\u6307\u7684\u662F\u8C01\uFF1F\u201D"
+    isChoice: 0
+    nextId: hero_1_4_3
+    choices: []
+  - id: hero_1_4_3
+    timingKind: 3
+    backgroundId: hero2
+    characterId: 
+    speakerName: "\u82B1"
+    bodyText: "\u201C\u76EE\u524D\u6211\u80FD\u786E\u5B9A\u7684\uFF0C\u6709\u5EFA\u7B51\u5E08\u3001\u6570\u5B66\u5BB6\uFF0C\u8FD8\u6709\u524D\u9762\u51E0\u5C42\u7684\u9A7B\u5B88\u8005\u3002\u201D\r\n\u201C\u4ED6\u4EEC\u90FD\u5728\u6709\u610F\u8BA9\u6211\u4EEC\u8FC7\u5173\u3002\u201D\r\n\u201C\u53EF\u4E0E\u6B64\u540C\u65F6\uFF0C\u4E5F\u6709\u4E00\u4E9B\u4EBA\u662F\u5728\u62FC\u5C3D\u5168\u529B\u548C\u6211\u6BD4\u8D5B\u3002\u201D\n\u201C\u98CE\u95F4\uFF0C\u6211\u8BA4\u4E3A\u8FD9\u4E0D\u662F\u597D\u4E8B\u3002\u201D"
+    isChoice: 0
+    nextId: hero_1_4_4
+    choices: []
+  - id: hero_1_4_4
+    timingKind: 3
+    backgroundId: hero2
+    characterId: 
+    speakerName: "\u4F60"
+    bodyText: "\u201C\u4E3A\u4EC0\u4E48\uFF1F\u201D"
+    isChoice: 0
+    nextId: hero_1_4_5
+    choices: []
+  - id: hero_1_4_5
+    timingKind: 3
+    backgroundId: hero2
+    characterId: 
+    speakerName: "\u82B1"
+    bodyText: "\u201C\u56E0\u4E3A\u8FD9\u8BF4\u660E\uFF0C\u5854\u91CC\u7684\u610F\u5FD7\u5E76\u4E0D\u7EDF\u4E00\u3002\u201D\r\n\u201C\u6709\u4EBA\u60F3\u8BA9\u6211\u4EEC\u767B\u9876\uFF0C\u4E5F\u6709\u4EBA\u60F3\u628A\u6211\u4EEC\u62E6\u6B7B\u5728\u8DEF\u4E0A\u3002\u201D\r\n\u201C\u800C\u6700\u7CDF\u7CD5\u7684\u662F\uFF0C\u6211\u7B2C\u4E00\u6B21\u89C9\u5F97\uFF0C\u4E8B\u60C5\u5F00\u59CB\u8131\u79BB\u6211\u7684\u638C\u63A7\u4E86\u3002\u201D"
+    isChoice: 0
+    nextId: 
+    choices: []
+  - id: hero_1_5
+    timingKind: 3
+    backgroundId: hero2
+    characterId: 
+    speakerName: "\u82B1"
+    bodyText: "\"\u6709\u4EF6\u4E8B\uFF0C\u6211\u4E00\u76F4\u6CA1\u6709\u544A\u8BC9\u4F60\u3002\u201D"
+    isChoice: 0
+    nextId: hero_1_5_1
+    choices: []
+  - id: hero_1_5_1
+    timingKind: 3
+    backgroundId: hero2
+    characterId: 
+    speakerName: "\u4F60"
+    bodyText: "\u201C\u4EC0\u4E48\u4E8B\uFF1F\u201D"
+    isChoice: 0
+    nextId: hero_1_5_2
+    choices: []
+  - id: hero_1_5_2
+    timingKind: 3
+    backgroundId: hero2
+    characterId: 
+    speakerName: "\u82B1"
+    bodyText: "\u201C\u6211\u7684\u80FD\u529B\u3002\u6211\u7684\u80FD\u529B\uFF0C\u4E0D\u662F\u9884\u77E5\uFF0C\u4E5F\u4E0D\u662F\u5355\u7EAF\u7684\u76F4\u89C9\u3002\u201D\r\n\u201C\u6211\u53EF\u4EE5\u5728\u77ED\u65F6\u95F4\u5185\uFF0C\u4E0D\u65AD\u7A7F\u68AD\u5230\u5176\u4ED6\u5E73\u884C\u65F6\u7A7A\u91CC\uFF0C\u4E0E\u73B0\u5728\u6781\u5176\u63A5\u8FD1\u7684\u65F6\u95F4\u70B9\u3002\u201D\r\n\u201C\u5728\u90A3\u91CC\uFF0C\u6211\u80FD\u770B\u5230\u53E6\u4E00\u79CD\u7ED3\u679C\uFF0C\u7136\u540E\u518D\u56DE\u5230\u81EA\u5DF1\u7684\u65F6\u7A7A\u3002\u201D\n"
+    isChoice: 0
+    nextId: hero_1_5_3
+    choices: []
+  - id: hero_1_5_3
+    timingKind: 3
+    backgroundId: hero2
+    characterId: 
+    speakerName: "\u4F60"
+    bodyText: "\u201C\u6240\u4EE5\uFF0C\u4F60\u80FD\u63D0\u524D\u77E5\u9053\u672A\u6765\u4F1A\u53D1\u751F\u4EC0\u4E48\uFF1F\u201D"
+    isChoice: 0
+    nextId: hero_1_5_4
+    choices: []
+  - id: hero_1_5_4
+    timingKind: 3
+    backgroundId: hero2
+    characterId: 
+    speakerName: "\u82B1"
+    bodyText: "\u201C\u4E0D\u662F\u672A\u6765\uFF0C\u662F\u522B\u7684\u53EF\u80FD\u3002\u201D\n\u201C\u8FD8\u8BB0\u5F97\u6211\u4EEC\u7B2C\u4E00\u6B21\u4EA4\u624B\u5417\uFF1F\u201D"
+    isChoice: 0
+    nextId: hero_1_5_5
+    choices: []
+  - id: hero_1_5_5
+    timingKind: 3
+    backgroundId: hero2
+    characterId: 
+    speakerName: "\u82B1"
+    bodyText: "\u201C\u6211\u5728\u5176\u4ED6\u65F6\u7A7A\u91CC\uFF0C\u770B\u89C1\u4F60\u7B2C\u4E00\u8F6E\u51FA\u7684\u724C\u662F\u5E73\u6C11\uFF0C\u6240\u4EE5\u6211\u624D\u4F1A\u5728\u8FD9\u91CC\u51FA\u5927\u81E3\u3002\u201D\r\n\u201C\u53EF\u6700\u540E\uFF0C\u4F60\u7684\u51FA\u724C\u53D8\u4E86\u3002"
+    isChoice: 0
+    nextId: hero_1_5_6
+    choices: []
+  - id: hero_1_5_6
+    timingKind: 3
+    backgroundId: hero2
+    characterId: 
+    speakerName: "\u82B1"
+    bodyText: "\u201C\u8FD9\u79CD\u80FD\u529B\uFF0C\u6CA1\u6709\u4EE3\u4EF7\u5417\uFF1F\u201D"
+    isChoice: 0
+    nextId: hero_1_5_7
+    choices: []
+  - id: hero_1_5_7
+    timingKind: 3
+    backgroundId: hero2
+    characterId: 
+    speakerName: "\u82B1"
+    bodyText: "\u201C\u5F53\u7136\u6709\u3002\u201D\r\n\u201C\u6211\u5728\u5176\u4ED6\u65F6\u7A7A\u505C\u7559\u591A\u4E45\uFF0C\u5C31\u4F1A\u6D88\u8017\u81EA\u5DF1\u5BF9\u5E94\u65F6\u957F\u7684\u5BFF\u547D\u3002\u201D\r\n\u201C\u4E5F\u5C31\u662F\u8BF4\uFF0C\u5C31\u7B97\u6211\u56DE\u6765\u4E86\uFF0C\u5728\u90A3\u4E9B\u65F6\u7A7A\u91CC\u6D41\u5931\u6389\u7684\u751F\u547D\uFF0C\u4E5F\u4E0D\u4F1A\u56DE\u6765\u3002\u201D\r\n\u201C\u6240\u4EE5\u6211\u4E0D\u80FD\u9891\u7E41\u4F7F\u7528\u8FD9\u4E2A\u80FD\u529B\u3002\u201D"
+    isChoice: 0
+    nextId: hero_1_5_8
+    choices: []
+  - id: hero_1_5_8
+    timingKind: 3
+    backgroundId: hero2
+    characterId: 
+    speakerName: "\u82B1"
+    bodyText: "\r\u201C\u6211\u628A\u8FD9\u4E9B\u90FD\u544A\u8BC9\u4F60\uFF0C\u662F\u56E0\u4E3A\u2026\u2026\u201D\r\n\r\u201C\u6211\u76F8\u4FE1\u4F60\uFF0C\u4FA6\u63A2\u3002\u201D"
+    isChoice: 0
+    nextId: 
+    choices: []
+  - id: hero_1_6
+    timingKind: 3
+    backgroundId: hero2
+    characterId: 
+    speakerName: "\u82B1"
+    bodyText: "\u201C\u6211\u521A\u521A\u53C8\u53BB\u770B\u4E86\u4E00\u4E2A\u65F6\u7A7A\u3002\u201D\r\n\u201C\u6211\u5728\u90A3\u91CC\uFF0C\u770B\u89C1\u4E86\u6211\u4EEC\u4E4B\u4E2D\u7684\u4E00\u4E2A\u4EBA\uFF0C\u83B7\u5F97\u4E86\u6700\u7EC8\u7684\u80DC\u5229\u3002\u201D\r\n\u201C\u6240\u6709\u4EBA\u90FD\u8DEA\u5728\u4ED6\u7684\u9762\u524D\u3002\u6211\u3001\u94C3\u5B50\u3001\u9F99\uFF0C\u539F\u4F4F\u6C11\uFF0C\u9A7B\u5B88\u8005\u2026\u2026\u6240\u6709\u4EBA\u3002\u201D\n\r\u201C\u800C\u90A3\u4E2A\u4EBA\uFF0C\u5750\u5728\u738B\u5EA7\u4E0A\uFF0C\u53D1\u5E03\u4E86\u4E00\u6761\u975E\u5E38\u53EF\u6015\u7684\u547D\u4EE4\u3002\u201D"
+    isChoice: 0
+    nextId: hero_1_6_1
+    choices: []
+  - id: hero_1_6_1
+    timingKind: 3
+    backgroundId: hero2
+    characterId: 
+    speakerName: "\u82B1"
+    bodyText: "\u201C\u98CE\u95F4\u2026\u2026\u201D\r\n\u201C\u6211\u8FD8\u80FD\u76F8\u4FE1\u4F60\u5417\uFF1F\u201D"
+    isChoice: 0
+    nextId: hero_1_6_2
+    choices: []
+  - id: hero_1_6_2
+    timingKind: 3
+    backgroundId: hero2
+    characterId: 
+    speakerName: "\u4F60"
+    bodyText: "\u201C\u90A3\u4E2A\u4EBA\u662F\u8C01\uFF1F\u201D"
+    isChoice: 0
+    nextId: hero_1_6_3
+    choices: []
+  - id: hero_1_6_3
+    timingKind: 3
+    backgroundId: hero2
+    characterId: 
+    speakerName: "\u82B1"
+    bodyText: "\u201C\u662F\u4F60\u3002\u201D"
+    isChoice: 0
+    nextId: 
+    choices: []
+  - id: hero_1_7
+    timingKind: 3
+    backgroundId: hero2
+    characterId: 
+    speakerName: "\u82B1"
+    bodyText: "\u201C\u5BF9\u4E0D\u8D77\u3002\u6211\u4E0D\u80FD\u518D\u76F8\u4FE1\u4F60\u4E86\u3002\u201D\r\n\r\u201C\u6211\u53C8\u770B\u89C1\u4E86\u90A3\u4E2A\u753B\u9762\u3002\u4F60\u6210\u4E3A\u4E86\u65B0\u7684\u5854\u4E3B\u3002\u201D\n\r\u201C\u7136\u540E\uFF0C\u4F60\u8981\u6BC1\u6389\u8FD9\u5EA7\u5854\uFF0C\u6BC1\u6389\u6240\u6709\u5927\u9646\u3002\u201D\r\n\u201C\u6211\u4E0D\u77E5\u9053\u4F60\u4E3A\u4EC0\u4E48\u4F1A\u505A\u51FA\u90A3\u6837\u7684\u9009\u62E9\u3002\u201D\n"
+    isChoice: 0
+    nextId: hero_1_7_1
+    choices: []
+  - id: hero_1_7_1
+    timingKind: 3
+    backgroundId: hero2
+    characterId: 
+    speakerName: "\u82B1"
+    bodyText: "\u201C\u5BF9\u4E0D\u8D77\uFF0C\u98CE\u95F4\u3002\u5230\u6B64\u4E3A\u6B62\u4E86\u3002\u201D\r\n\r\u201C\u6765\u5427\u3002\u201D\r\n\u201C\u6309\u7167\u6211\u4EEC\u7684\u7EA6\u5B9A\uFF0C\u8FD9\u5C06\u662F\u6700\u540E\u4E00\u573A\u51B3\u6218\u3002\u201D"
+    isChoice: 0
+    nextId: 
+    choices: []
+  - id: hero_2_1
+    timingKind: 3
+    backgroundId: hero3
+    characterId: 
+    speakerName: "\u94C3\u5B50"
+    bodyText: "\u201C\u98CE\u95F4\uFF0C\u53C8\u89C1\u9762\u4E86\u3002\u201D\n\u201C\u4E0D\u5F97\u4E0D\u8BF4\uFF0C\u6211\u771F\u6CA1\u60F3\u5230\u4F60\u80FD\u8D62\u8FC7\u82B1\u3002\u201D"
+    isChoice: 0
+    nextId: hero_2_1_1
+    choices: []
+  - id: hero_2_1_1
+    timingKind: 3
+    backgroundId: hero3
+    characterId: 
+    speakerName: "\u4F60"
+    bodyText: "\u201C\u4E3A\u4EC0\u4E48\u8FD9\u4E48\u8BF4\uFF1F\u201D"
+    isChoice: 0
+    nextId: hero_2_1_2
+    choices: []
+  - id: hero_2_1_2
+    timingKind: 3
+    backgroundId: hero3
+    characterId: 
+    speakerName: "\u94C3\u5B50"
+    bodyText: "\u201C\u56E0\u4E3A\u5979\u5E94\u8BE5\u662F\u6211\u4EEC\u8FD9\u4E9B\u4EBA\u91CC\u6700\u5F3A\u7684\u90A3\u4E2A\u3002\u201D"
+    isChoice: 0
+    nextId: hero_2_1_3
+    choices: []
+  - id: hero_2_1_3
+    timingKind: 3
+    backgroundId: hero3
+    characterId: 
+    speakerName: "\u4F60"
+    bodyText: "\u201C\u4F60\u5BF9\u5979\u8FD9\u4E48\u6709\u4FE1\u5FC3\uFF1F\u201D"
+    isChoice: 0
+    nextId: hero_2_1_4
+    choices: []
+  - id: hero_2_1_4
+    timingKind: 3
+    backgroundId: hero3
+    characterId: 
+    speakerName: "\u94C3\u5B50"
+    bodyText: "\u201C\u4E0D\u662F\u6709\u4FE1\u5FC3\uFF0C\u662F\u4E8B\u5B9E\u3002\u201D\n\u201C\u4ECE\u6211\u6765\u5230\u8FD9\u5EA7\u5854\u7684\u7B2C\u4E00\u5929\u8D77\uFF0C\u6211\u5C31\u77E5\u9053\uFF0C\u82B1\u548C\u6211\u4EEC\u4E0D\u662F\u4E00\u4E2A\u5C42\u6B21\u7684\u4EBA\u3002\u201D\r\n\u201C\u6240\u4EE5\u4F60\u80FD\u8D62\u5979\uFF0C\u786E\u5B9E\u8BA9\u6211\u5F88\u610F\u5916\u3002\u201D\n"
+    isChoice: 0
+    nextId: hero_2_1_5
+    choices: []
+  - id: hero_2_1_5
+    timingKind: 3
+    backgroundId: hero3
+    characterId: 
+    speakerName: "\u4F60"
+    bodyText: "\u201C\u4E0D\u8FC7\u8FD9\u6837\u4E5F\u597D\u3002\u201D\r\n\u201C\u81F3\u5C11\u73B0\u5728\u770B\u6765\uFF0C\u4F60\u6BD4\u6211\u539F\u672C\u60F3\u8C61\u4E2D\u66F4\u503C\u5F97\u671F\u5F85\u3002\u201D"
+    isChoice: 0
+    nextId: 
+    choices: []
+  - id: hero_2_2
+    timingKind: 3
+    backgroundId: hero3
+    characterId: 
+    speakerName: "\u4F60"
+    bodyText: "\u201C\u4F60\u4E3A\u4EC0\u4E48\u8981\u53C2\u52A0\u8FD9\u4E48\u5371\u9669\u7684\u6BD4\u8D5B\uFF1F\u201D"
+    isChoice: 0
+    nextId: hero_2_2_1
+    choices: []
+  - id: hero_2_2_1
+    timingKind: 3
+    backgroundId: hero3
+    characterId: 
+    speakerName: "\u94C3\u5B50"
+    bodyText: "\u201C\u4E3A\u4E86\u6211\u59B9\u59B9\u3002\u201D\n\u201C\u5C0F\u65F6\u5019\uFF0C\u5979\u66FE\u8FDB\u8FC7\u5165\u8FD9\u5EA7\u4ECE\u5929\u800C\u964D\u7684\u9ED1\u8272\u5DE8\u5854\u3002\u201D\r\n\u201C\u7136\u540E\uFF0C\u5979\u5C31\u518D\u4E5F\u6CA1\u6709\u51FA\u6765\u8FC7\u3002\u201D\r\n\u201C\u540E\u6765\u5854\u6D88\u5931\u4E86\uFF0C\u6211\u4E5F\u518D\u6CA1\u627E\u5230\u5B83\u3002\u201D\n"
+    isChoice: 0
+    nextId: hero_2_2_2
+    choices: []
+  - id: hero_2_2_2
+    timingKind: 3
+    backgroundId: hero3
+    characterId: 
+    speakerName: "\u94C3\u5B50"
+    bodyText: "\u201C\u6211\u95EE\u8FC7\u5F88\u591A\u4EBA\uFF0C\u6700\u540E\u53EA\u6709\u8001\u4EBA\u544A\u8BC9\u6211\uFF0C\u8FD9\u5EA7\u5854\u6BCF\u9694\u4E94\u5341\u5E74\u624D\u4F1A\u51FA\u73B0\u4E00\u6B21\u3002\u201D\r\n\u201C\u53EF\u5C31\u7B97\u77E5\u9053\u4E86\u8FD9\u4E00\u70B9\uFF0C\u4E5F\u6CA1\u6709\u610F\u4E49\u3002\u5B83\u5C31\u50CF\u4E2A\u5E7D\u7075\u4E00\u6837\uFF0C\u53EA\u4F1A\u6302\u5728\u5929\u8FB9\uFF0C\u6CA1\u4EBA\u80FD\u771F\u6B63\u627E\u5230\u8FDB\u53BB\u7684\u8DEF\u3002\u201D\r"
+    isChoice: 0
+    nextId: hero_2_2_3
+    choices: []
+  - id: hero_2_2_3
+    timingKind: 3
+    backgroundId: hero3
+    characterId: 
+    speakerName: "\u94C3\u5B50"
+    bodyText: "\u201C\u8FD9\u662F\u6211\u552F\u4E00\u7684\u673A\u4F1A\u3002\u201D\r\n\u201C\u6211\u8981\u627E\u5230\u6211\u7684\u59B9\u59B9\u3002\u201D"
+    isChoice: 0
+    nextId: 
+    choices: []
+  - id: hero_2_3
+    timingKind: 3
+    backgroundId: hero3
+    characterId: 
+    speakerName: "\u94C3\u5B50"
+    bodyText: "\u201C\u6211\u627E\u5230\u6211\u59B9\u59B9\u4E86\u3002\u201D"
+    isChoice: 0
+    nextId: hero_2_3_1
+    choices: []
+  - id: hero_2_3_1
+    timingKind: 3
+    backgroundId: hero3
+    characterId: 
+    speakerName: "\u4F60"
+    bodyText: "\u201C\u771F\u7684\u5417\uFF1F\u201D"
+    isChoice: 0
+    nextId: hero_2_3_2
+    choices: []
+  - id: hero_2_3_2
+    timingKind: 3
+    backgroundId: hero3
+    characterId: 
+    speakerName: "\u94C3\u5B50"
+    bodyText: "\u201C\u771F\u7684\u3002\u53EF\u5979\u5DF2\u7ECF\u4E0D\u662F\u6211\u8BB0\u5FC6\u91CC\u7684\u6837\u5B50\u4E86\u3002\u201D\r\n\u201C\u5979\u73B0\u5728\u662F\u7B2C\u4E09\u5C42\u7684\u9A7B\u5B88\u8005\u3002\u201D\r\n\u201C\u6211\u53BB\u627E\u5979\u804A\u8FC7\uFF0C\u53EF\u5979\u6839\u672C\u4E0D\u613F\u610F\u8DDF\u6211\u56DE\u53BB\u3002\u201D\n\u201C\u5979\u5DF2\u7ECF\u5F7B\u5E95\u88AB\u6D17\u8111\u4E86\u3002\u201D"
+    isChoice: 0
+    nextId: hero_2_3_3
+    choices: []
+  - id: hero_2_3_3
+    timingKind: 3
+    backgroundId: hero3
+    characterId: 
+    speakerName: "\u94C3\u5B50"
+    bodyText: "\u201C\u6211\u8BE5\u600E\u4E48\u529E\uFF1F\u201D\n\u201C\u6211\u60F3\uFF0C\u53EA\u6709\u6210\u4E3A\u7BA1\u7406\u8005\uFF0C\u53EA\u6709\u8D70\u5230\u66F4\u9AD8\u7684\u4F4D\u7F6E\uFF0C\u6211\u624D\u6709\u673A\u4F1A\u6551\u5979\u3002\u201D\r\n\u201C\u53EF\u6211\u6839\u672C\u4E0D\u53EF\u80FD\u8D62\u8FC7\u4F60\u548C\u82B1\u3002\u201D\n\r\u201C\u4F60\u80FD\u5E2E\u5E2E\u6211\u5417\uFF1F\u201D"
+    isChoice: 0
+    nextId: 
+    choices: []
+  - id: hero_2_4
+    timingKind: 3
+    backgroundId: hero3
+    characterId: 
+    speakerName: "\u94C3\u5B50"
+    bodyText: "\u201C\u6211\u60F3\u548C\u4F60\u505A\u4E2A\u4EA4\u6613\u3002\u201D"
+    isChoice: 0
+    nextId: hero_2_4_1
+    choices: []
+  - id: hero_2_4_1
+    timingKind: 3
+    backgroundId: hero3
+    characterId: 
+    speakerName: "\u4F60"
+    bodyText: "\u201C\u4EC0\u4E48\u4EA4\u6613\uFF1F\u201D"
+    isChoice: 0
+    nextId: hero_2_4_2
+    choices: []
+  - id: hero_2_4_2
+    timingKind: 3
+    backgroundId: hero3
+    characterId: 
+    speakerName: "\u94C3\u5B50"
+    bodyText: "\u201C\u5982\u679C\u4F60\u6700\u540E\u771F\u7684\u80FD\u6218\u80DC\u5854\u4E3B\uFF0C\u6218\u80DC\u6240\u6709\u4EBA\uFF0C\u6211\u5E0C\u671B\u4F60\u80FD\u6551\u6551\u6211\u59B9\u59B9\u3002\u201D"
+    isChoice: 0
+    nextId: hero_2_4_3
+    choices: []
+  - id: hero_2_4_3
+    timingKind: 3
+    backgroundId: hero3
+    characterId: 
+    speakerName: "\u4F60"
+    bodyText: "\u201C\u4F60\u4E3A\u4EC0\u4E48\u89C9\u5F97\u6211\u80FD\u505A\u5230\uFF1F\u201D"
+    isChoice: 0
+    nextId: hero_2_4_4
+    choices: []
+  - id: hero_2_4_4
+    timingKind: 3
+    backgroundId: hero3
+    characterId: 
+    speakerName: "\u94C3\u5B50"
+    bodyText: "\u201C\u56E0\u4E3A\u6211\u770B\u5F97\u89C1\u2018\u52BF\u2019\u3002\u201D\n\u201C\u5728\u6211\u773C\u91CC\uFF0C\u6BCF\u4E2A\u4EBA\u8EAB\u4E0A\u90FD\u6709\u90A3\u79CD\u4E1C\u897F\u3002\u50CF\u662F\u4E00\u56E2\u5E26\u7740\u989C\u8272\u7684\u70DF\u96FE\uFF0C\u4E5F\u50CF\u4E00\u79CD\u6B63\u5728\u6D41\u52A8\u7684\u529B\u91CF\u3002\u201D\r\n\u201C\u82B1\u7684\u52BF\u6700\u5F3A\uFF0C\u5176\u6B21\u662F\u9F99\u4E4B\u4ECB\uFF0C\u518D\u7136\u540E\u662F\u6211\u3002\u201D\n"
+    isChoice: 0
+    nextId: hero_2_4_5
+    choices: []
+  - id: hero_2_4_5
+    timingKind: 3
+    backgroundId: hero3
+    characterId: 
+    speakerName: "\u94C3\u5B50"
+    bodyText: "\u201C\u4F60\u6700\u7279\u6B8A\u3002\u6211\u5728\u4F60\u8EAB\u4E0A\uFF0C\u4EC0\u4E48\u90FD\u770B\u4E0D\u89C1\u3002\u201D\r"
+    isChoice: 0
+    nextId: hero_2_4_6
+    choices: []
+  - id: hero_2_4_6
+    timingKind: 3
+    backgroundId: hero3
+    characterId: 
+    speakerName: "\u4F60"
+    bodyText: "\u201C\u4EC0\u4E48\u90FD\u770B\u4E0D\u89C1\uFF1F\u201D"
+    isChoice: 0
+    nextId: hero_2_4_7
+    choices: []
+  - id: hero_2_4_7
+    timingKind: 3
+    backgroundId: hero3
+    characterId: 
+    speakerName: "\u94C3\u5B50"
+    bodyText: "\u201C\u5BF9\u3002\u8FD9\u53CD\u800C\u662F\u6700\u5F02\u5E38\u7684\u5730\u65B9\u3002\u56E0\u4E3A\u54EA\u6015\u518D\u5F31\u7684\u4EBA\uFF0C\u8EAB\u4E0A\u4E5F\u4F1A\u6709\u52BF\u3002\u201D\r\n\r\u201C\u518D\u52A0\u4E0A\u4F60\u5728\u7B2C\u4E00\u5929\u8D62\u4E86\u82B1\uFF0C\u6240\u4EE5\u6211\u76F8\u4FE1\uFF0C\u4F60\u8EAB\u4E0A\u4E00\u5B9A\u85CF\u7740\u6BD4\u2018\u52BF\u2019\u66F4\u5927\u7684\u79D8\u5BC6\u3002\u6211\u4F1A\u5C3D\u53EF\u80FD\u5E2E\u4F60\u3002\u201D\r\n\u201C\u4F5C\u4E3A\u4EA4\u6362\uFF0C\u5982\u679C\u4F60\u771F\u7684\u5F53\u4E0A\u5854\u4E3B\uFF0C\u8BF7\u4F60\u6551\u6551\u6211\u7684\u59B9\u59B9\u3002\u201D"
+    isChoice: 0
+    nextId: hero_2_4_8
+    choices: []
+  - id: hero_2_4_8
+    timingKind: 3
+    backgroundId: hero3
+    characterId: 
+    speakerName: "\u4F60"
+    bodyText: "\u201C\u6211\u4F1A\u5C3D\u6211\u6240\u80FD\u3002\u201D"
+    isChoice: 0
+    nextId: 
+    choices: []
+  - id: hero_2_5
+    timingKind: 3
+    backgroundId: hero3
+    characterId: 
+    speakerName: "\u94C3\u5B50"
+    bodyText: "\u201C\u771F\u6CA1\u60F3\u5230\uFF0C\u6211\u4EEC\u7ADF\u7136\u90FD\u80FD\u8D70\u5230\u8FD9\u4E00\u5C42\u3002\u201D\n\u201C\u524D\u9762\u90A3\u4E9B\u9A7B\u5B88\u8005\u7684\u52BF\u90FD\u5F3A\u5F97\u5413\u4EBA\uFF0C\u6211\u539F\u672C\u4EE5\u4E3A\u81EA\u5DF1\u6839\u672C\u8FC7\u4E0D\u6765\u3002\u201D"
+    isChoice: 0
+    nextId: hero_2_5_1
+    choices: []
+  - id: hero_2_5_1
+    timingKind: 3
+    backgroundId: hero3
+    characterId: 
+    speakerName: "\u94C3\u5B50"
+    bodyText: "\u201C\u53EF\u6700\u540E\uFF0C\u6211\u5C45\u7136\u8FD8\u662F\u8D62\u4E86\u3002\u201D\n\u201C\u5BF9\u4E86\uFF0C\u6709\u4E24\u4E2A\u4EBA\u4F60\u4E00\u5B9A\u8981\u5C0F\u5FC3\u3002\u201D"
+    isChoice: 0
+    nextId: hero_2_5_2
+    choices: []
+  - id: hero_2_5_2
+    timingKind: 3
+    backgroundId: hero3
+    characterId: 
+    speakerName: "\u4F60"
+    bodyText: "\u201C\u8C01\uFF1F\u201D"
+    isChoice: 0
+    nextId: hero_2_5_3
+    choices: []
+  - id: hero_2_5_3
+    timingKind: 3
+    backgroundId: hero3
+    characterId: 
+    speakerName: "\u94C3\u5B50"
+    bodyText: "\u201C\u5EFA\u7B51\u5E08\uFF0C\u8FD8\u6709\u6570\u5B66\u5BB6\u3002\u201D\r\n\r\u201C\u4ED6\u4EEC\u7684\u52BF\u592A\u53EF\u6015\u4E86\u3002\u201D\r\n\u201C\u90A3\u5DF2\u7ECF\u4E0D\u662F\u666E\u901A\u4EBA\u7684\u7A0B\u5EA6\u4E86\u3002\u201D\r\n\u201C\u5728\u6211\u89C1\u8FC7\u7684\u6240\u6709\u4EBA\u91CC\uFF0C\u4ED6\u4EEC\u662F\u6700\u6050\u6016\u7684\u4E24\u4E2A\u3002\u201D"
+    isChoice: 0
+    nextId: 
+    choices: []
+  - id: hero_2_6
+    timingKind: 3
+    backgroundId: hero3
+    characterId: 
+    speakerName: "\u94C3\u5B50"
+    bodyText: "\u201C\u4ECA\u5929\u9F99\u4E4B\u4ECB\u6765\u627E\u8FC7\u6211\u3002\u201D\n\u201C\u4ED6\u5E0C\u671B\u6211\u5E2E\u4ED6\u6210\u4E3A\u5854\u4E3B\u3002\u201D"
+    isChoice: 0
+    nextId: hero_2_6_1
+    choices: []
+  - id: hero_2_6_1
+    timingKind: 3
+    backgroundId: hero3
+    characterId: 
+    speakerName: "\u4F60"
+    bodyText: "\u201C\u4F60\u7B54\u5E94\u4E86\u5417\uFF1F\u201D"
+    isChoice: 0
+    nextId: hero_2_6_2
+    choices: []
+  - id: hero_2_6_2
+    timingKind: 3
+    backgroundId: hero3
+    characterId: 
+    speakerName: "\u94C3\u5B50"
+    bodyText: "\u201C\u6CA1\u6709\u3002\u51ED\u4ED6\u7684\u529B\u91CF\uFF0C\u6839\u672C\u4E0D\u53EF\u80FD\u548C\u4F60\u8FD8\u6709\u82B1\u6297\u8861\u3002\u201D\n\u201C\u660E\u5929\uFF0C\u6211\u4E5F\u4F1A\u767B\u4E0A\u5854\u9876\u3002\u201D\r\n\u201C\u800C\u4E14\u6211\u8D8A\u6765\u8D8A\u786E\u5B9A\uFF0C\u5854\u91CC\u7684\u90A3\u4E9B\u4EBA\uFF0C\u662F\u771F\u7684\u5E0C\u671B\u6211\u4EEC\u4E0A\u53BB\u3002\u201D\r\n\u201C\u6240\u4EE5\u5230\u4E86\u90A3\u65F6\u5019\uFF0C\u6211\u4F1A\u6545\u610F\u8F93\u7ED9\u4F60\u3002\u201D\n"
+    isChoice: 0
+    nextId: hero_2_6_3
+    choices: []
+  - id: hero_2_6_3
+    timingKind: 3
+    backgroundId: hero3
+    characterId: 
+    speakerName: "\u94C3\u5B50"
+    bodyText: "\u201C\u5F53\u7136\uFF0C\u5C31\u7B97\u4E0D\u8FD9\u4E48\u505A\uFF0C\u6211\u5927\u6982\u4E5F\u8D62\u4E0D\u4E86\u4F60\u3002\u201D\r\n\u201C\u5E0C\u671B\u4F60\u5F53\u4E0A\u5854\u4E3B\u4E4B\u540E\uFF0C\u522B\u5FD8\u4E86\u6211\u4EEC\u7684\u7EA6\u5B9A\u3002\u201D"
+    isChoice: 0
+    nextId: 
+    choices: []
+  - id: hero_2_7
+    timingKind: 3
+    backgroundId: hero3
+    characterId: 
+    speakerName: "\u94C3\u5B50"
+    bodyText: "\u201C\u8D70\u5230\u8FD9\u91CC\uFF0C\u6211\u4EEC\u4E4B\u95F4\u6CE8\u5B9A\u53EA\u4F1A\u5269\u4E0B\u4E00\u4E2A\u4EBA\u3002\u201D"
+    isChoice: 0
+    nextId: hero_2_7_1
+    choices: []
+  - id: hero_2_7_1
+    timingKind: 3
+    backgroundId: hero3
+    characterId: 
+    speakerName: "\u94C3\u5B50"
+    bodyText: "\u201C\u6765\u5427\u3002\u201D\r\n\r\u201C\u51B3\u6218\u5427\u3002\u201D"
     isChoice: 0
     nextId: 
     choices: []

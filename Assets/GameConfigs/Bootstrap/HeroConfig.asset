@@ -13,15 +13,15 @@ MonoBehaviour:
   m_Name: HeroConfig
   m_EditorClassIdentifier: 
   heroes:
-  - id: 
-    displayName: 
-    portraitId: 
+  - id: hero_a
+    displayName: "\u9F99\u4E4B\u4ECB"
+    portraitId: Hero2/1
     avatarId: 
-  - id: 
-    displayName: 
-    portraitId: 
+  - id: hero_b
+    displayName: "\u82B1"
+    portraitId: Heroine1/1
     avatarId: 
-  - id: 
-    displayName: 
-    portraitId: 
+  - id: hero_c
+    displayName: "\u94C3\u5B50"
+    portraitId: Heroine2/1
     avatarId: 
