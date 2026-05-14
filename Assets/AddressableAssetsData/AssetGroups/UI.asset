@@ -123,6 +123,12 @@ MonoBehaviour:
     m_SerializedLabels:
     - ui_panel
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 14749abf9062e634b984818b8ab7a6f8
+    m_Address: UI/DeckStorageView
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - ui_panel
+    FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: 0b8713ba58b57bb49bd9906570780370, type: 2}
   m_SchemaSet:
