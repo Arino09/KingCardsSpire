@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using KingCardsSpire.Configs;
 using KingCardsSpire.Core;
 using KingCardsSpire.Core.Battle;
@@ -9,6 +10,8 @@ using KingCardsSpire.Models;
 using KingCardsSpire.Views.UI;
 using UnityEngine;
 using Random = UnityEngine.Random;
+
+[assembly: InternalsVisibleTo("KingCardsSpire.Tests")]
 
 namespace KingCardsSpire.Managers
 {
@@ -98,11 +101,19 @@ namespace KingCardsSpire.Managers
             return ResolveGameConfig()?.MaxDaysPerFloor ?? 3;
         }
 
-        /// <summary>根据当前本层已过天数估算剩余可停留天数（见超时判定 FloorDay &gt; MaxDaysPerFloor）。</summary>
+        /// <summary>
+        /// 「结束当日」已使 <see cref="PlayerData.FloorDay"/> 自增后的层内超时判定（<see cref="PlayerData.FloorDay"/> 从 1 起为层内「当前天」；超过 <paramref name="maxDaysPerFloor"/> 且未击败 BOSS 则失败）。
+        /// </summary>
+        internal static bool EvaluateFloorTimeoutAfterAdvanceDay(int floorDayAfterIncrement, int maxDaysPerFloor, bool bossDefeated)
+        {
+            return floorDayAfterIncrement > maxDaysPerFloor && !bossDefeated;
+        }
+
+        /// <summary>根据当前本层天数估算剩余可停留天数（见超时判定 FloorDay &gt; MaxDaysPerFloor）。</summary>
         public int GetEstimatedRemainingDaysOnFloor()
         {
             var max = GetMaxDaysPerFloor();
-            return Mathf.Max(0, max - PlayerState.FloorDay);
+            return Mathf.Max(0, max - PlayerState.FloorDay + 1);
         }
 
         /// <summary>从存档恢复当前 Run（Boot 主菜单「继续游戏」）。</summary>
@@ -118,8 +129,15 @@ namespace KingCardsSpire.Managers
             ShopState = data.Shop ?? new ShopState();
             if (data.Version < 2 && PlayerState != null)
                 PlayerState.HasCompletedOpeningTutorial = true;
+            if (data.Version < 5 && PlayerState != null)
+            {
+                // v4 及更早：FloorDay 为「本层已结束当日次数」从 0 起；v5 起为层内「当前天」从 1 起。
+                PlayerState.FloorDay = Mathf.Max(1, PlayerState.FloorDay + 1);
+            }
+
             NormalizeBuffPersistence(PlayerState);
-            if (FloorState.FloorIndex <= 0)
+            if (PlayerState != null && PlayerState.FloorDay < 1)
+                PlayerState.FloorDay = 1;
                 FloorState.FloorIndex = PlayerState.CurrentFloor;
             _pendingBossRewards = null;
             NormalizeNpcPersistence(PlayerState);
@@ -139,7 +157,7 @@ namespace KingCardsSpire.Managers
             {
                 CurrentFloor = 1,
                 CurrentDay = 1,
-                FloorDay = 0,
+                FloorDay = 1,
                 Gold = gc?.InitialGold ?? 50,
                 HandCards = Array.Empty<Card>(),
                 StoredCards = Array.Empty<Card>(),
@@ -194,7 +212,7 @@ namespace KingCardsSpire.Managers
                 return true;
             }
 
-            PlayerState.FloorDay = 0;
+            PlayerState.FloorDay = 1;
             FloorState.BossDefeated = false;
             PlayerState.XRayCount++;
             PlayerState.NpcDialogueCredits += StoryDialogueRules.NpcCreditsPerFloor;
@@ -221,7 +239,7 @@ namespace KingCardsSpire.Managers
             }
 
             var maxDays = ResolveGameConfig()?.MaxDaysPerFloor ?? 3;
-            if (PlayerState.FloorDay > maxDays && !FloorState.BossDefeated)
+            if (EvaluateFloorTimeoutAfterAdvanceDay(PlayerState.FloorDay, maxDays, FloorState.BossDefeated))
                 FailRun("floor_timeout");
 
             if (_gameOver)
@@ -761,7 +779,7 @@ namespace KingCardsSpire.Managers
 
             var cfgMgr = ConfigManager.Instance;
             var maxDays = ResolveGameConfig()?.MaxDaysPerFloor ?? 3;
-            var spareDays = Mathf.Max(0, maxDays - PlayerState.FloorDay);
+            var spareDays = Mathf.Max(0, maxDays - PlayerState.FloorDay + 1);
             TowerFloorEntry entry = null;
             if (cfgMgr != null)
                 cfgMgr.TryGetTowerFloor(PlayerState.CurrentFloor, out entry);

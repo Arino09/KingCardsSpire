@@ -213,6 +213,7 @@ namespace KingCardsSpire.Views.UI
         {
             RefreshStatusTexts();
             RefreshVisitNpcButtonAccess();
+            RefreshNextDayButtonAccess();
         }
 
         private void OnBuffAcquired(BuffAcquiredEvent _) => RefreshStatusTexts();
@@ -225,6 +226,7 @@ namespace KingCardsSpire.Views.UI
         {
             RefreshStatusTexts();
             RefreshFloorBackground();
+            RefreshNextDayButtonAccess();
         }
 
         private IEnumerator MaybeOfferBuffDraftAfterFloorRoutine()
@@ -281,7 +283,21 @@ namespace KingCardsSpire.Views.UI
         private void RefreshNextDayButtonAccess()
         {
             var gm = _game ?? GameManager.Instance;
-            nextDayButton.interactable = gm != null && !gm.IsGameOver && !gm.IsRunVictory;
+            if (gm == null)
+            {
+                nextDayButton.interactable = false;
+                return;
+            }
+
+            var maxDays = gm.GetMaxDaysPerFloor();
+            var canAdvance = !gm.IsGameOver && !gm.IsRunVictory &&
+                gm.PlayerState.FloorDay < maxDays;
+            nextDayButton.interactable = canAdvance;
+
+            // 从本按钮 onClick 内同步置灰时，若仍保持为 EventSystem 选中对象，部分环境下 Inspector/视觉状态会异常。
+            if (!canAdvance && EventSystem.current != null &&
+                EventSystem.current.currentSelectedGameObject == nextDayButton.gameObject)
+                EventSystem.current.SetSelectedGameObject(null);
         }
 
         /// <summary>

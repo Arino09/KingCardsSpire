@@ -25,7 +25,9 @@ namespace KingCardsSpire.Models
     {
         public int CurrentFloor = 1;
         public int CurrentDay = 1;
-        public int FloorDay;
+
+        /// <summary>本层当前为第几天（1～MaxDaysPerFloor；<see cref="GameManager.AdvanceDay"/> 结束时 +1，超过上限且未击败 BOSS 则失败）。</summary>
+        public int FloorDay = 1;
         public int Gold = 50;
         public Card[] HandCards = Array.Empty<Card>();
 

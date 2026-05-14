@@ -248,7 +248,7 @@ MonoBehaviour:
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 02acaed63deb36648be67688725d6d3a
-    m_Address: Assets/GameAssets/Sprites/Character/NPCbg
+    m_Address: Sprites/Character/NPCbg
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
