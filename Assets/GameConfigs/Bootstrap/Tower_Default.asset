@@ -23,7 +23,7 @@ MonoBehaviour:
     - 12
     bossAiStrength: 0
     goldBonusPerSpareDay: 5
-  - bossId: floor_2_boss
+  - bossId: "\u8D1F\u5FC3\u8005"
     enemyDeckCardIds:
     - king
     - commoner
@@ -31,7 +31,7 @@ MonoBehaviour:
     - 2
     bossAiStrength: 0
     goldBonusPerSpareDay: 5
-  - bossId: floor_3_boss
+  - bossId: "\u50B2\u6162\u8005"
     enemyDeckCardIds:
     - king
     - commoner
@@ -39,7 +39,7 @@ MonoBehaviour:
     - 3
     bossAiStrength: 0
     goldBonusPerSpareDay: 5
-  - bossId: floor_4_boss
+  - bossId: "\u72EC\u88C1\u8005"
     enemyDeckCardIds:
     - king
     - commoner
@@ -47,7 +47,7 @@ MonoBehaviour:
     - 4
     bossAiStrength: 0
     goldBonusPerSpareDay: 5
-  - bossId: floor_5_boss
+  - bossId: "\u6781\u6076\u8005"
     enemyDeckCardIds:
     - king
     - commoner
@@ -55,7 +55,7 @@ MonoBehaviour:
     - 5
     bossAiStrength: 0
     goldBonusPerSpareDay: 5
-  - bossId: floor_6_boss
+  - bossId: "\u8D85\u80FD\u8005"
     enemyDeckCardIds:
     - king
     - commoner
@@ -63,7 +63,7 @@ MonoBehaviour:
     - 6
     bossAiStrength: 0
     goldBonusPerSpareDay: 5
-  - bossId: floor_7_boss
+  - bossId: "\u56FD\u738B"
     enemyDeckCardIds:
     - king
     - commoner
