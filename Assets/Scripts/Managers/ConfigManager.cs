@@ -298,6 +298,51 @@ namespace KingCardsSpire.Managers
 
         public bool TryGetBuff(string id, out BuffConfig config) => _buffs.TryGetValue(id, out config);
 
+        /// <summary>按 <see cref="BuffConfig.BuffId"/> 查找策划 Buff 资产（用于 Buff 草案展示等）。</summary>
+        public bool TryGetBuffByBuffId(BuffId buffId, out BuffConfig config)
+        {
+            config = null;
+            if (buffId == BuffId.None)
+                return false;
+
+            foreach (var kv in _buffs)
+            {
+                if (kv.Value != null && kv.Value.BuffId == buffId)
+                {
+                    config = kv.Value;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>将全部配置卡转为运行时 <see cref="Card"/> 列表（图鉴/混乱战场全卡池）。</summary>
+        public void AppendAllCardsAsRuntime(List<Card> dest)
+        {
+            if (dest == null)
+                return;
+
+            foreach (var e in _cards.Values)
+            {
+                if (e == null || string.IsNullOrEmpty(e.Id))
+                    continue;
+
+                dest.Add(RuntimeCardFromEntry(e));
+            }
+        }
+
+        private static Card RuntimeCardFromEntry(CardConfigEntry cc) =>
+            new Card
+            {
+                Id = cc.Id,
+                Name = string.IsNullOrEmpty(cc.DisplayName) ? cc.Id : cc.DisplayName,
+                Level = cc.Level,
+                Type = cc.Type,
+                EffectDesc = cc.Description,
+                IsUnique = cc.IsUnique
+            };
+
         public bool TryGetWeather(string id, out WeatherConfig config) => _weathers.TryGetValue(id, out config);
 
         public IReadOnlyList<ShopConfig> GetShopConfigs() => _shopConfigs;

@@ -58,10 +58,28 @@ namespace KingCardsSpire.Managers
             go.AddComponent<StandaloneInputModule>();
         }
 
+        public bool IsPanelOpen(UIPanelId panelId) =>
+            panelId != UIPanelId.None && _active.ContainsKey(panelId);
+
         public IEnumerator OpenAsync(UIPanelId panelId)
         {
             if (panelId == UIPanelId.None || _active.ContainsKey(panelId))
                 yield break;
+
+            if (panelId == UIPanelId.BuffDraft)
+            {
+                var go = new GameObject("BuffDraftViewRoot");
+                go.transform.SetParent(_uiRoot, false);
+                var rt = go.AddComponent<RectTransform>();
+                rt.localScale = Vector3.one;
+                var view = go.AddComponent<BuffDraftView>();
+                view.Initialize();
+                view.NotifyOpened();
+                view.Show();
+                _active[panelId] = view;
+                _stack.Push(view);
+                yield break;
+            }
 
             var key = panelId.ToAddress();
             if (string.IsNullOrEmpty(key))

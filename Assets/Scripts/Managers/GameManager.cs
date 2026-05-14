@@ -34,6 +34,22 @@ namespace KingCardsSpire.Managers
         private readonly List<string> _npcNewEncounterScratch = new();
         private readonly HashSet<string> _npcTowerIdScratch = new();
 
+        private static readonly BuffId[] DraftableBuffIds =
+        {
+            BuffId.Socialite,
+            BuffId.RichSecondGen,
+            BuffId.UnlimitedSupply,
+            BuffId.RandomCommoner,
+            BuffId.RandomKing,
+            BuffId.SurprisePack,
+            BuffId.XRayBoost,
+            BuffId.ChaoticBattlefield
+        };
+
+        private readonly BuffId[] _buffDraftOfferBuffer = new BuffId[3];
+        private readonly List<BuffId> _buffDraftPoolScratch = new();
+        private readonly List<Card> _surpriseRuntimePoolScratch = new();
+
         public bool IsGameOver => _gameOver;
         public bool IsRunVictory => _runVictory;
 
@@ -88,6 +104,7 @@ namespace KingCardsSpire.Managers
             ShopState = data.Shop ?? new ShopState();
             if (data.Version < 2 && PlayerState != null)
                 PlayerState.HasCompletedOpeningTutorial = true;
+            NormalizeBuffPersistence(PlayerState);
             if (FloorState.FloorIndex <= 0)
                 FloorState.FloorIndex = PlayerState.CurrentFloor;
             _pendingBossRewards = null;
@@ -111,6 +128,9 @@ namespace KingCardsSpire.Managers
                 DiscardPile = Array.Empty<Card>(),
                 OwnedCards = Array.Empty<Card>(),
                 SelectedBuff = BuffId.None,
+                ActiveBuffs = Array.Empty<BuffId>(),
+                BuffPicksCompleted = 0,
+                NextBuffOfferFloor = 1,
                 XRayCount = gc?.InitialXRayCount ?? 1,
                 CurrentWeather = WeatherType.WarmWind,
                 UnlockedDialogues = Array.Empty<string>(),
@@ -120,6 +140,7 @@ namespace KingCardsSpire.Managers
                 LastHeroDialogueDay = 0,
                 MetNpcIds = Array.Empty<string>(),
                 LastNpcInteractionDay = 0,
+                NpcStoryVisitsUsedToday = 0,
                 NpcDialogueCredits = StoryDialogueRules.NpcCreditsPerFloor
             };
 
@@ -167,6 +188,7 @@ namespace KingCardsSpire.Managers
                 return;
 
             PlayerState.CurrentDay++;
+            PlayerState.NpcStoryVisitsUsedToday = 0;
             PlayerState.FloorDay++;
             _events?.Publish(new DayChangedEvent(PlayerState.CurrentDay));
 
@@ -268,7 +290,7 @@ namespace KingCardsSpire.Managers
             AppendOwnedCard(CardFromConfig(cc));
             _events?.Publish(new CardAcquiredEvent(cc.Id));
 
-            var unlimited = PlayerState.SelectedBuff == BuffId.UnlimitedSupply;
+            var unlimited = HasBuff(BuffId.UnlimitedSupply);
             if (!unlimited)
             {
                 slot.SoldOut = true;
@@ -311,14 +333,66 @@ namespace KingCardsSpire.Managers
                 var cfgMgr = ConfigManager.Instance;
                 if (cfgMgr != null && cfgMgr.TryGetCard(opt.CardId, out var cc))
                 {
-                    AppendOwnedCard(CardFromConfig(cc));
-                    _events?.Publish(new CardAcquiredEvent(cc.Id));
+                    if (HasBuff(BuffId.SurprisePack))
+                        AppendRandomOwnedCardsFromSurprisePackRoll();
+                    else
+                    {
+                        AppendOwnedCard(CardFromConfig(cc));
+                        _events?.Publish(new CardAcquiredEvent(cc.Id));
+                    }
                 }
                 else
                     Debug.LogWarning($"[GameManager] 驻守奖励卡牌配置缺失: {opt.CardId}");
             }
 
             EnterNextFloor();
+            return true;
+        }
+
+        /// <summary>
+        /// 常规战斗胜利：玩家从当前 <see cref="BattleManager.PendingCasualVictoryRewardCardIds"/> 中确认的一张卡写入持有卡组（惊喜卡包与驻守奖励卡牌分支一致）。
+        /// </summary>
+        /// <returns>是否在待选列表内且成功解析配置并发放（含惊喜卡包随机）。</returns>
+        public bool TryGrantCasualVictoryRewardCard(string cardId)
+        {
+            if (_gameOver || _runVictory || PlayerState == null)
+                return false;
+            if (string.IsNullOrEmpty(cardId))
+                return false;
+
+            var bm = BattleManager.Instance;
+            var pending = bm?.PendingCasualVictoryRewardCardIds;
+            if (pending == null || pending.Count == 0)
+                return false;
+
+            var found = false;
+            for (var i = 0; i < pending.Count; i++)
+            {
+                if (string.Equals(pending[i], cardId, StringComparison.OrdinalIgnoreCase))
+                {
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found)
+                return false;
+
+            var cfgMgr = ConfigManager.Instance;
+            if (cfgMgr == null || !cfgMgr.TryGetCard(cardId, out var cc))
+            {
+                Debug.LogWarning($"[GameManager] 常规战胜奖励卡牌配置缺失: {cardId}");
+                return false;
+            }
+
+            if (HasBuff(BuffId.SurprisePack))
+                AppendRandomOwnedCardsFromSurprisePackRoll();
+            else
+            {
+                AppendOwnedCard(CardFromConfig(cc));
+                _events?.Publish(new CardAcquiredEvent(cc.Id));
+            }
+
             return true;
         }
 
@@ -614,7 +688,7 @@ namespace KingCardsSpire.Managers
         public bool HasNpcStoryVisitAvailableToday()
         {
             if (PlayerState == null ||
-                PlayerState.LastNpcInteractionDay == PlayerState.CurrentDay ||
+                PlayerState.NpcStoryVisitsUsedToday >= GetMaxNpcStoryVisitsPerDay() ||
                 PlayerState.NpcDialogueCredits <= 0)
                 return false;
 
@@ -684,7 +758,7 @@ namespace KingCardsSpire.Managers
             startId = null;
             if (_gameOver || _runVictory || PlayerState == null || string.IsNullOrEmpty(npcId))
                 return false;
-            if (PlayerState.LastNpcInteractionDay == PlayerState.CurrentDay || PlayerState.NpcDialogueCredits <= 0)
+            if (PlayerState.NpcStoryVisitsUsedToday >= GetMaxNpcStoryVisitsPerDay() || PlayerState.NpcDialogueCredits <= 0)
                 return false;
 
             NormalizeStoryPersistence(PlayerState);
@@ -706,7 +780,7 @@ namespace KingCardsSpire.Managers
                 return;
 
             NormalizeStoryPersistence(PlayerState);
-            if (PlayerState.LastNpcInteractionDay == PlayerState.CurrentDay || PlayerState.NpcDialogueCredits <= 0)
+            if (PlayerState.NpcStoryVisitsUsedToday >= GetMaxNpcStoryVisitsPerDay() || PlayerState.NpcDialogueCredits <= 0)
                 return;
 
             var progress = GetOrCreateNpcDialogueProgress(npcId);
@@ -715,6 +789,7 @@ namespace KingCardsSpire.Managers
 
             progress.CompletedCount++;
             PlayerState.NpcDialogueCredits--;
+            PlayerState.NpcStoryVisitsUsedToday++;
             PlayerState.LastNpcInteractionDay = PlayerState.CurrentDay;
             AppendMetNpcIfMissing(npcId, PlayerState);
             _events?.Publish(new NpcEncounterStartedEvent(npcId));
@@ -786,6 +861,8 @@ namespace KingCardsSpire.Managers
 
             if (player.MetNpcIds == null)
                 player.MetNpcIds = Array.Empty<string>();
+            if (player.NpcStoryVisitsUsedToday < 0)
+                player.NpcStoryVisitsUsedToday = 0;
             NormalizeStoryPersistence(player);
         }
 
@@ -879,7 +956,7 @@ namespace KingCardsSpire.Managers
 
             var data = new SaveData
             {
-                Version = 2,
+                Version = 3,
                 Player = PlayerState,
                 Floor = FloorState,
                 Shop = ShopState,
@@ -896,6 +973,213 @@ namespace KingCardsSpire.Managers
                 return;
             PlayerState.HasCompletedOpeningTutorial = true;
             PersistCurrentRunToDisk();
+        }
+
+        public int GetMaxNpcStoryVisitsPerDay() => 1 + (HasBuff(BuffId.Socialite) ? 1 : 0);
+
+        public bool HasBuff(BuffId id)
+        {
+            if (id == BuffId.None || PlayerState?.ActiveBuffs == null)
+                return false;
+
+            var arr = PlayerState.ActiveBuffs;
+            for (var i = 0; i < arr.Length; i++)
+            {
+                if (arr[i] == id)
+                    return true;
+            }
+
+            return false;
+        }
+
+        public bool ShouldOfferBuffDraft()
+        {
+            if (PlayerState == null)
+                return false;
+            if (PlayerState.BuffPicksCompleted >= 4)
+                return false;
+            var next = Mathf.Max(1, PlayerState.NextBuffOfferFloor);
+            return PlayerState.CurrentFloor == next;
+        }
+
+        /// <summary>构建当前一次 3 选 1 的候选（不放回池）；需在打开 Buff 界面前调用。</summary>
+        public void TryBuildBuffDraftOffer()
+        {
+            for (var i = 0; i < _buffDraftOfferBuffer.Length; i++)
+                _buffDraftOfferBuffer[i] = BuffId.None;
+
+            if (!ShouldOfferBuffDraft())
+                return;
+
+            _buffDraftPoolScratch.Clear();
+            for (var i = 0; i < DraftableBuffIds.Length; i++)
+            {
+                var id = DraftableBuffIds[i];
+                if (!HasBuff(id))
+                    _buffDraftPoolScratch.Add(id);
+            }
+
+            var n = _buffDraftPoolScratch.Count;
+            for (var i = 0; i < _buffDraftOfferBuffer.Length; i++)
+            {
+                if (n <= 0)
+                    break;
+                var pick = Random.Range(0, n);
+                var chosen = _buffDraftPoolScratch[pick];
+                _buffDraftPoolScratch[pick] = _buffDraftPoolScratch[n - 1];
+                n--;
+                _buffDraftOfferBuffer[i] = chosen;
+            }
+        }
+
+        public bool TryGetBuffDraftOfferCopy(BuffId[] dest)
+        {
+            if (dest == null || dest.Length < _buffDraftOfferBuffer.Length)
+                return false;
+
+            for (var i = 0; i < _buffDraftOfferBuffer.Length; i++)
+                dest[i] = _buffDraftOfferBuffer[i];
+
+            return true;
+        }
+
+        public void ApplyBuffChoice(BuffId pick)
+        {
+            if (PlayerState == null || pick == BuffId.None)
+                return;
+
+            var valid = false;
+            for (var i = 0; i < _buffDraftOfferBuffer.Length; i++)
+            {
+                if (_buffDraftOfferBuffer[i] == pick)
+                {
+                    valid = true;
+                    break;
+                }
+            }
+
+            if (!valid)
+                return;
+
+            var list = new List<BuffId>(PlayerState.ActiveBuffs ?? Array.Empty<BuffId>()) { pick };
+            PlayerState.ActiveBuffs = list.ToArray();
+            PlayerState.BuffPicksCompleted = Mathf.Min(4, PlayerState.BuffPicksCompleted + 1);
+            PlayerState.NextBuffOfferFloor = Mathf.Min(9, PlayerState.CurrentFloor + 2);
+
+            for (var i = 0; i < _buffDraftOfferBuffer.Length; i++)
+                _buffDraftOfferBuffer[i] = BuffId.None;
+
+            if (pick == BuffId.RichSecondGen)
+                PlayerState.Gold += Mathf.RoundToInt(PlayerState.Gold * 0.5f);
+
+            _events?.Publish(new BuffAcquiredEvent(pick));
+            _events?.Publish(new GoldChangedEvent(PlayerState.Gold));
+            PersistCurrentRunToDisk();
+        }
+
+        /// <summary>混乱战场：开战前从全卡池选 3 张；结果写入 <see cref="BattleManager.SetPendingChaoticBattleExtras"/>。</summary>
+        public IEnumerator RunChaoticBattlefieldPreBattlePickRoutine()
+        {
+            var ui = UIManager.Instance;
+            var cfg = ConfigManager.Instance;
+            var bm = BattleManager.Instance;
+            if (ui == null || cfg == null || bm == null)
+                yield break;
+
+            bm.SetPendingChaoticBattleExtras(Array.Empty<Card>());
+
+            _surpriseRuntimePoolScratch.Clear();
+            cfg.AppendAllCardsAsRuntime(_surpriseRuntimePoolScratch);
+            if (_surpriseRuntimePoolScratch.Count == 0)
+                yield break;
+
+            var done = false;
+            List<Card> picked = null;
+
+            yield return ui.OpenAsync(UIPanelId.CardList);
+            if (!ui.TryGetView(UIPanelId.CardList, out CardListView listView))
+                yield break;
+
+            listView.Apply(new CardListViewModel(
+                "混乱战场：选 3 张",
+                _surpriseRuntimePoolScratch,
+                false,
+                3,
+                list =>
+                {
+                    picked = new List<Card>(list);
+                    done = true;
+                },
+                () =>
+                {
+                    done = true;
+                    picked = null;
+                },
+                "请从全卡池点选恰好 3 张，确认后加入本局手牌（不写入卡组）。"));
+
+            while (!done)
+                yield return null;
+
+            if (picked != null && picked.Count == 3)
+                bm.SetPendingChaoticBattleExtras(picked);
+        }
+
+        private void AppendRandomOwnedCardsFromSurprisePackRoll()
+        {
+            var k = Random.Range(0, 4);
+            for (var i = 0; i < k; i++)
+                TryAppendOneRandomOwnedCardFromFullConfigPoolSurprise();
+        }
+
+        private void TryAppendOneRandomOwnedCardFromFullConfigPoolSurprise()
+        {
+            var cfgMgr = ConfigManager.Instance;
+            if (cfgMgr == null)
+                return;
+
+            _surpriseRuntimePoolScratch.Clear();
+            cfgMgr.AppendAllCardsAsRuntime(_surpriseRuntimePoolScratch);
+            for (var j = _surpriseRuntimePoolScratch.Count - 1; j >= 0; j--)
+            {
+                var c = _surpriseRuntimePoolScratch[j];
+                if (c != null && c.IsUnique && OwnsCardId(c.Id))
+                    _surpriseRuntimePoolScratch.RemoveAt(j);
+            }
+
+            if (_surpriseRuntimePoolScratch.Count == 0)
+                return;
+
+            var pick = _surpriseRuntimePoolScratch[Random.Range(0, _surpriseRuntimePoolScratch.Count)];
+            if (cfgMgr.TryGetCard(pick.Id, out var cc))
+            {
+                AppendOwnedCard(CardFromConfig(cc));
+                _events?.Publish(new CardAcquiredEvent(cc.Id));
+            }
+        }
+
+        private static void NormalizeBuffPersistence(PlayerData player)
+        {
+            if (player == null)
+                return;
+
+            if (player.ActiveBuffs == null)
+                player.ActiveBuffs = Array.Empty<BuffId>();
+
+            if (player.SelectedBuff != BuffId.None)
+            {
+                var merged = new List<BuffId>(player.ActiveBuffs);
+                if (!merged.Contains(player.SelectedBuff))
+                    merged.Add(player.SelectedBuff);
+                player.ActiveBuffs = merged.ToArray();
+                player.SelectedBuff = BuffId.None;
+            }
+
+            player.BuffPicksCompleted = Mathf.Clamp(Mathf.Max(player.BuffPicksCompleted, player.ActiveBuffs.Length), 0, 4);
+            player.NextBuffOfferFloor = Mathf.Max(player.NextBuffOfferFloor, player.BuffPicksCompleted * 2 + 1);
+            if (player.NextBuffOfferFloor <= 0)
+                player.NextBuffOfferFloor = Mathf.Max(1, player.BuffPicksCompleted * 2 + 1);
+            if (player.NpcStoryVisitsUsedToday < 0)
+                player.NpcStoryVisitsUsedToday = 0;
         }
 
         private GameConfig ResolveGameConfig()

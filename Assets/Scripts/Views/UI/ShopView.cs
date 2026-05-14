@@ -82,7 +82,7 @@ namespace KingCardsSpire.Views.UI
             if (slots == null || slots.Length == 0)
                 return;
 
-            var unlimited = gm.PlayerState.SelectedBuff == BuffId.UnlimitedSupply;
+            var unlimited = gm.HasBuff(BuffId.UnlimitedSupply);
 
             for (var i = 0; i < slots.Length; i++)
             {
