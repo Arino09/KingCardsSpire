@@ -41,6 +41,9 @@ namespace KingCardsSpire.Views.UI
 
         public bool SkipRequested => _skipRequested;
 
+        /// <summary>是否已点选某一选项、尚未被 <see cref="TryConsumeChoice"/> 取走。</summary>
+        public bool HasPendingChoice => _pendingChoice != null;
+
         public DialogueChoiceEntry ConsumedChoice => _pendingChoice;
 
         public override void Initialize()

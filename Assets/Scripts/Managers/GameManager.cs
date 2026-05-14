@@ -135,6 +135,12 @@ namespace KingCardsSpire.Managers
                 PlayerState.FloorDay = Mathf.Max(1, PlayerState.FloorDay + 1);
             }
 
+            if (data.Version < 6 && PlayerState != null && PlayerState.CurrentFloor == 1)
+            {
+                // v6：第一层整层 NPC 次数 3→6（每日上限 1→2 由运行时规则处理）。
+                PlayerState.NpcDialogueCredits += StoryDialogueRules.NpcCreditsFirstFloor - StoryDialogueRules.NpcCreditsPerFloor;
+            }
+
             NormalizeBuffPersistence(PlayerState);
             if (PlayerState != null && PlayerState.FloorDay < 1)
                 PlayerState.FloorDay = 1;
@@ -177,7 +183,8 @@ namespace KingCardsSpire.Managers
                 MetNpcIds = Array.Empty<string>(),
                 LastNpcInteractionDay = 0,
                 NpcStoryVisitsUsedToday = 0,
-                NpcDialogueCredits = StoryDialogueRules.NpcCreditsPerFloor
+                NpcDialogueCredits = StoryDialogueRules.GetNpcCreditsAwardedForFloor(1),
+                NpcCreditInstallmentsRemaining = 0
             };
 
             NormalizePlayerAudioSettings(PlayerState);
@@ -215,7 +222,17 @@ namespace KingCardsSpire.Managers
             PlayerState.FloorDay = 1;
             FloorState.BossDefeated = false;
             PlayerState.XRayCount++;
-            PlayerState.NpcDialogueCredits += StoryDialogueRules.NpcCreditsPerFloor;
+            // 进层时清零「本游戏日内已完成原住民剧情次数」统计（与 AdvanceDay 一致）；配额仅由 NpcDialogueCredits 限制。
+            PlayerState.NpcStoryVisitsUsedToday = 0;
+            if (PlayerState.CurrentFloor >= 2)
+            {
+                // 本层若仍有未触发的按日分期，进层时一次性折成点数，避免提前过层浪费配额。
+                PlayerState.NpcDialogueCredits +=
+                    PlayerState.NpcCreditInstallmentsRemaining * StoryDialogueRules.NpcCreditsOnFloorEnterSlice;
+                PlayerState.NpcDialogueCredits += StoryDialogueRules.NpcCreditsOnFloorEnterSlice;
+                PlayerState.NpcCreditInstallmentsRemaining = StoryDialogueRules.NpcCreditInstallmentCountAfterEnter;
+            }
+
             SyncFloorStateFromTower();
             _events?.Publish(new FloorChangedEvent(PlayerState.CurrentFloor));
             return true;
@@ -230,6 +247,9 @@ namespace KingCardsSpire.Managers
             PlayerState.CurrentDay++;
             PlayerState.NpcStoryVisitsUsedToday = 0;
             PlayerState.FloorDay++;
+            // 须先于 DayChangedEvent：否则 MainHub 等订阅方在 Refresh 时读到的仍是未加本日分期前的 Credits。
+            ApplyNpcCreditInstallmentAfterAdvanceDay();
+
             _events?.Publish(new DayChangedEvent(PlayerState.CurrentDay));
 
             if (PlayerState.Gold <= 0)
@@ -246,6 +266,17 @@ namespace KingCardsSpire.Managers
                 return;
 
             RollDailyWeather();
+        }
+
+        private void ApplyNpcCreditInstallmentAfterAdvanceDay()
+        {
+            if (_gameOver || _runVictory || PlayerState == null)
+                return;
+            if (PlayerState.CurrentFloor < 2 || PlayerState.NpcCreditInstallmentsRemaining <= 0)
+                return;
+
+            PlayerState.NpcDialogueCredits += StoryDialogueRules.NpcCreditsOnFloorEnterSlice;
+            PlayerState.NpcCreditInstallmentsRemaining--;
         }
 
         /// <summary>增收应用雨季 +50%（文档 §2.3）；支出不加成。</summary>
@@ -808,7 +839,7 @@ namespace KingCardsSpire.Managers
             yield return ui.OpenAsync(UIPanelId.MainMenu);
         }
 
-        /// <summary>今日是否仍可访问 NPC（主界面按钮与进入 NPCView 的门禁）。</summary>
+        /// <summary>是否仍可访问原住民（主界面按钮与进入 NPCView 的门禁）；仅受剩余配额与可播对话是否存在影响，不限每日次数。</summary>
         public bool HasNpcVisitRemainingToday()
         {
             return HasNpcStoryVisitAvailableToday();
@@ -860,9 +891,7 @@ namespace KingCardsSpire.Managers
 
         public bool HasNpcStoryVisitAvailableToday()
         {
-            if (PlayerState == null ||
-                PlayerState.NpcStoryVisitsUsedToday >= GetMaxNpcStoryVisitsPerDay() ||
-                PlayerState.NpcDialogueCredits <= 0)
+            if (PlayerState == null || PlayerState.NpcDialogueCredits <= 0)
                 return false;
 
             RefreshNewNpcEncounterScratch();
@@ -931,7 +960,7 @@ namespace KingCardsSpire.Managers
             startId = null;
             if (_gameOver || _runVictory || PlayerState == null || string.IsNullOrEmpty(npcId))
                 return false;
-            if (PlayerState.NpcStoryVisitsUsedToday >= GetMaxNpcStoryVisitsPerDay() || PlayerState.NpcDialogueCredits <= 0)
+            if (PlayerState.NpcDialogueCredits <= 0)
                 return false;
 
             NormalizeStoryPersistence(PlayerState);
@@ -953,7 +982,7 @@ namespace KingCardsSpire.Managers
                 return;
 
             NormalizeStoryPersistence(PlayerState);
-            if (PlayerState.NpcStoryVisitsUsedToday >= GetMaxNpcStoryVisitsPerDay() || PlayerState.NpcDialogueCredits <= 0)
+            if (PlayerState.NpcDialogueCredits <= 0)
                 return;
 
             var progress = GetOrCreateNpcDialogueProgress(npcId);
@@ -1036,6 +1065,14 @@ namespace KingCardsSpire.Managers
                 player.MetNpcIds = Array.Empty<string>();
             if (player.NpcStoryVisitsUsedToday < 0)
                 player.NpcStoryVisitsUsedToday = 0;
+
+            if (player.CurrentFloor < 2)
+                player.NpcCreditInstallmentsRemaining = 0;
+            else if (player.NpcCreditInstallmentsRemaining < 0)
+                player.NpcCreditInstallmentsRemaining = 0;
+            else if (player.NpcCreditInstallmentsRemaining > StoryDialogueRules.NpcCreditInstallmentCountAfterEnter)
+                player.NpcCreditInstallmentsRemaining = StoryDialogueRules.NpcCreditInstallmentCountAfterEnter;
+
             NormalizeStoryPersistence(player);
         }
 
@@ -1269,9 +1306,6 @@ namespace KingCardsSpire.Managers
             PlayerState.HasCompletedOpeningTutorial = true;
             PersistCurrentRunToDisk();
         }
-
-        /// <summary>每日可推进原住民剧情次数上限（与 UI 访问次数一致）。</summary>
-        public int GetMaxNpcStoryVisitsPerDay() => 1;
 
         public bool HasBuff(BuffId id)
         {

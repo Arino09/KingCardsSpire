@@ -29,7 +29,7 @@ MonoBehaviour:
     displayName: "\u6570\u5B66\u5BB6"
     portraitId: NPC/3_1
     avatarId: NPC/Avatar/3_1
-  - npcId: 41
+  - npcId: 4
     displayName: "\u5C0F\u4E11"
     portraitId: NPC/4_1
     avatarId: NPC/Avatar/4_1

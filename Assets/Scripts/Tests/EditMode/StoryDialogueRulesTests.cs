@@ -6,6 +6,17 @@ namespace KingCardsSpire.Tests
     public sealed class StoryDialogueRulesTests
     {
         [Test]
+        public void NpcCreditsAwardedPerFloorMatchesDesign()
+        {
+            Assert.AreEqual(6, StoryDialogueRules.GetNpcCreditsAwardedForFloor(1));
+            Assert.AreEqual(3, StoryDialogueRules.GetNpcCreditsAwardedForFloor(2));
+            Assert.AreEqual(3, StoryDialogueRules.GetNpcCreditsAwardedForFloor(7));
+            Assert.AreEqual(
+                StoryDialogueRules.NpcCreditsPerFloor,
+                StoryDialogueRules.NpcCreditsOnFloorEnterSlice + StoryDialogueRules.NpcCreditInstallmentCountAfterEnter);
+        }
+
+        [Test]
         public void BuildsAndParsesHeroStoryIds()
         {
             var id = StoryDialogueRules.BuildHeroStoryStartId(2, 7);

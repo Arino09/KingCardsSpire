@@ -187,7 +187,7 @@ namespace KingCardsSpire.Controllers
                 if (view.SkipRequested)
                     yield break;
 
-                if (view.TryConsumeChoice(out _))
+                if (view.HasPendingChoice)
                     yield break;
 
                 yield return null;

@@ -39,7 +39,7 @@ namespace KingCardsSpire.Models
 
         public IReadOnlyList<NpcHubButtonSpec> Buttons { get; }
 
-        /// <summary>为 true 时点击「结识新原住民」仅提示「暂无新原住民」，不消耗当日访问。</summary>
+        /// <summary>为 true 时点击「结识新原住民」仅提示「暂无新原住民」，不消耗剧情配额。</summary>
         public bool NewEncounterPoolEmpty { get; }
 
         public static NpcHubViewModel Build(IReadOnlyList<string> metNpcIdsSorted, bool newEncounterPoolEmpty)

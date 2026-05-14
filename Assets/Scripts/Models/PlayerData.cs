@@ -68,11 +68,14 @@ namespace KingCardsSpire.Models
         /// <summary>上一次消耗「当日 NPC 访问」的游戏内天数；与 <see cref="CurrentDay"/> 相等表示今日已访问过 NPC。</summary>
         public int LastNpcInteractionDay;
 
-        /// <summary>当前游戏日内已完成的原住民剧情推进次数（上限由 GameManager 按 Buff 计算）。跨天在 <see cref="GameManager.AdvanceDay"/> 中清零。</summary>
+        /// <summary>当前游戏日内已完成的原住民剧情推进次数（统计用；是否可再推进仅由 <see cref="NpcDialogueCredits"/> 决定）。跨天在 <see cref="GameManager.AdvanceDay"/> 中清零。</summary>
         public int NpcStoryVisitsUsedToday;
 
-        /// <summary>可用于推进原住民剧情的剩余次数；每进入新层增加 3 次，可跨天保留。</summary>
+        /// <summary>可用于推进原住民剧情的剩余次数；第一层开局 6；第 2 层起每层再贡献 3 点（进层当日 +1，本层内每结束当日 +1，共 3 笔），未用完可跨天、跨层保留。</summary>
         public int NpcDialogueCredits;
+
+        /// <summary>第 2 层起：本层尚未通过「结束当日」发放的原住民配额笔数（进层时已发首笔 +1，此处通常为 2，每 <see cref="GameManager.AdvanceDay"/> 一次减一并 +1 点）。第一层为 0。</summary>
+        public int NpcCreditInstallmentsRemaining;
 
         /// <summary>音乐 / 音效音量；旧档无此字段时由 GameManager 规范化。</summary>
         public GameAudioSettings AudioSettings;

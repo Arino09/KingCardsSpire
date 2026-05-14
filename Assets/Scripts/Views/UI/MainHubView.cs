@@ -226,6 +226,7 @@ namespace KingCardsSpire.Views.UI
         {
             RefreshStatusTexts();
             RefreshFloorBackground();
+            RefreshVisitNpcButtonAccess();
             RefreshNextDayButtonAccess();
         }
 

@@ -7,8 +7,28 @@ namespace KingCardsSpire.Models
         public const int HeroSlotCount = 3;
         public const int MaxHeroStoryCount = 7;
         public const int MaxNpcStoryCount = 3;
+
+        /// <summary>除第一层外，每层通过「进层 + 本层内结束当日」累计发放的「原住民剧情推进」总次数（分笔发放，见 <see cref="NpcCreditsOnFloorEnterSlice"/>）。</summary>
         public const int NpcCreditsPerFloor = 3;
+
+        /// <summary>第一层开局一次性发放的总配额。</summary>
+        public const int NpcCreditsFirstFloor = 6;
+
+        /// <summary>第 2 层及以后：进入该层当日立刻发放的配额（首日合计为上一层的剩余 + 本项）。</summary>
+        public const int NpcCreditsOnFloorEnterSlice = 1;
+
+        /// <summary>进层首日之后，在本层每次 <c>AdvanceDay</c> 再发放的笔数；与 <see cref="NpcCreditsOnFloorEnterSlice"/> 合计为 <see cref="NpcCreditsPerFloor"/>。</summary>
+        public const int NpcCreditInstallmentCountAfterEnter = 2;
+
         public const string NarratorCharacterId = "0";
+
+        /// <summary>
+        /// 若将某层「累计应发放」的原住民次数换算为常数：第一层为 <see cref="NpcCreditsFirstFloor"/>；第 2 层起每层合计为 <see cref="NpcCreditsPerFloor"/>（实际按进层 + 按日分期写入 <see cref="PlayerData.NpcDialogueCredits"/>）。
+        /// </summary>
+        public static int GetNpcCreditsAwardedForFloor(int floor1Based)
+        {
+            return floor1Based == 1 ? NpcCreditsFirstFloor : NpcCreditsPerFloor;
+        }
 
         public static string BuildHeroStoryStartId(int heroSlotIndex, int storyIndex)
         {
