@@ -27,6 +27,10 @@ namespace KingCardsSpire.Views.UI
         [SerializeField] private RectTransform choiceRoot;
         [SerializeField] private GameObject choiceOptionPrefab;
 
+        [Header("展示门闩")]
+        [Tooltip("可选：绑定对白/立绘/背景/按钮所在父节点上的 CanvasGroup。未绑定时将清空占位图与文案并暂时禁用继续/跳过按钮。")]
+        [SerializeField] private CanvasGroup presentationGroup;
+
         private readonly List<GameObject> _spawnedChoices = new();
         private bool _continueRequested;
         private bool _skipRequested;
@@ -52,6 +56,32 @@ namespace KingCardsSpire.Views.UI
         {
             ResetSignals();
             HideChoiceRoot();
+            SetPresentationReady(false);
+        }
+
+        /// <summary>在首行资源与文案绑定完成后由 <see cref="Controllers.DialogueController"/> 调用，避免打开时预制体占位闪屏。</summary>
+        public void SetPresentationReady(bool ready)
+        {
+            if (presentationGroup != null)
+            {
+                presentationGroup.alpha = ready ? 1f : 0f;
+                presentationGroup.interactable = ready;
+                presentationGroup.blocksRaycasts = ready;
+                return;
+            }
+
+            if (ready)
+            {
+                continueButton.interactable = true;
+                skipButton.interactable = true;
+                return;
+            }
+
+            SetBackgroundSprite(null);
+            SetPortraitSprite(null);
+            ApplyTexts(null, string.Empty);
+            continueButton.interactable = false;
+            skipButton.interactable = false;
         }
 
         public override void Dispose()

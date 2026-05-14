@@ -293,6 +293,15 @@ namespace KingCardsSpire.Managers
 
         public bool TryGetCard(string id, out CardConfigEntry config) => _cards.TryGetValue(id, out config);
 
+        /// <summary>从卡表行生成运行时 <see cref="Card"/>（参赛者卡组、图鉴等复用）。</summary>
+        public Card CreateRuntimeCard(CardConfigEntry entry)
+        {
+            if (entry == null)
+                return null;
+
+            return RuntimeCardFromEntry(entry);
+        }
+
         /// <summary>
         /// 商店进货：同一类型内不放回随机所用候选池（已持有的唯一卡排除）。
         /// </summary>

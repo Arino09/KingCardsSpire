@@ -48,7 +48,7 @@ namespace KingCardsSpire.Views.UI
         [Tooltip("指数形态弃牌：全屏遮罩（通常为 Mask 节点）；未绑定时仅依赖手牌 Canvas 抬升。")]
         [SerializeField] private GameObject exponentialSacrificeDimmer;
 
-        [Tooltip("指数形态弃牌：一般为 MyHand 上的 Canvas；留空则从 playerHandRoot 上取 Canvas。")]
+        [Tooltip("己方手牌区 Canvas（一般为 MyHand 上）。预制体上请保持 overrideSorting 关闭；仅在教学遮罩/指数弃牌遮罩时由代码临时开启。")]
         [SerializeField] private Canvas playerHandCanvasOverride;
 
         [Tooltip("指数形态弃牌时遮罩上方的提示文案（可选）。")]
@@ -78,7 +78,7 @@ namespace KingCardsSpire.Views.UI
         [SerializeField] private RectTransform enemyDiscardPileAnchor;
 
         [Header("开场教学战")]
-        [Tooltip("第一回合强引导：全屏暗层，手牌 Canvas 需叠在其上方；未绑定时仅依赖手牌区抬升。")]
+        [Tooltip("第一回合强引导：全屏暗层；对话结束并显示本遮罩一帧后，再为手牌 Canvas 打开 override sorting 叠在其上。")]
         [SerializeField] private GameObject tutorialHandDimmer;
 
         [Tooltip("教学战败占位（全屏节点）；未绑定时跳过展示。")]
@@ -114,12 +114,12 @@ namespace KingCardsSpire.Views.UI
         /// <summary>已确认出牌，指数形态下正等待玩家点击弃掉另一张手牌。</summary>
         private bool _awaitingExponentialSacrifice;
 
-        private int _savedPlayerHandCanvasSortOrder;
+        /// <summary>手牌 Canvas 叠在全屏遮罩之上时使用的排序增量（教学强引导 / 指数弃牌共用）。</summary>
+        private const int PlayerHandCanvasAboveOverlaySortDelta = 80;
 
-        private bool _hasSavedPlayerHandCanvasSort;
+        private int _playerHandCanvasBaselineSortOrder;
 
-        /// <summary>指数弃牌阶段为手牌 Canvas 叠加的排序增量。</summary>
-        private const int ExponentialHandCanvasSortBoost = 80;
+        private bool _playerHandCanvasSortingOverrideActive;
 
         /// <summary>本回合敌方出牌区实例（Prepare 后创建）。</summary>
         private CardView _enemyPlayCard;
@@ -138,12 +138,6 @@ namespace KingCardsSpire.Views.UI
 
         private bool _tutorialFirstRoundGuideActive;
 
-        private int _savedTutorialHandCanvasSortOrder;
-
-        private bool _hasSavedTutorialHandCanvasSort;
-
-        private const int TutorialHandCanvasSortBoost = 80;
-
         /// <summary>
         /// 面板初始化：解析服务、注册按钮；战斗状态订阅在 <see cref="OnOpen"/> 中进行。
         /// </summary>
@@ -157,6 +151,7 @@ namespace KingCardsSpire.Views.UI
             if (playerHandCanvasOverride == null && playerHandRoot != null)
                 playerHandCanvasOverride = playerHandRoot.GetComponent<Canvas>();
 
+            DisablePlayerHandCanvasSortingOverride();
             WireButtons();
         }
 
@@ -167,7 +162,7 @@ namespace KingCardsSpire.Views.UI
         {
             StopTutorialFlowCoroutine();
             StopChaoticAutoCoroutine();
-            ExitExponentialSacrificeUi(true);
+            ExitExponentialSacrificeUi();
             UnwireButtons();
             if (_events != null)
             {
@@ -183,6 +178,8 @@ namespace KingCardsSpire.Views.UI
         /// </summary>
         protected override void OnOpen()
         {
+            DisablePlayerHandCanvasSortingOverride();
+
             if (_events != null)
             {
                 _events.Unsubscribe<BattleStateChangedEvent>(OnBattleStateChanged);
@@ -207,7 +204,7 @@ namespace KingCardsSpire.Views.UI
                 StopTutorialFlowCoroutine();
                 _tutorialFlowCoroutine = StartCoroutine(OpeningTutorialBattleFlowRoutine());
 
-                ExitExponentialSacrificeUi(true);
+                ExitExponentialSacrificeUi();
                 RefreshBattleChromeOnly();
                 return;
             }
@@ -220,7 +217,7 @@ namespace KingCardsSpire.Views.UI
             if (_battle != null && !_battle.IsBattleActive)
                 StartCoroutine(OpenNonTutorialBattleRoutine());
 
-            ExitExponentialSacrificeUi(true);
+            ExitExponentialSacrificeUi();
             RefreshAll();
             TryScheduleChaoticAutoRound();
         }
@@ -665,8 +662,7 @@ namespace KingCardsSpire.Views.UI
         /// </summary>
         private void RebuildPlayerHand(Card[] hand)
         {
-            if (_battle == null)
-                return;
+            _battle ??= ServiceLocator.Get<BattleController>();
 
             var n = hand?.Length ?? 0;
             if (_selectedPlayerHandIndex >= n)
@@ -798,41 +794,20 @@ namespace KingCardsSpire.Views.UI
         private void EnterExponentialSacrificeUi()
         {
             _awaitingExponentialSacrifice = true;
-            if (exponentialSacrificeDimmer != null)
-                exponentialSacrificeDimmer.SetActive(true);
-            if (exponentialSacrificeHintText != null)
-            {
-                exponentialSacrificeHintText.gameObject.SetActive(true);
-                exponentialSacrificeHintText.text = "指数形态：请点击弃置一张手牌（不能弃本回合打出的牌）";
-            }
+            exponentialSacrificeDimmer.SetActive(true);
+            
+            exponentialSacrificeHintText.gameObject.SetActive(true);
+            exponentialSacrificeHintText.text = "指数形态：请点击弃置一张手牌（不能弃本回合打出的牌）";
 
-            if (playerHandCanvasOverride != null)
-            {
-                if (!_hasSavedPlayerHandCanvasSort)
-                {
-                    _savedPlayerHandCanvasSortOrder = playerHandCanvasOverride.sortingOrder;
-                    _hasSavedPlayerHandCanvasSort = true;
-                }
-
-                playerHandCanvasOverride.overrideSorting = true;
-                playerHandCanvasOverride.sortingOrder =
-                    _savedPlayerHandCanvasSortOrder + ExponentialHandCanvasSortBoost;
-            }
+            EnablePlayerHandCanvasSortingOverride();
         }
 
-        private void ExitExponentialSacrificeUi(bool restoreHandCanvasSort)
+        private void ExitExponentialSacrificeUi()
         {
             _awaitingExponentialSacrifice = false;
-            if (exponentialSacrificeDimmer != null)
-                exponentialSacrificeDimmer.SetActive(false);
-            if (exponentialSacrificeHintText != null)
-                exponentialSacrificeHintText.gameObject.SetActive(false);
-
-            if (restoreHandCanvasSort && playerHandCanvasOverride != null && _hasSavedPlayerHandCanvasSort)
-            {
-                playerHandCanvasOverride.sortingOrder = _savedPlayerHandCanvasSortOrder;
-                _hasSavedPlayerHandCanvasSort = false;
-            }
+            exponentialSacrificeDimmer.SetActive(false);
+            exponentialSacrificeHintText.gameObject.SetActive(false);
+            DisablePlayerHandCanvasSortingOverride();
         }
 
         private void OnExponentialSacrificeHandClicked(int handIndex)
@@ -852,7 +827,7 @@ namespace KingCardsSpire.Views.UI
                 return;
             }
 
-            ExitExponentialSacrificeUi(true);
+            ExitExponentialSacrificeUi();
             UpdateConfirmPlayButtonInteractable();
             StartCoroutine(RoundVisualSequenceRoutine());
         }
@@ -1088,6 +1063,8 @@ namespace KingCardsSpire.Views.UI
             RefreshAll();
 
             EnterTutorialFirstRoundGuide();
+            yield return null;
+            EnablePlayerHandCanvasSortingOverride();
 
             if (_events != null)
                 _events.Subscribe<BattleRoundResolvedEvent>(OnTutorialFirstRoundResolvedExitGuide);
@@ -1124,7 +1101,6 @@ namespace KingCardsSpire.Views.UI
             if (tutorialHandDimmer != null)
                 tutorialHandDimmer.SetActive(true);
 
-            BoostPlayerHandCanvasForTutorial(true);
             SetAuxiliaryBattleButtonsInteractable(false);
             RefreshAll();
             UpdateConfirmPlayButtonInteractable();
@@ -1136,35 +1112,41 @@ namespace KingCardsSpire.Views.UI
             if (tutorialHandDimmer != null)
                 tutorialHandDimmer.SetActive(false);
 
-            BoostPlayerHandCanvasForTutorial(false);
+            DisablePlayerHandCanvasSortingOverride();
             SetAuxiliaryBattleButtonsInteractable(true);
             RefreshAll();
             UpdateConfirmPlayButtonInteractable();
         }
 
-        private void BoostPlayerHandCanvasForTutorial(bool enable)
+        /// <summary>在全屏遮罩之上显示手牌（教学 / 指数弃牌）；与 <see cref="DisablePlayerHandCanvasSortingOverride"/> 成对。</summary>
+        private void EnablePlayerHandCanvasSortingOverride()
         {
             if (playerHandCanvasOverride == null)
                 return;
 
-            if (enable)
+            if (!_playerHandCanvasSortingOverrideActive)
             {
-                if (!_hasSavedTutorialHandCanvasSort)
-                {
-                    _savedTutorialHandCanvasSortOrder = playerHandCanvasOverride.sortingOrder;
-                    _hasSavedTutorialHandCanvasSort = true;
-                }
+                _playerHandCanvasBaselineSortOrder = playerHandCanvasOverride.sortingOrder;
+                _playerHandCanvasSortingOverrideActive = true;
+            }
 
-                playerHandCanvasOverride.overrideSorting = true;
-                playerHandCanvasOverride.sortingOrder =
-                    _savedTutorialHandCanvasSortOrder + TutorialHandCanvasSortBoost;
-            }
-            else if (_hasSavedTutorialHandCanvasSort)
+            playerHandCanvasOverride.overrideSorting = true;
+            playerHandCanvasOverride.sortingOrder =
+                _playerHandCanvasBaselineSortOrder + PlayerHandCanvasAboveOverlaySortDelta;
+        }
+
+        private void DisablePlayerHandCanvasSortingOverride()
+        {
+            if (playerHandCanvasOverride == null)
+                return;
+
+            if (_playerHandCanvasSortingOverrideActive)
             {
-                playerHandCanvasOverride.sortingOrder = _savedTutorialHandCanvasSortOrder;
-                playerHandCanvasOverride.overrideSorting = false;
-                _hasSavedTutorialHandCanvasSort = false;
+                playerHandCanvasOverride.sortingOrder = _playerHandCanvasBaselineSortOrder;
+                _playerHandCanvasSortingOverrideActive = false;
             }
+
+            playerHandCanvasOverride.overrideSorting = false;
         }
 
         private void SetAuxiliaryBattleButtonsInteractable(bool interactable)

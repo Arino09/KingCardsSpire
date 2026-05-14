@@ -82,9 +82,18 @@ namespace KingCardsSpire.Views.UI.Cards
             typeSubText.gameObject.SetActive(!faceDown);
             nameText.gameObject.SetActive(!faceDown);
             effectText.gameObject.SetActive(!faceDown);
-            clickTarget.interactable = !faceDown;
 
-            SetVisualState(faceDown ? CardVisualState.Disabled : CardVisualState.Normal);
+            // 卡背仅隐藏正面与禁用点击，不使用 Disabled 色调（否则出牌区翻面前的牌会一直发灰）。
+            if (faceDown)
+            {
+                _visualState = CardVisualState.Normal;
+                ApplyVisualTint();
+                clickTarget.interactable = false;
+                return;
+            }
+
+            clickTarget.interactable = true;
+            SetVisualState(CardVisualState.Normal);
         }
 
         /// <summary>不改变翻面状态；用于教程遮罩下禁用部分手牌点击。</summary>
@@ -182,24 +191,37 @@ namespace KingCardsSpire.Views.UI.Cards
         }
 
         /// <summary>
-        /// 暗牌→正面展示翻转动效（绕 Y 轴 0°→180°，半程切换正反面）；结束时复位旋转并 <see cref="SetFaceDown"/> false。
-        /// 翻面前应已 <see cref="Apply"/> 正面数据（卡背时正面节点隐藏但可保留贴图）。
+        /// 暗牌→正面展示翻转动效：前半段绕 Y 0°→90° 仅卡背；在侧立（90°）处切换正面并将角度接为 -90°，
+        /// 后半段 -90°→0°，避免整段 0°→180° 时后半程正面被镜像。
+        /// 结束时复位旋转并 <see cref="SetFaceDown"/> false。翻面前应已 <see cref="Apply"/> 正面数据。
         /// </summary>
         public IEnumerator PlayRevealFlipRoutine(float durationSeconds = 0.35f)
         {
+            var halfDur = Mathf.Max(0.02f, durationSeconds * 0.5f);
+
+            // 前半：卡背旋转至侧立
             var elapsed = 0f;
-            var swapped = false;
-            while (elapsed < durationSeconds)
+            while (elapsed < halfDur)
             {
                 elapsed += Time.deltaTime;
-                var t = Mathf.Clamp01(elapsed / durationSeconds);
-                var angle = Mathf.Lerp(0f, 180f, t);
-                if (!swapped && t >= 0.5f)
-                {
-                    SetFaceDown(false);
-                    swapped = true;
-                }
+                var t = Mathf.Clamp01(elapsed / halfDur);
+                var angle = Mathf.Lerp(0f, 90f, t);
+                rectRoot.localEulerAngles = new Vector3(0f, angle, 0f);
+                yield return null;
+            }
 
+            rectRoot.localEulerAngles = new Vector3(0f, 90f, 0f);
+
+            // 侧立瞬间换正面，并接 -90° 使后半段与前半段在视觉上连续且正面不镜像
+            SetFaceDown(false);
+            rectRoot.localEulerAngles = new Vector3(0f, -90f, 0f);
+
+            elapsed = 0f;
+            while (elapsed < halfDur)
+            {
+                elapsed += Time.deltaTime;
+                var t = Mathf.Clamp01(elapsed / halfDur);
+                var angle = Mathf.Lerp(-90f, 0f, t);
                 rectRoot.localEulerAngles = new Vector3(0f, angle, 0f);
                 yield return null;
             }

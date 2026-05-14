@@ -20,7 +20,13 @@ namespace KingCardsSpire.Models
         public int FloorDay;
         public int Gold = 50;
         public Card[] HandCards = Array.Empty<Card>();
+
+        /// <summary>卡牌仓库：非出战持有的牌（文档 §3.2）；与 <see cref="HandCards"/> 分区持久化。</summary>
+        public Card[] StoredCards = Array.Empty<Card>();
+
         public Card[] DiscardPile = Array.Empty<Card>();
+
+        /// <summary>旧版整包持有；读档后由 <see cref="GameManager"/> 迁移至 Hand+Stored 并清空。</summary>
         public Card[] OwnedCards = Array.Empty<Card>();
 
         /// <summary>旧版单 Buff 字段；载入后迁移至 <see cref="ActiveBuffs"/> 并清空为 None。</summary>

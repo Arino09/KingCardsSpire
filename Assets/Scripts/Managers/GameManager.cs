@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using KingCardsSpire.Configs;
 using KingCardsSpire.Core;
+using KingCardsSpire.Core.Battle;
 using KingCardsSpire.Core.Events;
 using KingCardsSpire.Models;
 using KingCardsSpire.Views.UI;
@@ -52,6 +53,9 @@ namespace KingCardsSpire.Managers
 
         public bool IsGameOver => _gameOver;
         public bool IsRunVictory => _runVictory;
+
+        /// <summary>出战卡组上限（文档 §3.2 / §2.2.1）。</summary>
+        public const int MaxBattleDeckCards = 10;
 
         protected override void Awake()
         {
@@ -109,6 +113,7 @@ namespace KingCardsSpire.Managers
                 FloorState.FloorIndex = PlayerState.CurrentFloor;
             _pendingBossRewards = null;
             NormalizeNpcPersistence(PlayerState);
+            NormalizePlayerDeckPartition();
         }
 
         /// <summary>新开局：重置玩家与第一层 FloorState，并滚动首日天气。</summary>
@@ -125,6 +130,7 @@ namespace KingCardsSpire.Managers
                 FloorDay = 0,
                 Gold = gc?.InitialGold ?? 50,
                 HandCards = Array.Empty<Card>(),
+                StoredCards = Array.Empty<Card>(),
                 DiscardPile = Array.Empty<Card>(),
                 OwnedCards = Array.Empty<Card>(),
                 SelectedBuff = BuffId.None,
@@ -145,6 +151,7 @@ namespace KingCardsSpire.Managers
             };
 
             ApplyStarterDeckFromConfig(PlayerState, gc);
+            NormalizePlayerDeckPartition();
 
             FloorState = new FloorState { BossDefeated = false };
             ShopState = new ShopState();
@@ -437,7 +444,7 @@ namespace KingCardsSpire.Managers
         }
 
         /// <summary>
-        /// 按 <see cref="GameConfig.StarterDeckCardIds"/> 把卡牌写入「持有卡组」；列表为空或未配置则保持空数组。
+        /// 按 <see cref="GameConfig.StarterDeckCardIds"/> 写入出战卡组与仓库（前 <see cref="MaxBattleDeckCards"/> 张出战，余下进 <see cref="PlayerData.StoredCards"/>）。
         /// </summary>
         private void ApplyStarterDeckFromConfig(PlayerData player, GameConfig gc)
         {
@@ -463,23 +470,133 @@ namespace KingCardsSpire.Managers
                     Debug.LogWarning($"[GameManager] 开局卡组配置未知卡牌 Id: {id}");
             }
 
-            if (list.Count > 0)
-                player.OwnedCards = list.ToArray();
+            if (list.Count <= 0)
+                return;
+
+            var take = Math.Min(MaxBattleDeckCards, list.Count);
+            player.HandCards = list.GetRange(0, take).ToArray();
+            player.StoredCards = list.Count > take
+                ? list.GetRange(take, list.Count - take).ToArray()
+                : Array.Empty<Card>();
+            player.OwnedCards = Array.Empty<Card>();
+        }
+
+        /// <summary>
+        /// 读档后统一：迁移旧 <see cref="PlayerData.OwnedCards"/>，并将出战裁至 <see cref="MaxBattleDeckCards"/> 张。
+        /// </summary>
+        private void NormalizePlayerDeckPartition()
+        {
+            var p = PlayerState;
+            if (p == null)
+                return;
+
+            p.HandCards ??= Array.Empty<Card>();
+            p.StoredCards ??= Array.Empty<Card>();
+            p.OwnedCards ??= Array.Empty<Card>();
+
+            if (p.OwnedCards.Length > 0 && p.HandCards.Length == 0 && p.StoredCards.Length == 0)
+            {
+                var list = new List<Card>(p.OwnedCards);
+                var n = list.Count;
+                var take = Math.Min(MaxBattleDeckCards, n);
+                p.HandCards = list.GetRange(0, take).ToArray();
+                p.StoredCards = n > take
+                    ? list.GetRange(take, n - take).ToArray()
+                    : Array.Empty<Card>();
+                p.OwnedCards = Array.Empty<Card>();
+            }
+            else if (p.OwnedCards.Length > 0)
+            {
+                var store = new List<Card>(p.StoredCards);
+                store.AddRange(p.OwnedCards);
+                p.StoredCards = store.ToArray();
+                p.OwnedCards = Array.Empty<Card>();
+            }
+
+            if (p.HandCards.Length <= MaxBattleDeckCards)
+                return;
+
+            var handList = new List<Card>(p.HandCards);
+            var excess = handList.Count - MaxBattleDeckCards;
+            var stay = handList.GetRange(0, MaxBattleDeckCards);
+            var move = handList.GetRange(MaxBattleDeckCards, excess);
+            var newStore = new List<Card>(move);
+            newStore.AddRange(p.StoredCards);
+            p.HandCards = stay.ToArray();
+            p.StoredCards = newStore.ToArray();
         }
 
         private void AppendOwnedCard(Card card)
         {
             if (card == null)
                 return;
-            var list = new List<Card>(PlayerState.OwnedCards ?? Array.Empty<Card>());
+            var list = new List<Card>(PlayerState.StoredCards ?? Array.Empty<Card>());
             list.Add(card);
-            PlayerState.OwnedCards = list.ToArray();
+            PlayerState.StoredCards = list.ToArray();
         }
 
         private bool OwnsCardId(string cardId)
         {
-            foreach (var c in PlayerState.OwnedCards ?? Array.Empty<Card>())
+            if (string.IsNullOrEmpty(cardId))
+                return false;
+            if (ArrayContainsCardId(PlayerState.HandCards, cardId))
+                return true;
+            if (ArrayContainsCardId(PlayerState.StoredCards, cardId))
+                return true;
+            return ArrayContainsCardId(PlayerState.OwnedCards, cardId);
+        }
+
+        /// <summary>
+        /// <paramref name="fromActiveDeck"/> 为 true 时从出战移入仓库；为 false 时从仓库移入出战（出战已达 <see cref="MaxBattleDeckCards"/> 则失败）。
+        /// </summary>
+        public bool TryMoveCardBetweenDeckAndStorage(bool fromActiveDeck, int index)
+        {
+            if (_gameOver || _runVictory || PlayerState == null)
+                return false;
+
+            PlayerState.HandCards ??= Array.Empty<Card>();
+            PlayerState.StoredCards ??= Array.Empty<Card>();
+
+            var hand = new List<Card>(PlayerState.HandCards);
+            var storage = new List<Card>(PlayerState.StoredCards);
+
+            if (fromActiveDeck)
             {
+                if (index < 0 || index >= hand.Count)
+                    return false;
+
+                var card = hand[index];
+                if (CardBattleRules.IsKing(card) || CardBattleRules.IsCommoner(card))
+                    return false;
+
+                hand.RemoveAt(index);
+                storage.Add(card);
+            }
+            else
+            {
+                if (index < 0 || index >= storage.Count)
+                    return false;
+                if (hand.Count >= MaxBattleDeckCards)
+                    return false;
+
+                var card = storage[index];
+                storage.RemoveAt(index);
+                hand.Add(card);
+            }
+
+            PlayerState.HandCards = hand.ToArray();
+            PlayerState.StoredCards = storage.ToArray();
+            PersistCurrentRunToDisk();
+            return true;
+        }
+
+        private static bool ArrayContainsCardId(Card[] cards, string cardId)
+        {
+            if (cards == null)
+                return false;
+            for (var i = 0; i < cards.Length; i++)
+            {
+                var c = cards[i];
                 if (c != null && c.Id == cardId)
                     return true;
             }
@@ -491,11 +608,9 @@ namespace KingCardsSpire.Managers
         {
             _shopPickedProductIds.Clear();
             _ownedCardIdsScratch.Clear();
-            foreach (var c in PlayerState.OwnedCards ?? Array.Empty<Card>())
-            {
-                if (c != null && !string.IsNullOrEmpty(c.Id))
-                    _ownedCardIdsScratch.Add(c.Id);
-            }
+            CollectOwnedCardIdsForShop(PlayerState.HandCards);
+            CollectOwnedCardIdsForShop(PlayerState.StoredCards);
+            CollectOwnedCardIdsForShop(PlayerState.OwnedCards);
 
             _shopSlotsBuilder.Clear();
             AddShopSlotsForType(CardType.Ability, shopCfg.AbilityCardSlots, shopCfg.AbilityCardPrice);
@@ -506,6 +621,18 @@ namespace KingCardsSpire.Managers
             ShopState.FloorIndex = PlayerState.CurrentFloor;
             ShopState.DayIndex = PlayerState.CurrentDay;
             ShopState.Slots = _shopSlotsBuilder.ToArray();
+        }
+
+        private void CollectOwnedCardIdsForShop(Card[] cards)
+        {
+            if (cards == null)
+                return;
+            for (var i = 0; i < cards.Length; i++)
+            {
+                var c = cards[i];
+                if (c != null && !string.IsNullOrEmpty(c.Id))
+                    _ownedCardIdsScratch.Add(c.Id);
+            }
         }
 
         private void AddShopSlotsForType(CardType type, int count, int unitPrice)
@@ -956,7 +1083,7 @@ namespace KingCardsSpire.Managers
 
             var data = new SaveData
             {
-                Version = 3,
+                Version = Mathf.Max(SaveData.CurrentSchemaVersion, existing?.Version ?? 0),
                 Player = PlayerState,
                 Floor = FloorState,
                 Shop = ShopState,
@@ -1116,7 +1243,7 @@ namespace KingCardsSpire.Managers
                     done = true;
                     picked = null;
                 },
-                "请从全卡池点选恰好 3 张，确认后加入本局手牌（不写入卡组）。"));
+                "选择 3 张牌加入你本局的手牌"));
 
             while (!done)
                 yield return null;

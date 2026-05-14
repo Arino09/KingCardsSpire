@@ -21,10 +21,16 @@ namespace KingCardsSpire.Tests
         {
             var id = StoryDialogueRules.BuildNpcStoryStartId("1_2", 3);
 
-            Assert.AreEqual("npc_1_2_3", id);
-            Assert.IsTrue(StoryDialogueRules.TryParseNpcStoryId(id, out var npcId, out var storyIndex));
+            Assert.AreEqual("npc_1_2_3_1", id);
+            Assert.IsTrue(StoryDialogueRules.TryParseNpcStoryId(id, out var npcId, out var storyIndex, out var lineIndex));
             Assert.AreEqual("1_2", npcId);
             Assert.AreEqual(3, storyIndex);
+            Assert.AreEqual(1, lineIndex);
+
+            Assert.IsTrue(StoryDialogueRules.TryParseNpcStoryId("npc_11_1_2", out var npc11, out var visit, out var line));
+            Assert.AreEqual("11", npc11);
+            Assert.AreEqual(1, visit);
+            Assert.AreEqual(2, line);
         }
 
         [Test]

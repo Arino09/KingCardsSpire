@@ -1177,7 +1177,7 @@ Canvas:
   m_PlaneDistance: 100
   m_PixelPerfect: 0
   m_ReceivesEvents: 1
-  m_OverrideSorting: 1
+  m_OverrideSorting: 0
   m_OverridePixelPerfect: 0
   m_SortingBucketNormalizedSize: 0
   m_VertexColorAlwaysGammaSpace: 1
@@ -1367,7 +1367,6 @@ MonoBehaviour:
   opponentNameText: {fileID: 4066232291622207707}
   turnsText: {fileID: 3656170477445285081}
   weatherText: {fileID: 617740427013228134}
-  xRayHintText: {fileID: 0}
   cardPrefab: {fileID: 6042190764628795243, guid: e4e47986c01e2f246a3717b608d870bf, type: 3}
   enemyHandRoot: {fileID: 4656705647133326160}
   playerHandRoot: {fileID: 305877580249185661}

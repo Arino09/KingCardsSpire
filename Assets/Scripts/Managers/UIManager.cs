@@ -80,8 +80,9 @@ namespace KingCardsSpire.Managers
                 view = go.AddComponent<FallbackPanelView>();
 
             view.Initialize();
-            view.NotifyOpened();
+            // 先激活再 OnOpen：避免预制体根节点默认 inactive 时，子界面在 Refresh 里 Instantiate 手牌/布局不生效。
             view.Show();
+            view.NotifyOpened();
 
             _active[panelId] = view;
             _stack.Push(view);

@@ -156,14 +156,14 @@ namespace KingCardsSpire.Managers
                 rawXRay, vsBoss, bossAiStrength, null, false);
         }
 
-        /// <summary>主角房友谊战：敌方卡组由 <see cref="HeroOpponentDeckGenerator"/> 占位生成，非 BOSS。</summary>
+        /// <summary>主角房友谊战：敌方卡组由 <see cref="HeroOpponentDeckGenerator.BuildDeck"/> 生成，非 BOSS。</summary>
         public void StartHeroDuelFromPlayerState(string heroSlotId, string opponentDisplayName)
         {
             var game = GameManager.Instance;
             var player = game != null ? game.PlayerState : null;
 
             var playerCards = BuildPlayerDeck(player);
-            var enemyCards = HeroOpponentDeckGenerator.BuildPlaceholderDeck(heroSlotId);
+            var enemyCards = HeroOpponentDeckGenerator.BuildDeck(heroSlotId);
 
             var rawXRay = player?.XRayCount ?? 1;
             if (game != null && game.HasBuff(BuffId.XRayBoost))
@@ -1259,11 +1259,28 @@ namespace KingCardsSpire.Managers
 
         private static List<Card> BuildPlayerDeck(PlayerData player)
         {
+            var max = GameManager.MaxBattleDeckCards;
+
             if (player?.HandCards != null && player.HandCards.Length > 0)
-                return new List<Card>(player.HandCards);
+                return CopyCardsUpToCount(player.HandCards, max);
+
             if (player?.OwnedCards != null && player.OwnedCards.Length > 0)
                 return new List<Card>(player.OwnedCards);
+
+            if (player?.StoredCards != null && player.StoredCards.Length > 0)
+                return CopyCardsUpToCount(player.StoredCards, max);
+
             return BuildDefaultPlayerDeck();
+        }
+
+        private static List<Card> CopyCardsUpToCount(Card[] source, int maxCount)
+        {
+            var n = Mathf.Min(maxCount, source.Length);
+            var list = new List<Card>(n);
+            for (var i = 0; i < n; i++)
+                list.Add(source[i]);
+
+            return list;
         }
 
         private static List<Card> BuildDefaultPlayerDeck()

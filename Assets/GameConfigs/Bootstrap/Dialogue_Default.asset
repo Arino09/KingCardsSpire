@@ -1250,7 +1250,7 @@ MonoBehaviour:
     isChoice: 0
     nextId: 
     choices: []
-  - id: npc_11_1
+  - id: npc_11_1_1
     timingKind: 4
     backgroundId: NPC11/1
     characterId: 

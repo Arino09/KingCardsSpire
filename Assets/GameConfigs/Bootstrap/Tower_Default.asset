@@ -14,16 +14,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   id: default
   floors:
-  - bossId: floor_1_boss
+  - bossId: "\u81EA\u7518\u8005"
     enemyDeckCardIds:
     - king
     - commoner
     npcIds:
     - 11
     - 12
-    rewardCardPoolIds:
-    - king
-    - commoner
     bossAiStrength: 0
     goldBonusPerSpareDay: 5
   - bossId: floor_2_boss
@@ -32,9 +29,6 @@ MonoBehaviour:
     - commoner
     npcIds:
     - 2
-    rewardCardPoolIds:
-    - king
-    - commoner
     bossAiStrength: 0
     goldBonusPerSpareDay: 5
   - bossId: floor_3_boss
@@ -43,9 +37,6 @@ MonoBehaviour:
     - commoner
     npcIds:
     - 3
-    rewardCardPoolIds:
-    - king
-    - commoner
     bossAiStrength: 0
     goldBonusPerSpareDay: 5
   - bossId: floor_4_boss
@@ -54,9 +45,6 @@ MonoBehaviour:
     - commoner
     npcIds:
     - 4
-    rewardCardPoolIds:
-    - king
-    - commoner
     bossAiStrength: 0
     goldBonusPerSpareDay: 5
   - bossId: floor_5_boss
@@ -65,9 +53,6 @@ MonoBehaviour:
     - commoner
     npcIds:
     - 5
-    rewardCardPoolIds:
-    - king
-    - commoner
     bossAiStrength: 0
     goldBonusPerSpareDay: 5
   - bossId: floor_6_boss
@@ -76,9 +61,6 @@ MonoBehaviour:
     - commoner
     npcIds:
     - 6
-    rewardCardPoolIds:
-    - king
-    - commoner
     bossAiStrength: 0
     goldBonusPerSpareDay: 5
   - bossId: floor_7_boss
@@ -87,8 +69,5 @@ MonoBehaviour:
     - commoner
     npcIds:
     - 7
-    rewardCardPoolIds:
-    - king
-    - commoner
     bossAiStrength: 0
     goldBonusPerSpareDay: 5

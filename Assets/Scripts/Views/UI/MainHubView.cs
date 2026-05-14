@@ -339,7 +339,7 @@ namespace KingCardsSpire.Views.UI
             curDayText.text = $"{player.FloorDay}/{gm.GetMaxDaysPerFloor()}";
             weatherText.text = WeatherDisplay.Format(player.CurrentWeather);
             coinText.text = player.Gold.ToString();
-            buffText.text = $"Buff：{FormatActiveBuffsSummary(player)}";
+            buffText.text = FormatActiveBuffsSummary(player);
         }
 
         private static string FormatActiveBuffsSummary(PlayerData player)
@@ -384,21 +384,19 @@ namespace KingCardsSpire.Views.UI
 
         private void OnDeckClicked()
         {
-            StartCoroutine(OpenDeckCardListRoutine());
+            StartCoroutine(OpenDeckStorageRoutine());
         }
 
         /// <summary>
-        /// 打开通用卡牌列表弹窗，展示当前存档中的「持有卡组」(<see cref="PlayerData.OwnedCards"/>)。
+        /// 打开牌组仓库交换界面（出战卡组与仓库互移）。
         /// </summary>
-        private IEnumerator OpenDeckCardListRoutine()
+        private IEnumerator OpenDeckStorageRoutine()
         {
-            yield return UIManager.Instance.OpenAsync(UIPanelId.CardList);
-            if (!UIManager.Instance.TryGetView(UIPanelId.CardList, out CardListView view))
+            yield return UIManager.Instance.OpenAsync(UIPanelId.DeckStorage);
+            if (!UIManager.Instance.TryGetView(UIPanelId.DeckStorage, out DeckStorageView view))
                 yield break;
 
-            var player = _game != null ? _game.PlayerState : null;
-            var cards = player?.OwnedCards;
-            view.Apply(new CardListViewModel("我的卡组", cards ?? Array.Empty<Card>()));
+            view.RefreshGrids();
         }
 
         private void OnSettingsClicked()

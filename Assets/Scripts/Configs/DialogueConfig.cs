@@ -20,6 +20,7 @@ namespace KingCardsSpire.Configs
     [Serializable]
     public sealed class DialogueLineEntry
     {
+        [Tooltip("原住民剧情链：npc_{npcId}_{访问序号}_{句序号}，入口句序号为 1，与 StoryDialogueRules.BuildNpcStoryStartId 一致。")]
         [SerializeField] private string id;
         [Tooltip("出现时机类型（策划分类，便于筛选；不改变代码入口 id 约定）。")]
         [SerializeField] private DialogueTimingKind timingKind;

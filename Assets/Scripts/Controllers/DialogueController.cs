@@ -48,6 +48,7 @@ namespace KingCardsSpire.Controllers
             AsyncOperationHandle<Sprite> portraitHandle = default;
             var hasBg = false;
             var hasPortrait = false;
+            var hasShownFirstLine = false;
 
             while (!string.IsNullOrEmpty(currentId) && !skipWhole)
             {
@@ -62,12 +63,30 @@ namespace KingCardsSpire.Controllers
                 ReleaseSpriteHandle(ref bgHandle, ref hasBg);
                 ReleaseSpriteHandle(ref portraitHandle, ref hasPortrait);
 
+                ResolveCharacterPresentation(cfg, line, out var speakerName, out var portraitId);
                 var bgAddr = DialogueArtResolver.ResolveBackgroundAddress(line.BackgroundId);
-                if (!string.IsNullOrEmpty(bgAddr))
+                var portraitAddr = DialogueArtResolver.ResolveCharacterAddress(portraitId);
+                var needBg = !string.IsNullOrEmpty(bgAddr);
+                var needPortrait = !string.IsNullOrEmpty(portraitAddr);
+                if (needBg)
                 {
                     bgHandle = Addressables.LoadAssetAsync<Sprite>(bgAddr);
                     hasBg = true;
+                }
+
+                if (needPortrait)
+                {
+                    portraitHandle = Addressables.LoadAssetAsync<Sprite>(portraitAddr);
+                    hasPortrait = true;
+                }
+
+                if (needBg)
                     yield return bgHandle;
+                if (needPortrait)
+                    yield return portraitHandle;
+
+                if (needBg)
+                {
                     if (bgHandle.Status == AsyncOperationStatus.Succeeded)
                         view.SetBackgroundSprite(bgHandle.Result);
                     else
@@ -78,13 +97,8 @@ namespace KingCardsSpire.Controllers
                     view.SetBackgroundSprite(null);
                 }
 
-                ResolveCharacterPresentation(cfg, line, out var speakerName, out var portraitId);
-                var portraitAddr = DialogueArtResolver.ResolveCharacterAddress(portraitId);
-                if (!string.IsNullOrEmpty(portraitAddr))
+                if (needPortrait)
                 {
-                    portraitHandle = Addressables.LoadAssetAsync<Sprite>(portraitAddr);
-                    hasPortrait = true;
-                    yield return portraitHandle;
                     if (portraitHandle.Status == AsyncOperationStatus.Succeeded)
                         view.SetPortraitSprite(portraitHandle.Result);
                     else
@@ -97,6 +111,12 @@ namespace KingCardsSpire.Controllers
 
                 view.ApplyTexts(line, speakerName);
                 view.ConfigureMode(line.IsChoice, line.Choices);
+
+                if (!hasShownFirstLine)
+                {
+                    view.SetPresentationReady(true);
+                    hasShownFirstLine = true;
+                }
 
                 if (line.IsChoice)
                 {
@@ -216,6 +236,7 @@ namespace KingCardsSpire.Controllers
             return StoryDialogueRules.BuildHeroStoryStartId(heroSlotIndex, storyIndex);
         }
 
+        /// <inheritdoc cref="StoryDialogueRules.BuildNpcStoryStartId(string, int)"/>
         public static string BuildNpcStoryStartId(string npcId, int storyIndex)
         {
             return StoryDialogueRules.BuildNpcStoryStartId(npcId, storyIndex);
@@ -229,6 +250,11 @@ namespace KingCardsSpire.Controllers
         public static bool TryParseNpcStoryId(string id, out string npcId, out int storyIndex)
         {
             return StoryDialogueRules.TryParseNpcStoryId(id, out npcId, out storyIndex);
+        }
+
+        public static bool TryParseNpcStoryId(string id, out string npcId, out int storyIndex, out int lineIndex)
+        {
+            return StoryDialogueRules.TryParseNpcStoryId(id, out npcId, out storyIndex, out lineIndex);
         }
 
         private static void ResolveCharacterPresentation(

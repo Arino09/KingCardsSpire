@@ -5,7 +5,10 @@ namespace KingCardsSpire.Models
     [Serializable]
     public class SaveData
     {
-        public int Version = 3;
+        /// <summary>存档结构版本；递增时配合载入迁移逻辑。</summary>
+        public const int CurrentSchemaVersion = 4;
+
+        public int Version = CurrentSchemaVersion;
         public PlayerData Player = new();
         public FloorState Floor = new();
         public ShopState Shop = new();
