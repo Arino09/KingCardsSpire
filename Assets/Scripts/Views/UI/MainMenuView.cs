@@ -174,19 +174,20 @@ namespace KingCardsSpire.Views.UI
             if (view._game != null && !view._game.PlayerState.HasCompletedOpeningTutorial)
             {
                 view._game.SetDeferOpeningTutorialBattleIntro(true);
-
-                var battleCtrl = ServiceLocator.Get<BattleController>();
-                if (battleCtrl != null)
-                    battleCtrl.RequestStartTutorialBattle();
-
-                yield return ui.OpenAsync(UIPanelId.Battle);
-                ui.Close(UIPanelId.MainMenu);
-
                 try
                 {
+                    // 先关主菜单再播开场对白，避免对白结束、战斗尚未加载完成的一帧仍露出主菜单。
+                    ui.Close(UIPanelId.MainMenu);
+
                     var dialogue = ServiceLocator.Get<DialogueController>();
                     if (dialogue != null)
                         yield return ui.StartCoroutine(dialogue.PlayDialogue("tutorial_opening", null));
+
+                    var battleCtrl = ServiceLocator.Get<BattleController>();
+                    if (battleCtrl != null)
+                        battleCtrl.RequestStartTutorialBattle();
+
+                    yield return ui.OpenAsync(UIPanelId.Battle);
                 }
                 finally
                 {

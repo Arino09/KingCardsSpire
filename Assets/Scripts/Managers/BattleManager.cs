@@ -37,6 +37,9 @@ namespace KingCardsSpire.Managers
 
         private bool _isTutorialBattle;
 
+        /// <summary>主角房与参赛者的友谊战；胜利时不走常规战后选卡奖励。</summary>
+        private bool _heroRoomDuel;
+
         private string _opponentDisplayName = string.Empty;
 
         /// <summary>本回合已锁定的敌方手牌下标；-1 表示未准备。</summary>
@@ -155,7 +158,7 @@ namespace KingCardsSpire.Managers
                 rawXRay = Mathf.Max(rawXRay, 2);
 
             StartBattleInternal(playerCards, enemyCards, player?.CurrentWeather ?? WeatherType.WarmWind,
-                rawXRay, vsBoss, bossAiStrength, null, false);
+                rawXRay, vsBoss, bossAiStrength, null, false, false);
         }
 
         /// <summary>主角房友谊战：敌方卡组由 <see cref="HeroOpponentDeckGenerator.BuildDeck"/> 生成，非 BOSS。</summary>
@@ -173,7 +176,7 @@ namespace KingCardsSpire.Managers
 
             StartBattleInternal(playerCards, enemyCards, player?.CurrentWeather ?? WeatherType.WarmWind,
                 rawXRay, isBossBattle: false, bossAiStrength: 0,
-                opponentDisplayNameOverride: opponentDisplayName, tutorialBattle: false);
+                opponentDisplayNameOverride: opponentDisplayName, tutorialBattle: false, heroRoomDuel: true);
         }
 
         /// <summary>开场教学战：双方各 3 张国王/大臣/平民，对手显示名为「花」，暖风、固定透视平民、第一回合敌必出大臣。</summary>
@@ -192,7 +195,7 @@ namespace KingCardsSpire.Managers
                 NewRuntimeCard(WellKnownCardIds.Commoner, "平民", 1f)
             };
 
-            StartBattleInternal(playerDeck, enemyDeck, WeatherType.WarmWind, 1, false, 0, "花", true);
+            StartBattleInternal(playerDeck, enemyDeck, WeatherType.WarmWind, 1, false, 0, "花", true, false);
         }
 
         public void StartBattle(IReadOnlyList<Card> playerDeck, IReadOnlyList<Card> enemyDeck,
@@ -206,12 +209,12 @@ namespace KingCardsSpire.Managers
 
             var bossAiStrength = isBossBattle ? ResolveBossAiStrengthFromTower() : 0;
             StartBattleInternal(playerDeck, enemyDeck, weather, x, isBossBattle,
-                bossAiStrength, opponentDisplayNameOverride, false);
+                bossAiStrength, opponentDisplayNameOverride, false, false);
         }
 
         private void StartBattleInternal(IReadOnlyList<Card> playerDeck, IReadOnlyList<Card> enemyDeck,
             WeatherType weather, int xRayCount, bool isBossBattle, int bossAiStrength,
-            string opponentDisplayNameOverride = null, bool tutorialBattle = false)
+            string opponentDisplayNameOverride = null, bool tutorialBattle = false, bool heroRoomDuel = false)
         {
             _pendingCasualVictoryRewardCardIds = null;
 
@@ -220,6 +223,7 @@ namespace KingCardsSpire.Managers
 
             ResetRuntime();
             _isTutorialBattle = tutorialBattle;
+            _heroRoomDuel = heroRoomDuel;
             _isBossBattle = isBossBattle;
             _bossAiStrength = Mathf.Max(0, bossAiStrength);
             _opponentDisplayName = !string.IsNullOrEmpty(opponentDisplayNameOverride)
@@ -1297,7 +1301,7 @@ namespace KingCardsSpire.Managers
             _pendingEnemyHandIndex = -1;
             _pendingPlayerHandIndex = -1;
 
-            if (playerVictory && !_isBossBattle && !_isTutorialBattle)
+            if (playerVictory && !_isBossBattle && !_isTutorialBattle && !_heroRoomDuel)
                 _pendingCasualVictoryRewardCardIds =
                     CasualVictoryRewardPicker.BuildOfferCardIds(_enemyHand, _enemyDiscard);
             else
@@ -1408,6 +1412,7 @@ namespace KingCardsSpire.Managers
             _isBossBattle = false;
             _bossAiStrength = 0;
             _isTutorialBattle = false;
+            _heroRoomDuel = false;
             _opponentDisplayName = string.Empty;
             _pendingEnemyHandIndex = -1;
             _pendingPlayerHandIndex = -1;
