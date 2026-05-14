@@ -96,11 +96,6 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: bce97c4c3ffef5e47bec5742c5317ddb
-    m_Address: Sprites/Character/Hero2
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: c653ff5720624bd408d10443f8845568
     m_Address: UI/Settings
     m_ReadOnly: 0
@@ -128,6 +123,11 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels:
     - ui_panel
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 02acaed63deb36648be67688725d6d3a
+    m_Address: Sprites/Character/NPCbg
+    m_ReadOnly: 0
+    m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: 0b8713ba58b57bb49bd9906570780370, type: 2}
