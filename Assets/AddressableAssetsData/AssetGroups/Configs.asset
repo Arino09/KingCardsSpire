@@ -30,7 +30,7 @@ MonoBehaviour:
     - config_card
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 88bdcdcffc89e4934a6a659e4d11fec2
-    m_Address: Assets/GameConfigs/Bootstrap/Weather_WarmWind.asset
+    m_Address: Assets/GameConfigs/Bootstrap/Weather_Table.asset
     m_ReadOnly: 0
     m_SerializedLabels:
     - config_weather

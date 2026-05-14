@@ -12,7 +12,8 @@ namespace KingCardsSpire.Managers
         private readonly Dictionary<string, CardConfigEntry> _cards = new();
         private readonly Dictionary<string, BuffConfigEntry> _buffs = new();
         private readonly Dictionary<BuffId, BuffConfigEntry> _buffsByBuffId = new();
-        private readonly Dictionary<string, WeatherConfig> _weathers = new();
+        private readonly Dictionary<string, WeatherConfigEntry> _weathers = new();
+        private readonly Dictionary<WeatherType, WeatherConfigEntry> _weathersByType = new();
         private readonly List<ShopConfig> _shopConfigs = new();
         private readonly List<GameConfig> _gameConfigs = new();
         private readonly List<TowerConfig> _towerConfigs = new();
@@ -141,14 +142,26 @@ namespace KingCardsSpire.Managers
         private void IndexWeathers(IList<WeatherConfig> list)
         {
             _weathers.Clear();
+            _weathersByType.Clear();
             if (list == null)
                 return;
-            foreach (var w in list)
+            foreach (var db in list)
             {
-                if (w == null || string.IsNullOrEmpty(w.Id))
+                if (db == null)
                     continue;
-                if (!_weathers.ContainsKey(w.Id))
-                    _weathers.Add(w.Id, w);
+                var rows = db.Weathers;
+                if (rows == null)
+                    continue;
+                for (var i = 0; i < rows.Count; i++)
+                {
+                    var w = rows[i];
+                    if (w == null || string.IsNullOrEmpty(w.Id))
+                        continue;
+                    if (!_weathers.ContainsKey(w.Id))
+                        _weathers.Add(w.Id, w);
+                    if (!_weathersByType.ContainsKey(w.WeatherType))
+                        _weathersByType.Add(w.WeatherType, w);
+                }
             }
         }
 
@@ -293,6 +306,16 @@ namespace KingCardsSpire.Managers
 
         public bool TryGetCard(string id, out CardConfigEntry config) => _cards.TryGetValue(id, out config);
 
+        /// <summary>将全部已索引卡牌 Id 写入 <paramref name="dest"/>（先 Clear）。</summary>
+        public void CopyAllCardIds(List<string> dest)
+        {
+            if (dest == null)
+                return;
+            dest.Clear();
+            foreach (var kv in _cards)
+                dest.Add(kv.Key);
+        }
+
         /// <summary>从卡表行生成运行时 <see cref="Card"/>（参赛者卡组、图鉴等复用）。</summary>
         public Card CreateRuntimeCard(CardConfigEntry entry)
         {
@@ -375,7 +398,19 @@ namespace KingCardsSpire.Managers
                 IsUnique = cc.IsUnique
             };
 
-        public bool TryGetWeather(string id, out WeatherConfig config) => _weathers.TryGetValue(id, out config);
+        public bool TryGetWeather(string id, out WeatherConfigEntry config) => _weathers.TryGetValue(id, out config);
+
+        /// <summary>按 <see cref="WeatherType"/> 查找天气表行；同类型多条时保留索引中首条。</summary>
+        public bool TryGetWeatherByType(WeatherType type, out WeatherConfigEntry config) =>
+            _weathersByType.TryGetValue(type, out config);
+
+        /// <summary>从天气表取效果说明；无表项或字段为空时为空串。</summary>
+        public string ResolveWeatherDescription(WeatherType type)
+        {
+            if (!TryGetWeatherByType(type, out var cfg) || cfg == null)
+                return string.Empty;
+            return cfg.Description ?? string.Empty;
+        }
 
         public IReadOnlyList<ShopConfig> GetShopConfigs() => _shopConfigs;
 

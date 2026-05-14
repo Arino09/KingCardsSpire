@@ -9,6 +9,7 @@ using KingCardsSpire.Managers;
 using KingCardsSpire.Models;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
+using UnityEngine.EventSystems;
 using UnityEngine.Events;
 using UnityEngine.ResourceManagement.AsyncOperations;
 using UnityEngine.UI;
@@ -26,6 +27,11 @@ namespace KingCardsSpire.Views.UI
         [SerializeField] private Text weatherText;
         [SerializeField] private Text coinText;
         [SerializeField] private Text buffText;
+
+        [Header("状态 · 悬浮提示")]
+        [SerializeField] private GameObject simpleTooltipPrefab;
+        [Tooltip("为空则实例挂到天气 Text 所在 Canvas 根 RectTransform 下")]
+        [SerializeField] private RectTransform tooltipParentOverride;
 
         [Header("历史记录")]
         [SerializeField] private Text historyText;
@@ -63,6 +69,14 @@ namespace KingCardsSpire.Views.UI
         private AsyncOperationHandle<Sprite> _floorBgLoadHandle;
         private bool _hasFloorBgLoadHandle;
 
+        private SimpleTooltipView _tooltipView;
+        private RectTransform _tooltipParentRect;
+        private bool _statusTooltipsWired;
+        private UnityAction<BaseEventData> _weatherPointerEnter;
+        private UnityAction<BaseEventData> _weatherPointerExit;
+        private UnityAction<BaseEventData> _buffPointerEnter;
+        private UnityAction<BaseEventData> _buffPointerExit;
+
         public override void Initialize()
         {
             SetPanelId(UIPanelId.MainHub);
@@ -73,12 +87,14 @@ namespace KingCardsSpire.Views.UI
             WireButtons();
             SubscribeEvents();
             RefreshAll();
+            EnsureAndWireStatusTooltips();
             _wired = true;
         }
 
         public override void Dispose()
         {
             CancelFloorBackgroundLoad();
+            UnwireStatusTooltips();
             UnsubscribeEvents();
             UnwireButtons();
             base.Dispose();
@@ -87,6 +103,7 @@ namespace KingCardsSpire.Views.UI
         private void OnDestroy()
         {
             CancelFloorBackgroundLoad();
+            UnwireStatusTooltips();
             if (_wired)
             {
                 UnsubscribeEvents();
@@ -401,7 +418,9 @@ namespace KingCardsSpire.Views.UI
 
         private void OnSettingsClicked()
         {
-            Debug.Log("[MainHub] 设置面板尚未接入。");
+            var ui = UIManager.Instance;
+            if (ui != null)
+                ui.StartCoroutine(SettingsView.OpenSettingsRoutine());
         }
 
         /// <summary>进入下一天：调用 <see cref="GameManager.AdvanceDay"/>，不打开其他界面。</summary>
@@ -446,6 +465,175 @@ namespace KingCardsSpire.Views.UI
                 yield break;
 
             yield return ui.OpenAsync(panelId);
+        }
+
+        private void EnsureAndWireStatusTooltips()
+        {
+            if (_statusTooltipsWired)
+                return;
+
+            if (simpleTooltipPrefab == null || weatherText == null || buffText == null)
+                return;
+
+            var parent = tooltipParentOverride != null
+                ? tooltipParentOverride
+                : weatherText.canvas != null
+                    ? weatherText.canvas.transform as RectTransform
+                    : null;
+            if (parent == null)
+                return;
+
+            var instance = Instantiate(simpleTooltipPrefab, parent);
+            _tooltipView = instance.GetComponent<SimpleTooltipView>();
+            _tooltipParentRect = parent;
+            if (_tooltipView == null)
+            {
+                Debug.LogWarning("[MainHubView] SimpleTooltip 预制体根节点缺少 SimpleTooltipView。");
+                Destroy(instance);
+                return;
+            }
+
+            weatherText.raycastTarget = true;
+            buffText.raycastTarget = true;
+
+            _weatherPointerEnter = _ => ShowWeatherStatusTooltip();
+            _weatherPointerExit = _ => HideStatusTooltip();
+            _buffPointerEnter = _ => ShowBuffStatusTooltip();
+            _buffPointerExit = _ => HideStatusTooltip();
+
+            RegisterPointerHover(weatherText.gameObject, _weatherPointerEnter, _weatherPointerExit);
+            RegisterPointerHover(buffText.gameObject, _buffPointerEnter, _buffPointerExit);
+
+            _statusTooltipsWired = true;
+        }
+
+        private void UnwireStatusTooltips()
+        {
+            if (!_statusTooltipsWired)
+                return;
+
+            _statusTooltipsWired = false;
+
+            UnregisterPointerHover(weatherText != null ? weatherText.gameObject : null, _weatherPointerEnter, _weatherPointerExit);
+            UnregisterPointerHover(buffText != null ? buffText.gameObject : null, _buffPointerEnter, _buffPointerExit);
+
+            _weatherPointerEnter = null;
+            _weatherPointerExit = null;
+            _buffPointerEnter = null;
+            _buffPointerExit = null;
+
+            if (_tooltipView != null)
+            {
+                Destroy(_tooltipView.gameObject);
+                _tooltipView = null;
+            }
+
+            _tooltipParentRect = null;
+        }
+
+        private static void RegisterPointerHover(GameObject target, UnityAction<BaseEventData> onEnter, UnityAction<BaseEventData> onExit)
+        {
+            if (target == null || onEnter == null || onExit == null)
+                return;
+
+            var trigger = target.GetComponent<EventTrigger>() ?? target.AddComponent<EventTrigger>();
+
+            var enter = new EventTrigger.Entry { eventID = EventTriggerType.PointerEnter };
+            enter.callback.AddListener(onEnter);
+            trigger.triggers.Add(enter);
+
+            var exit = new EventTrigger.Entry { eventID = EventTriggerType.PointerExit };
+            exit.callback.AddListener(onExit);
+            trigger.triggers.Add(exit);
+        }
+
+        private static void UnregisterPointerHover(GameObject target, UnityAction<BaseEventData> onEnter, UnityAction<BaseEventData> onExit)
+        {
+            if (target == null)
+                return;
+
+            var trigger = target.GetComponent<EventTrigger>();
+            if (trigger == null)
+                return;
+
+            for (var i = trigger.triggers.Count - 1; i >= 0; i--)
+            {
+                var e = trigger.triggers[i];
+                if (e.eventID == EventTriggerType.PointerEnter && onEnter != null)
+                    e.callback.RemoveListener(onEnter);
+                if (e.eventID == EventTriggerType.PointerExit && onExit != null)
+                    e.callback.RemoveListener(onExit);
+            }
+        }
+
+        private void ShowWeatherStatusTooltip()
+        {
+            if (_tooltipView == null || weatherText == null || weatherText.canvas == null || _tooltipParentRect == null)
+                return;
+
+            var gm = _game ?? GameManager.Instance;
+            var player = gm != null ? gm.PlayerState : null;
+            if (player == null)
+                return;
+
+            var body = BuildWeatherTooltipBody(player.CurrentWeather);
+            _tooltipView.Show(body, _tooltipParentRect, weatherText.canvas);
+        }
+
+        private void ShowBuffStatusTooltip()
+        {
+            if (_tooltipView == null || buffText == null || buffText.canvas == null || _tooltipParentRect == null)
+                return;
+
+            var gm = _game ?? GameManager.Instance;
+            var player = gm != null ? gm.PlayerState : null;
+            if (player == null)
+                return;
+
+            var body = BuildBuffTooltipBody(player);
+            _tooltipView.Show(body, _tooltipParentRect, buffText.canvas);
+        }
+
+        private void HideStatusTooltip()
+        {
+            if (_tooltipView != null)
+                _tooltipView.Hide();
+        }
+
+        private static string BuildWeatherTooltipBody(WeatherType weather)
+        {
+            var title = WeatherDisplay.Format(weather);
+            var cfgMgr = ConfigManager.Instance;
+            var desc = cfgMgr != null ? cfgMgr.ResolveWeatherDescription(weather) : string.Empty;
+            if (string.IsNullOrWhiteSpace(desc))
+                return $"{title}\n（配置表中暂无效果说明）";
+            return $"{title}\n{desc}";
+        }
+
+        private static string BuildBuffTooltipBody(PlayerData player)
+        {
+            var arr = player?.ActiveBuffs;
+            if (arr == null || arr.Length == 0)
+                return "当前无生效 Buff。";
+
+            var cfgMgr = ConfigManager.Instance;
+            var sb = new StringBuilder();
+            for (var i = 0; i < arr.Length; i++)
+            {
+                var id = arr[i];
+                if (id == BuffId.None)
+                    continue;
+
+                var name = cfgMgr != null ? cfgMgr.ResolveBuffDisplayName(id) : id.ToString();
+                var desc = cfgMgr != null ? cfgMgr.ResolveBuffDescription(id) : string.Empty;
+                if (sb.Length > 0)
+                    sb.AppendLine().AppendLine();
+                sb.Append(name);
+                sb.AppendLine();
+                sb.Append(string.IsNullOrWhiteSpace(desc) ? "（配置表中暂无效果说明）" : desc);
+            }
+
+            return sb.Length > 0 ? sb.ToString() : "当前无生效 Buff。";
         }
     }
 }

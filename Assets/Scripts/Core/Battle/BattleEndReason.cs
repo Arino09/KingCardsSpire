@@ -13,7 +13,10 @@ namespace KingCardsSpire.Core.Battle
         RoundLimitDraw = 4,
 
         /// <summary>四象齐集直接获胜（功能卡）。</summary>
-        FourSymbolsComplete = 5
+        FourSymbolsComplete = 5,
+
+        /// <summary>敌方四象齐集，己方败。</summary>
+        FourSymbolsEnemyComplete = 6
     }
 }
 

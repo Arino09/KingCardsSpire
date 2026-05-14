@@ -16,32 +16,7 @@ MonoBehaviour:
   m_Data:
     m_SerializedData: []
   m_GUID: add102721c67cc640a87007f6ee72182
-  m_SerializeEntries:
-  - m_GUID: 669a20e72127c1c459cf9c91ae128a3c
-    m_Address: "Assets/GameAssets/Sprites/Cards/9. \u4E71\u515A.png"
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 6f0891b3ff164e94bb3e1e189d5b92e2
-    m_Address: "Assets/GameAssets/Sprites/Cards/39. \u51CF1\u724C.png"
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 8f4abaa4e50b4ca44ae645246ef1b401
-    m_Address: "Assets/GameAssets/Sprites/Cards/40. \u52A00.5\u724C.png"
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: ccff8be4968943f41b4c6c9ddb99c5d2
-    m_Address: "Assets/GameAssets/Sprites/Cards/41. \u52A01\u724C.png"
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: ab6a7d0dd15c26c46ae7fed70a6372a6
-    m_Address: "Assets/GameAssets/Sprites/Cards/43.\u80FD\u529B\u5931\u6548\u724C.png"
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
+  m_SerializeEntries: []
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: 0b8713ba58b57bb49bd9906570780370, type: 2}
   m_SchemaSet:

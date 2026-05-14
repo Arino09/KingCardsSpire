@@ -2,6 +2,14 @@ using System;
 
 namespace KingCardsSpire.Models
 {
+    /// <summary>随存档持久化的音量设置（0～1）。</summary>
+    [Serializable]
+    public sealed class GameAudioSettings
+    {
+        public float BgmVolume = 1f;
+        public float SfxVolume = 1f;
+    }
+
     [Serializable]
     public sealed class NpcDialogueProgress
     {
@@ -63,5 +71,8 @@ namespace KingCardsSpire.Models
 
         /// <summary>可用于推进原住民剧情的剩余次数；每进入新层增加 3 次，可跨天保留。</summary>
         public int NpcDialogueCredits;
+
+        /// <summary>音乐 / 音效音量；旧档无此字段时由 GameManager 规范化。</summary>
+        public GameAudioSettings AudioSettings;
     }
 }

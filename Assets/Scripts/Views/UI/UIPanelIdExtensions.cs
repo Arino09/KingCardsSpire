@@ -23,6 +23,7 @@ namespace KingCardsSpire.Views.UI
                 UIPanelId.HeroRoom => "UI/HeroView",
                 UIPanelId.BuffRewardView => "UI/BuffRewardView",
                 UIPanelId.DeckStorage => "UI/DeckStorageView",
+                UIPanelId.Settings => "UI/Settings",
                 _ => string.Empty
             };
         }

@@ -804,7 +804,7 @@ MonoBehaviour:
   m_FontData:
     m_Font: {fileID: 10102, guid: 0000000000000000e000000000000000, type: 0}
     m_FontSize: 50
-    m_FontStyle: 1
+    m_FontStyle: 0
     m_BestFit: 0
     m_MinSize: 5
     m_MaxSize: 50
@@ -814,7 +814,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: "  \u521D\u59CBBuff"
+  m_Text: "\u521D\u59CBBuff"
 --- !u!1 &4896068092369600518
 GameObject:
   m_ObjectHideFlags: 0
@@ -1427,6 +1427,8 @@ MonoBehaviour:
   weatherText: {fileID: 3615463451456184366}
   coinText: {fileID: 5963875405042315486}
   buffText: {fileID: 550226577672043256}
+  simpleTooltipPrefab: {fileID: 4136234202522933436, guid: 6dfb32e4e33a3c843afef2ffca46df5b, type: 3}
+  tooltipParentOverride: {fileID: 0}
   historyText: {fileID: 3154846789568928281}
   deckButton: {fileID: 3395373705594506930}
   settingsButton: {fileID: 2531084799751642790}

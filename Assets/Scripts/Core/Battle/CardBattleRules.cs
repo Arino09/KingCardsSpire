@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using KingCardsSpire.Models;
 using UnityEngine;
 
@@ -17,6 +18,33 @@ namespace KingCardsSpire.Core.Battle
 
         public static bool IsCommoner(Card c) =>
             c != null && string.Equals(c.Id, WellKnownCardIds.Commoner, StringComparison.OrdinalIgnoreCase);
+
+        public static bool IsBeggar(Card c) =>
+            c != null && string.Equals(c.Id, WellKnownCardIds.Beggar, StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// 乞丐：对方手牌无平民时视为平民参与国王克制等规则（Doc/Plan §3.1）。
+        /// </summary>
+        public static bool IsBeggarActingAsCommoner(Card c, IReadOnlyList<Card> opposingHand)
+        {
+            if (!IsBeggar(c) || opposingHand == null)
+                return false;
+            return !HandContainsCommonerId(opposingHand);
+        }
+
+        private static bool HandContainsCommonerId(IReadOnlyList<Card> hand)
+        {
+            if (hand == null)
+                return false;
+            for (var i = 0; i < hand.Count; i++)
+            {
+                var h = hand[i];
+                if (h != null && IsCommoner(h))
+                    return true;
+            }
+
+            return false;
+        }
 
         /// <summary>
         /// 烈日：所有带 .5 小数的等级 ±0.5（§2.3）；冰雹：+0.5；暖风/雨季/终焉：本场数值不变。
@@ -56,7 +84,15 @@ namespace KingCardsSpire.Core.Battle
         public static int ComputeMaxRounds(int initialPlayerHandCount, int initialEnemyHandCount) =>
             (initialPlayerHandCount + initialEnemyHandCount) / 2;
 
-        public static BattleCompareResult Compare(Card a, Card b, WeatherType weather)
+        /// <param name="playerHand">己方完整手牌（含本回合未出的牌），用于乞丐形态；可为 null 则乞丐不视为平民。</param>
+        /// <param name="enemyHand">对方完整手牌。</param>
+        /// <param name="invertNumericRanking">
+        /// 天作之合等：为 true 时，在国王/平民/3.5 等特殊规则之后，纯数值比大小反转（低等级胜高等级）。
+        /// </param>
+        public static BattleCompareResult Compare(Card a, Card b, WeatherType weather,
+            IReadOnlyList<Card> playerHand = null,
+            IReadOnlyList<Card> enemyHand = null,
+            bool invertNumericRanking = false)
         {
             if (a == null && b == null)
                 return BattleCompareResult.Draw;
@@ -69,8 +105,8 @@ namespace KingCardsSpire.Core.Battle
             var lb = GetEffectiveLevel(b, weather);
             var aKing = IsKing(a);
             var bKing = IsKing(b);
-            var aCom = IsCommoner(a);
-            var bCom = IsCommoner(b);
+            var aCom = IsCommoner(a) || IsBeggarActingAsCommoner(a, enemyHand);
+            var bCom = IsCommoner(b) || IsBeggarActingAsCommoner(b, playerHand);
 
             // 平民胜国王
             if (aCom && bKing)
@@ -93,7 +129,10 @@ namespace KingCardsSpire.Core.Battle
             if (Approx(la, lb))
                 return BattleCompareResult.Draw;
 
-            return la > lb ? BattleCompareResult.FirstWins : BattleCompareResult.SecondWins;
+            var firstWinsNumeric = la > lb;
+            if (invertNumericRanking)
+                firstWinsNumeric = !firstWinsNumeric;
+            return firstWinsNumeric ? BattleCompareResult.FirstWins : BattleCompareResult.SecondWins;
         }
 
         /// <summary>非平民的「纯 1 级」用于国王克制例外。</summary>

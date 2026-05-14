@@ -62,6 +62,19 @@ namespace KingCardsSpire.Core.Battle
         /// <summary>续命牌：己方本回合若败，己方出的牌不进弃牌堆。</summary>
         public bool PlayerSurviveLossToHand;
 
+        /// <summary>预见牌：本回合已向玩家揭示的敌方待出牌快照（结算后清除）。</summary>
+        public Card ForesightRevealedEnemyCardSnapshot;
+
+        /// <summary>异能「天作之合」：回合上限时总等级比较反转；单轮比大小数值段反转（见 Compare）。</summary>
+        public bool PlayerPerfectMatchActive;
+
+        public bool EnemyPerfectMatchActive;
+
+        /// <summary>异能「白日梦」：每回合随机替换 1 张手牌。</summary>
+        public bool PlayerDaydreamActive;
+
+        public bool EnemyDaydreamActive;
+
         public void ClearRoundConsumableFlags()
         {
             ConsumablePlayerLevelBonus = 0f;
@@ -69,6 +82,7 @@ namespace KingCardsSpire.Core.Battle
             DisableEnemyFunctionEffects = false;
             DisableEnemyAbilityEffects = false;
             PlayerSurviveLossToHand = false;
+            ForesightRevealedEnemyCardSnapshot = null;
         }
 
         public void ResetBattle()
@@ -93,6 +107,10 @@ namespace KingCardsSpire.Core.Battle
             PlayerMustWinThisRound = false;
             PlayerMustLoseThisRound = false;
             FinalMomentRestrictionActive = false;
+            PlayerPerfectMatchActive = false;
+            EnemyPerfectMatchActive = false;
+            PlayerDaydreamActive = false;
+            EnemyDaydreamActive = false;
             ClearRoundConsumableFlags();
         }
     }

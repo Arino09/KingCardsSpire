@@ -97,5 +97,29 @@ namespace KingCardsSpire.Controllers
 
             return BattleManager.Instance.TryCompletePlayerExponentialSacrifice(discardHandIndex, out error);
         }
+
+        public bool TryUseConsumableFromPlayerHand(int playerHandIndex, out string error)
+        {
+            error = null;
+            if (BattleManager.Instance == null)
+            {
+                error = "BattleManager 未就绪";
+                return false;
+            }
+
+            return BattleManager.Instance.TryUseConsumableFromPlayerHand(playerHandIndex, out error);
+        }
+
+        public bool TryUnstagePlayerCard(out string error)
+        {
+            error = null;
+            if (BattleManager.Instance == null)
+            {
+                error = "BattleManager 未就绪";
+                return false;
+            }
+
+            return BattleManager.Instance.TryUnstagePlayerCard(out error);
+        }
     }
 }

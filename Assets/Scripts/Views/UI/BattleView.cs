@@ -391,10 +391,11 @@ namespace KingCardsSpire.Views.UI
             TryScheduleChaoticAutoRound();
         }
 
-        /// <summary>设置按钮占位。</summary>
         private void OnSettingsClicked()
         {
-            Debug.Log("[BattleView] 设置：占位。");
+            var ui = UIManager.Instance;
+            if (ui != null)
+                ui.StartCoroutine(SettingsView.OpenSettingsRoutine());
         }
 
         /// <summary>打开卡牌列表面板并展示敌方弃牌堆。</summary>
@@ -557,7 +558,13 @@ namespace KingCardsSpire.Views.UI
             if (cfg != null)
                 cv.LoadCardArtFromConfig(cfg);
             var xRayFaceUp = IsEnemyCardRevealedInXRay(card, state.EnemyVisible);
-            cv.SetFaceDown(!xRayFaceUp);
+            var foresightFaceUp = false;
+            var bmF = BattleManager.Instance;
+            if (bmF != null && bmF.TryGetForesightRevealedEnemyCard(out var fs) && card != null
+                && !string.IsNullOrEmpty(card.BattleInstanceId) && !string.IsNullOrEmpty(fs.BattleInstanceId)
+                && string.Equals(card.BattleInstanceId, fs.BattleInstanceId, StringComparison.Ordinal))
+                foresightFaceUp = true;
+            cv.SetFaceDown(!xRayFaceUp && !foresightFaceUp);
             cv.OverrideClick(null);
             var bmEnemy = BattleManager.Instance;
             var enemyRestricted = bmEnemy != null && bmEnemy.IsEnemyCardRestrictedByLastPlay(card);
@@ -734,6 +741,23 @@ namespace KingCardsSpire.Views.UI
             {
                 OnExponentialSacrificeHandClicked(capturedIndex);
                 return;
+            }
+
+            var st = BattleManager.Instance != null ? BattleManager.Instance.CurrentBattle : null;
+            var hand = st?.PlayerHand;
+            if (hand != null && capturedIndex >= 0 && capturedIndex < hand.Length)
+            {
+                var clicked = hand[capturedIndex];
+                if (clicked != null && clicked.Type == CardType.Consumable)
+                {
+                    if (!battleRef.TryUseConsumableFromPlayerHand(capturedIndex, out var cErr))
+                        Debug.LogWarning($"[BattleView] 一次性牌: {cErr}");
+                    _selectedPlayerHandIndex = -1;
+                    SyncPlayerHandSelectionVisuals();
+                    UpdateConfirmPlayButtonInteractable();
+                    RefreshAll();
+                    return;
+                }
             }
 
             _selectedPlayerHandIndex = _selectedPlayerHandIndex == capturedIndex ? -1 : capturedIndex;

@@ -48,6 +48,7 @@ namespace KingCardsSpire.Models
         NpcHub = 11,
         Dialog = 12,
         BuffRewardView = 13,
-        DeckStorage = 14
+        DeckStorage = 14,
+        Settings = 15
     }
 }

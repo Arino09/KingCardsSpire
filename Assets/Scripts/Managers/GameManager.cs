@@ -21,6 +21,9 @@ namespace KingCardsSpire.Managers
         /// <summary>击败驻守者后待玩家在界面中确认的奖励选项（与 <see cref="BossRewardOfferedEvent"/> 同步）。</summary>
         private BossRewardOption[] _pendingBossRewards;
 
+        /// <summary>上一场玩家胜利且打出金色项链时，下一次驻守金币结算翻倍（领取后清除）。</summary>
+        private bool _pendingBossVictoryGoldenNecklaceDoubleGold;
+
         public PlayerData PlayerState { get; private set; } = new();
         public FloorState FloorState { get; private set; } = new();
 
@@ -68,6 +71,7 @@ namespace KingCardsSpire.Managers
             if (_events != null)
             {
                 _events.Unsubscribe<BattleEndedEvent>(OnBattleEnded);
+                _events.Unsubscribe<BattleStartedEvent>(OnBattleStartedClearNecklaceGoldFlag);
                 _events.Unsubscribe<GameOverEvent>(OnGameOverNavToTitle);
             }
 
@@ -79,7 +83,13 @@ namespace KingCardsSpire.Managers
         {
             _events = EventManager.Instance;
             _events?.Subscribe<BattleEndedEvent>(OnBattleEnded);
+            _events?.Subscribe<BattleStartedEvent>(OnBattleStartedClearNecklaceGoldFlag);
             _events?.Subscribe<GameOverEvent>(OnGameOverNavToTitle);
+        }
+
+        private void OnBattleStartedClearNecklaceGoldFlag(BattleStartedEvent _)
+        {
+            _pendingBossVictoryGoldenNecklaceDoubleGold = false;
         }
 
         /// <summary>每层允许停留天数上限（配置 MaxDaysPerFloor）。</summary>
@@ -114,6 +124,8 @@ namespace KingCardsSpire.Managers
             _pendingBossRewards = null;
             NormalizeNpcPersistence(PlayerState);
             NormalizePlayerDeckPartition();
+            NormalizePlayerAudioSettings(PlayerState);
+            ApplyAudioFromCurrentPlayerState();
         }
 
         /// <summary>新开局：重置玩家与第一层 FloorState，并滚动首日天气。</summary>
@@ -150,6 +162,8 @@ namespace KingCardsSpire.Managers
                 NpcDialogueCredits = StoryDialogueRules.NpcCreditsPerFloor
             };
 
+            NormalizePlayerAudioSettings(PlayerState);
+            SeedNewRunAudioSettingsFromRuntimeMixer();
             ApplyStarterDeckFromConfig(PlayerState, gc);
             NormalizePlayerDeckPartition();
 
@@ -159,6 +173,7 @@ namespace KingCardsSpire.Managers
             SyncFloorStateFromTower();
             RollDailyWeather();
             _events?.Publish(new GameStartedEvent());
+            ApplyAudioFromCurrentPlayerState();
         }
 
         /// <summary>击败驻守者后进层；返回是否仍在本 Run 内继续（false 可能表示已通关或条件不足）。</summary>
@@ -334,7 +349,12 @@ namespace KingCardsSpire.Managers
             _pendingBossRewards = null;
 
             if (opt.IsGold)
-                AddGold(opt.GoldAmount);
+            {
+                var gold = opt.GoldAmount;
+                if (_pendingBossVictoryGoldenNecklaceDoubleGold)
+                    gold *= 2;
+                AddGold(gold);
+            }
             else if (!string.IsNullOrEmpty(opt.CardId))
             {
                 var cfgMgr = ConfigManager.Instance;
@@ -351,6 +371,8 @@ namespace KingCardsSpire.Managers
                 else
                     Debug.LogWarning($"[GameManager] 驻守奖励卡牌配置缺失: {opt.CardId}");
             }
+
+            _pendingBossVictoryGoldenNecklaceDoubleGold = false;
 
             EnterNextFloor();
             return true;
@@ -416,15 +438,17 @@ namespace KingCardsSpire.Managers
             if (_pendingBossRewards == null || _pendingBossRewards.Length == 0)
                 return false;
 
+            var goldMult = _pendingBossVictoryGoldenNecklaceDoubleGold ? 2 : 1;
             for (var i = 0; i < _pendingBossRewards.Length; i++)
             {
                 var opt = _pendingBossRewards[i];
                 if (opt == null)
                     continue;
                 if (opt.IsGold)
-                    AddGold(opt.GoldAmount);
+                    AddGold(opt.GoldAmount * goldMult);
             }
 
+            _pendingBossVictoryGoldenNecklaceDoubleGold = false;
             _pendingBossRewards = null;
             EnterNextFloor();
             return true;
@@ -722,9 +746,13 @@ namespace KingCardsSpire.Managers
 
             if (e.IsBossBattle && !e.PlayerVictory)
             {
+                _pendingBossVictoryGoldenNecklaceDoubleGold = false;
                 FailRun("boss_defeat");
                 return;
             }
+
+            _pendingBossVictoryGoldenNecklaceDoubleGold =
+                e.PlayerVictory && e.GoldenNecklacePlayedThisBattle && e.IsBossBattle;
 
             if (!e.IsBossBattle || !e.PlayerVictory)
                 return;
@@ -1067,6 +1095,128 @@ namespace KingCardsSpire.Managers
 
             var next = new List<string>(arr) { dialogueId };
             PlayerState.UnlockedDialogues = next.ToArray();
+        }
+
+        /// <summary>旧档补齐 <see cref="PlayerData.AudioSettings"/> 并夹紧音量到 [0,1]。</summary>
+        public static void NormalizePlayerAudioSettings(PlayerData player)
+        {
+            if (player == null)
+                return;
+            if (player.AudioSettings == null)
+                player.AudioSettings = new GameAudioSettings();
+
+            var a = player.AudioSettings;
+            var bgm = float.IsNaN(a.BgmVolume) ? 1f : a.BgmVolume;
+            var sfx = float.IsNaN(a.SfxVolume) ? 1f : a.SfxVolume;
+            a.BgmVolume = Mathf.Clamp01(bgm);
+            a.SfxVolume = Mathf.Clamp01(sfx);
+        }
+
+        /// <summary>将 <see cref="PlayerState"/> 中的音量应用到 <see cref="AudioManager"/>。</summary>
+        public void ApplyAudioFromCurrentPlayerState()
+        {
+            if (PlayerState?.AudioSettings == null)
+                return;
+
+            var am = AudioManager.Instance;
+            if (am == null)
+                return;
+
+            am.ApplyBgmSfxVolumes(PlayerState.AudioSettings.BgmVolume, PlayerState.AudioSettings.SfxVolume);
+        }
+
+        private void SeedNewRunAudioSettingsFromRuntimeMixer()
+        {
+            var am = AudioManager.Instance;
+            if (am == null || PlayerState?.AudioSettings == null)
+                return;
+
+            am.GetCurrentMixLevels(out var bgm, out var sfx);
+            PlayerState.AudioSettings.BgmVolume = Mathf.Clamp01(bgm);
+            PlayerState.AudioSettings.SfxVolume = Mathf.Clamp01(sfx);
+        }
+
+        /// <summary>设置界面读取滑条初值：主菜单且已有存档但未 Restore 时读盘上 Player，否则读 <see cref="PlayerState"/>。</summary>
+        public (float bgm, float sfx) GetEffectiveAudioVolumesForSettingsUi()
+        {
+            var ui = UIManager.Instance;
+            var pm = PersistenceManager.Instance;
+            if (ui != null && ui.IsPanelOpen(UIPanelId.MainMenu) && pm != null && pm.HasSave())
+            {
+                var save = pm.Load();
+                if (save?.Player != null)
+                {
+                    NormalizePlayerAudioSettings(save.Player);
+                    return (save.Player.AudioSettings.BgmVolume, save.Player.AudioSettings.SfxVolume);
+                }
+            }
+
+            NormalizePlayerAudioSettings(PlayerState);
+            return (PlayerState.AudioSettings.BgmVolume, PlayerState.AudioSettings.SfxVolume);
+        }
+
+        /// <summary>设置界面拖动音量：主菜单且盘上已有存档时只合并写盘 Player 音频段；否则写内存并视情况 <see cref="PersistCurrentRunToDisk"/>。</summary>
+        public void ApplyAudioVolumesFromUiAndPersist(float bgmVolume, float sfxVolume)
+        {
+            bgmVolume = Mathf.Clamp01(bgmVolume);
+            sfxVolume = Mathf.Clamp01(sfxVolume);
+            AudioManager.Instance?.ApplyBgmSfxVolumes(bgmVolume, sfxVolume);
+
+            var ui = UIManager.Instance;
+            var pm = PersistenceManager.Instance;
+            if (ui != null && ui.IsPanelOpen(UIPanelId.MainMenu) && pm != null && pm.HasSave())
+            {
+                var save = pm.Load();
+                if (save?.Player != null)
+                {
+                    NormalizePlayerAudioSettings(save.Player);
+                    save.Player.AudioSettings.BgmVolume = bgmVolume;
+                    save.Player.AudioSettings.SfxVolume = sfxVolume;
+                    pm.Save(save);
+                    return;
+                }
+            }
+
+            NormalizePlayerAudioSettings(PlayerState);
+            PlayerState.AudioSettings.BgmVolume = bgmVolume;
+            PlayerState.AudioSettings.SfxVolume = sfxVolume;
+            if (pm != null && pm.HasSave() && (ui == null || !ui.IsPanelOpen(UIPanelId.MainMenu)))
+                PersistCurrentRunToDisk();
+        }
+
+        /// <summary>设置面板「保存进度」：主菜单上不可用内存 Run 覆盖整槽存档（避免误写）。</summary>
+        public bool TryPersistCurrentRunFromSettingsSaveButton()
+        {
+            var ui = UIManager.Instance;
+            if (ui != null && ui.IsPanelOpen(UIPanelId.MainMenu))
+                return false;
+
+            PersistCurrentRunToDisk();
+            return true;
+        }
+
+        /// <summary>设置中「返回主菜单」：仅主菜单+设置时只关设置；否则先存档再关全部面板并打开主菜单。</summary>
+        public IEnumerator ReturnToTitleFromSettingsRoutine()
+        {
+            yield return null;
+
+            var ui = UIManager.Instance;
+            if (ui == null)
+                yield break;
+
+            if (ui.IsPanelOpen(UIPanelId.Settings))
+                ui.Close(UIPanelId.Settings);
+
+            var onlyMainMenu = ui.IsPanelOpen(UIPanelId.MainMenu) &&
+                               !ui.IsPanelOpen(UIPanelId.MainHub) &&
+                               !ui.IsPanelOpen(UIPanelId.Battle);
+
+            if (onlyMainMenu)
+                yield break;
+
+            PersistCurrentRunToDisk();
+            ui.CloseAll();
+            yield return ui.OpenAsync(UIPanelId.MainMenu);
         }
 
         /// <summary>将当前 Run 写入默认存档位，保留盘上历史记录条目。</summary>

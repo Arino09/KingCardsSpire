@@ -302,7 +302,9 @@ namespace KingCardsSpire.Core.Battle
                 enemyHand, effectState, round1Based, completedRoundsBeforeThisOne, playerAllIn);
             var enemyCompare = BattleCardEffectResolver.ToCompareCard(enemyLogical, false, playerHand,
                 enemyHand, effectState, round1Based, completedRoundsBeforeThisOne, enemyAllIn);
-            var normal = CardBattleRules.Compare(playerCompare, enemyCompare, weather);
+            var normal = CardBattleRules.Compare(playerCompare, enemyCompare, weather, playerHand, enemyHand,
+                invertNumericRanking: (effectState?.PlayerPerfectMatchActive == true) ^
+                                      (effectState?.EnemyPerfectMatchActive == true));
             var special = BattleCardEffectResolver.ResolveSpecialFunctionPriority(playerLogical,
                 enemyLogical, normal);
             if (special != normal)

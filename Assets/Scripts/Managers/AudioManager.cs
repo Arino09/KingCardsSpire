@@ -26,8 +26,26 @@ namespace KingCardsSpire.Managers
             root.transform.SetParent(transform, false);
             _bgm = root.AddComponent<AudioSource>();
             _bgm.loop = true;
+            _bgm.volume = 1f;
             _sfx = root.AddComponent<AudioSource>();
             _sfx.loop = false;
+            _sfx.volume = 1f;
+        }
+
+        /// <summary>将 BGM / 音效总线音量应用到 AudioSource（0～1）。</summary>
+        public void ApplyBgmSfxVolumes(float bgmVolume, float sfxVolume)
+        {
+            if (_bgm != null)
+                _bgm.volume = Mathf.Clamp01(bgmVolume);
+            if (_sfx != null)
+                _sfx.volume = Mathf.Clamp01(sfxVolume);
+        }
+
+        /// <summary>读取当前 AudioSource 上的音量（未初始化时返回 1,1）。</summary>
+        public void GetCurrentMixLevels(out float bgmVolume, out float sfxVolume)
+        {
+            bgmVolume = _bgm != null ? _bgm.volume : 1f;
+            sfxVolume = _sfx != null ? _sfx.volume : 1f;
         }
 
         /// <summary>通过 Addressables 键加载 BGM（占位）。</summary>

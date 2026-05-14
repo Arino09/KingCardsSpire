@@ -55,6 +55,8 @@ namespace KingCardsSpire.Managers
 
         private readonly List<Card> _pendingChaoticExtraTemplates = new();
 
+        private readonly List<string> _scratchCardIdsForDaydream = new();
+
         private bool _playerChaoticRandomPlay;
 
         /// <summary>常规战（非 BOSS、非教学）胜利后待展示的奖励 CardId（至多 3 个）；<see cref="ClearPendingCasualVictoryRewardOffer"/> 或下一场开战时清空。</summary>
@@ -310,6 +312,8 @@ namespace KingCardsSpire.Managers
             for (var i = 0; i < _playerHand.Count; i++)
             {
                 var playerCard = _playerHand[i];
+                if (playerCard != null && playerCard.Type == CardType.Consumable)
+                    continue;
                 if (!IsLegalPlay(playerCard, _playerHand, _lastPlayerInstanceId))
                     continue;
                 if (_battleEffects.FinalMomentRestrictionActive && !IsAllowedUnderFinalMoment(playerCard))
@@ -351,6 +355,12 @@ namespace KingCardsSpire.Managers
             if (!IsLegalPlay(playerCard, _playerHand, _lastPlayerInstanceId))
             {
                 error = "不能连续两次出同一张牌";
+                return false;
+            }
+
+            if (playerCard.Type == CardType.Consumable)
+            {
+                error = "一次性牌请直接点击使用";
                 return false;
             }
 
@@ -466,6 +476,15 @@ namespace KingCardsSpire.Managers
             var playerCard = _playerHand[playerIdx];
             var enemyCard = _enemyHand[enemyIdx];
 
+            if (BattleCardEffectResolver.HandContainsAllFourSymbols(_enemyHand))
+            {
+                compareResult = default;
+                _pendingEnemyHandIndex = -1;
+                _pendingPlayerHandIndex = -1;
+                FinishBattle(false, BattleEndReason.FourSymbolsEnemyComplete);
+                return true;
+            }
+
             if (BattleCardEffectResolver.HandContainsAllFourSymbols(_playerHand))
             {
                 compareResult = BattleCompareResult.FirstWins;
@@ -491,16 +510,130 @@ namespace KingCardsSpire.Managers
         }
 
         /// <summary>
-        /// 队列消耗牌效果（预见/加减等级/续命等），在下次 <see cref="CommitPendingRound"/> 结算前生效。
+        /// 累加消耗牌效果（同一回合可多次使用），在下次 <see cref="CommitPendingRound"/> 结算前生效。
         /// </summary>
-        public void QueueConsumableRoundModifiers(float playerLevelBonus, float enemyLevelBonus,
+        public void AddConsumableRoundModifiers(float playerLevelBonusDelta, float enemyLevelBonusDelta,
             bool disableEnemyFunction, bool disableEnemyAbility, bool surviveLossToHand)
         {
-            _battleEffects.ConsumablePlayerLevelBonus = playerLevelBonus;
-            _battleEffects.ConsumableEnemyLevelBonus = enemyLevelBonus;
-            _battleEffects.DisableEnemyFunctionEffects = disableEnemyFunction;
-            _battleEffects.DisableEnemyAbilityEffects = disableEnemyAbility;
-            _battleEffects.PlayerSurviveLossToHand = surviveLossToHand;
+            _battleEffects.ConsumablePlayerLevelBonus += playerLevelBonusDelta;
+            _battleEffects.ConsumableEnemyLevelBonus += enemyLevelBonusDelta;
+            if (disableEnemyFunction)
+                _battleEffects.DisableEnemyFunctionEffects = true;
+            if (disableEnemyAbility)
+                _battleEffects.DisableEnemyAbilityEffects = true;
+            if (surviveLossToHand)
+                _battleEffects.PlayerSurviveLossToHand = true;
+        }
+
+        public bool TryGetForesightRevealedEnemyCard(out Card snapshot)
+        {
+            snapshot = _battleEffects.ForesightRevealedEnemyCardSnapshot;
+            return snapshot != null;
+        }
+
+        /// <summary>撤销本回合已暂存的己方出牌（后悔牌 / UI），不改变已锁定的敌方待出牌。</summary>
+        public bool TryUnstagePlayerCard(out string error, bool publishStateChange = true)
+        {
+            error = null;
+            if (_phase != Phase.InBattle)
+            {
+                error = "当前不在战斗中";
+                return false;
+            }
+
+            if (_pendingPlayerHandIndex < 0)
+            {
+                error = "当前未选择己方出牌";
+                return false;
+            }
+
+            _pendingPlayerHandIndex = -1;
+            _playerExponentialSacrificeResolved = false;
+            if (publishStateChange)
+            {
+                SyncBattleState();
+                EventManager.Instance?.Publish(new BattleStateChangedEvent());
+            }
+
+            return true;
+        }
+
+        /// <summary>从己方手牌使用一次性牌（不占用本回合出牌位）；移除该牌并入己方弃牌堆。</summary>
+        public bool TryUseConsumableFromPlayerHand(int playerHandIndex, out string error)
+        {
+            error = null;
+            if (_phase != Phase.InBattle)
+            {
+                error = "当前不在战斗中";
+                return false;
+            }
+
+            if (playerHandIndex < 0 || playerHandIndex >= _playerHand.Count)
+            {
+                error = "手牌下标无效";
+                return false;
+            }
+
+            var card = _playerHand[playerHandIndex];
+            if (card == null || card.Type != CardType.Consumable)
+            {
+                error = "该牌不是一次性卡牌";
+                return false;
+            }
+
+            var id = card.Id;
+            if (string.Equals(id, WellKnownCardIds.Foresight, StringComparison.OrdinalIgnoreCase))
+            {
+                if (_pendingEnemyHandIndex < 0 || _pendingEnemyHandIndex >= _enemyHand.Count)
+                {
+                    error = "预见牌：须先锁定敌方本回合待出牌";
+                    return false;
+                }
+
+                _battleEffects.ForesightRevealedEnemyCardSnapshot =
+                    SnapshotCard(_enemyHand[_pendingEnemyHandIndex]);
+            }
+
+            if (string.Equals(id, WellKnownCardIds.Regret, StringComparison.OrdinalIgnoreCase))
+                TryUnstagePlayerCard(out _, false);
+
+            MoveCardAtToDiscard(_playerHand, playerHandIndex, _playerDiscard);
+            OnCardDiscardedFromSide(card, true);
+
+            if (_pendingPlayerHandIndex >= 0)
+            {
+                if (_pendingPlayerHandIndex > playerHandIndex)
+                    _pendingPlayerHandIndex--;
+            }
+
+            ApplyConsumableNumericAndFlagsById(id);
+            SyncBattleState();
+            EventManager.Instance?.Publish(new BattleStateChangedEvent());
+            return true;
+        }
+
+        private void ApplyConsumableNumericAndFlagsById(string id)
+        {
+            if (string.IsNullOrEmpty(id))
+                return;
+            if (string.Equals(id, WellKnownCardIds.Regret, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(id, WellKnownCardIds.Foresight, StringComparison.OrdinalIgnoreCase))
+                return;
+
+            if (string.Equals(id, WellKnownCardIds.DebuffHalf, StringComparison.OrdinalIgnoreCase))
+                AddConsumableRoundModifiers(0f, -0.5f, false, false, false);
+            else if (string.Equals(id, WellKnownCardIds.DebuffOne, StringComparison.OrdinalIgnoreCase))
+                AddConsumableRoundModifiers(0f, -1f, false, false, false);
+            else if (string.Equals(id, WellKnownCardIds.BuffHalf, StringComparison.OrdinalIgnoreCase))
+                AddConsumableRoundModifiers(0.5f, 0f, false, false, false);
+            else if (string.Equals(id, WellKnownCardIds.BuffOne, StringComparison.OrdinalIgnoreCase))
+                AddConsumableRoundModifiers(1f, 0f, false, false, false);
+            else if (string.Equals(id, WellKnownCardIds.DisableFunction, StringComparison.OrdinalIgnoreCase))
+                AddConsumableRoundModifiers(0f, 0f, true, false, false);
+            else if (string.Equals(id, WellKnownCardIds.DisableAbility, StringComparison.OrdinalIgnoreCase))
+                AddConsumableRoundModifiers(0f, 0f, false, true, false);
+            else if (string.Equals(id, WellKnownCardIds.SurviveRound, StringComparison.OrdinalIgnoreCase))
+                AddConsumableRoundModifiers(0f, 0f, false, false, true);
         }
 
         public void EndBattle()
@@ -718,6 +851,47 @@ namespace KingCardsSpire.Managers
                     enemyIdx = 0;
             }
 
+            enemyIdx = FindHandIndexByInstanceId(_enemyHand, enemyInst);
+            if (enemyIdx < 0)
+                enemyIdx = 0;
+            playerIdx = FindHandIndexByInstanceId(_playerHand, playerInst);
+            if (playerIdx < 0)
+                playerIdx = 0;
+
+            var el = _enemyHand[enemyIdx];
+
+            if (string.Equals(el.Id, WellKnownCardIds.AllIn, StringComparison.OrdinalIgnoreCase)
+                && _enemyHand.Count > 1)
+            {
+                var removeAt = RandomOtherIndex(_enemyHand.Count, enemyIdx);
+                DiscardEnemyCardAt(removeAt);
+                enemyIdx = FindHandIndexByInstanceId(_enemyHand, enemyInst);
+                if (enemyIdx < 0)
+                    enemyIdx = 0;
+            }
+
+            if (string.Equals(el.Id, WellKnownCardIds.Hope, StringComparison.OrdinalIgnoreCase)
+                && _enemyDiscard.Count > 0)
+            {
+                var di = Random.Range(0, _enemyDiscard.Count);
+                var recalled = _enemyDiscard[di];
+                _enemyDiscard.RemoveAt(di);
+                _enemyHand.Add(recalled);
+                enemyIdx = FindHandIndexByInstanceId(_enemyHand, enemyInst);
+                if (enemyIdx < 0)
+                    enemyIdx = 0;
+            }
+
+            if (string.Equals(el.Id, WellKnownCardIds.Demon, StringComparison.OrdinalIgnoreCase)
+                && _playerHand.Count > 1)
+            {
+                var removeAt = RandomOtherIndex(_playerHand.Count, playerIdx);
+                DiscardPlayerCardAt(removeAt);
+                playerIdx = FindHandIndexByInstanceId(_playerHand, playerInst);
+                if (playerIdx < 0)
+                    playerIdx = 0;
+            }
+
             if (_battleEffects.EnemyExponentialFormActive && _enemyHand.Count > 1)
             {
                 var removeAt = RandomOtherIndex(_enemyHand.Count, enemyIdx);
@@ -766,7 +940,9 @@ namespace KingCardsSpire.Managers
                 return BattleCompareResult.SecondWins;
             }
 
-            var normal = CardBattleRules.Compare(pCompare, eCompare, _weather);
+            var invertNumeric = _battleEffects.PlayerPerfectMatchActive ^ _battleEffects.EnemyPerfectMatchActive;
+            var normal = CardBattleRules.Compare(pCompare, eCompare, _weather, _playerHand, _enemyHand,
+                invertNumeric);
             var special =
                 BattleCardEffectResolver.ResolveSpecialFunctionPriority(playerLogical, enemyLogical, normal);
             if (special != normal)
@@ -778,6 +954,31 @@ namespace KingCardsSpire.Managers
                 return BattleCompareResult.FirstWins;
 
             return normal;
+        }
+
+        private void ApplyDaydreamAfterRoundResolved()
+        {
+            var cfg = ConfigManager.Instance;
+            if (cfg == null)
+                return;
+            if (_battleEffects.PlayerDaydreamActive)
+                TryReplaceOneRandomHandSlotForDaydream(_playerHand, cfg);
+            if (_battleEffects.EnemyDaydreamActive)
+                TryReplaceOneRandomHandSlotForDaydream(_enemyHand, cfg);
+        }
+
+        private void TryReplaceOneRandomHandSlotForDaydream(List<Card> hand, ConfigManager cfg)
+        {
+            if (hand == null || hand.Count == 0)
+                return;
+            cfg.CopyAllCardIds(_scratchCardIdsForDaydream);
+            if (_scratchCardIdsForDaydream.Count == 0)
+                return;
+            var slot = Random.Range(0, hand.Count);
+            var pickId = _scratchCardIdsForDaydream[Random.Range(0, _scratchCardIdsForDaydream.Count)];
+            if (!cfg.TryGetCard(pickId, out var cc))
+                return;
+            hand[slot] = CloneForBattle(CardFromConfig(cc));
         }
 
         private void ResolveRound(int playerHandIndex, int enemyIdx, Card playerCard, Card enemyCard,
@@ -821,6 +1022,7 @@ namespace KingCardsSpire.Managers
             _lastEnemyInstanceId = enemyCard.BattleInstanceId;
 
             _roundsCompleted++;
+            ApplyDaydreamAfterRoundResolved();
             _historyLines.Add($"第{_roundsCompleted}回合: {summary}");
             CurrentBattle.TurnHistory = _historyLines.ToArray();
 
@@ -949,6 +1151,18 @@ namespace KingCardsSpire.Managers
             if (string.Equals(id, WellKnownCardIds.ExponentialForm, StringComparison.OrdinalIgnoreCase)
                 && !fromPlayerPerspective)
                 _battleEffects.EnemyExponentialFormActive = true;
+            if (string.Equals(id, WellKnownCardIds.PerfectMatch, StringComparison.OrdinalIgnoreCase)
+                && fromPlayerPerspective)
+                _battleEffects.PlayerPerfectMatchActive = true;
+            if (string.Equals(id, WellKnownCardIds.PerfectMatch, StringComparison.OrdinalIgnoreCase)
+                && !fromPlayerPerspective)
+                _battleEffects.EnemyPerfectMatchActive = true;
+            if (string.Equals(id, WellKnownCardIds.Daydream, StringComparison.OrdinalIgnoreCase)
+                && fromPlayerPerspective)
+                _battleEffects.PlayerDaydreamActive = true;
+            if (string.Equals(id, WellKnownCardIds.Daydream, StringComparison.OrdinalIgnoreCase)
+                && !fromPlayerPerspective)
+                _battleEffects.EnemyDaydreamActive = true;
         }
 
         private void ApplyCivilizationIfPlayed(Card playerCard, Card enemyCard)
@@ -1062,8 +1276,17 @@ namespace KingCardsSpire.Managers
                 return true;
             }
 
-            // 总手牌等级低的一方获胜（§2.2.5）
-            var playerWins = pSum < eSum;
+            // 总手牌等级低的一方获胜（§2.2.5）；天作之合单方生效时反转该方在比和时的优劣。
+            bool playerWins;
+            var pPm = _battleEffects.PlayerPerfectMatchActive;
+            var ePm = _battleEffects.EnemyPerfectMatchActive;
+            if (pPm == ePm)
+                playerWins = pSum < eSum;
+            else if (pPm)
+                playerWins = pSum > eSum;
+            else
+                playerWins = eSum > pSum;
+
             FinishBattle(playerWins, BattleEndReason.RoundLimitByTotalHandLevel);
             return true;
         }

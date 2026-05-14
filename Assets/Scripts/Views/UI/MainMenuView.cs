@@ -243,7 +243,9 @@ namespace KingCardsSpire.Views.UI
 
         private void OnSettingsClicked()
         {
-            Debug.Log("[MainMenu] 设置：尚未接入 UI 面板。");
+            var ui = UIManager.Instance;
+            if (ui != null)
+                ui.StartCoroutine(SettingsView.OpenSettingsRoutine());
         }
 
         private void OnCardAlbumClicked()
