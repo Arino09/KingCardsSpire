@@ -7,8 +7,10 @@ namespace KingCardsSpire.Models
 
         public const string BattleForceKing = "tutorial_battle_force_king";
 
-        public const string BattleRound3 = "tutorial_battle_round3";
+        public const string BattleRound2 = "tutorial_battle_round2";
 
         public const string BattleDefeat = "tutorial_battle_defeat";
+
+        public const string BattleVictory = "tutorial_battle_victory";
     }
 }

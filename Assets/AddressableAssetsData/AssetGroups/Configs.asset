@@ -65,10 +65,11 @@ MonoBehaviour:
     m_SerializedLabels:
     - config_hero
     FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: a069008fab4707e47aa1b28315a81579
+  - m_GUID: b529fed92eb93884da1e0874a802720e
     m_Address: Assets/GameConfigs/Bootstrap/NpcConfig.asset
     m_ReadOnly: 0
-    m_SerializedLabels: []
+    m_SerializedLabels:
+    - config_npc
     FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: 0b8713ba58b57bb49bd9906570780370, type: 2}

@@ -129,7 +129,7 @@ namespace KingCardsSpire.Views.UI
 
         private bool _tutorialAllowPrepareEnemyPlay;
 
-        private bool _round3PreBattleDialogShown;
+        private bool _round2PreBattleDialogShown;
 
         private bool? _pendingTutorialBattleVictory;
 
@@ -191,7 +191,7 @@ namespace KingCardsSpire.Views.UI
             if (bm != null && bm.IsTutorialBattle && _battle != null && _battle.IsBattleActive)
             {
                 _tutorialAllowPrepareEnemyPlay = false;
-                _round3PreBattleDialogShown = false;
+                _round2PreBattleDialogShown = false;
                 _pendingTutorialBattleVictory = null;
 
                 if (_events != null)
@@ -362,9 +362,9 @@ namespace KingCardsSpire.Views.UI
         {
             RefreshBattleChromeOnly();
 
-            if (ShouldShowRoundThreePreBattleDialog())
+            if (ShouldShowRoundTwoPreBattleDialog())
             {
-                StartCoroutine(RoundThreeDialogThenRefreshRoutine());
+                StartCoroutine(RoundTwoDialogThenRefreshRoutine());
                 return;
             }
 
@@ -1071,17 +1071,17 @@ namespace KingCardsSpire.Views.UI
                 playerDiscardButton.interactable = interactable;
         }
 
-        private bool ShouldShowRoundThreePreBattleDialog()
+        private bool ShouldShowRoundTwoPreBattleDialog()
         {
             var bm = BattleManager.Instance;
             if (bm == null || !bm.IsTutorialBattle || !bm.IsBattleActive)
                 return false;
 
-            if (_round3PreBattleDialogShown)
+            if (_round2PreBattleDialogShown)
                 return false;
 
             var state = bm.CurrentBattle;
-            if (state == null || state.Round != 2)
+            if (state == null || state.Round != 1)
                 return false;
 
             if (state.PlayerHand == null || state.EnemyHand == null)
@@ -1093,14 +1093,14 @@ namespace KingCardsSpire.Views.UI
             return true;
         }
 
-        private IEnumerator RoundThreeDialogThenRefreshRoutine()
+        private IEnumerator RoundTwoDialogThenRefreshRoutine()
         {
             var dialogue = ServiceLocator.Get<DialogueController>();
             var ui = UIManager.Instance;
             if (dialogue != null && ui != null)
-                yield return ui.StartCoroutine(dialogue.PlayDialogue(TutorialDialogueIds.BattleRound3, null));
+                yield return ui.StartCoroutine(dialogue.PlayDialogue(TutorialDialogueIds.BattleRound2, null));
 
-            _round3PreBattleDialogShown = true;
+            _round2PreBattleDialogShown = true;
             RefreshAll();
         }
 
@@ -1109,8 +1109,13 @@ namespace KingCardsSpire.Views.UI
             var ui = UIManager.Instance;
             var dialogue = ServiceLocator.Get<DialogueController>();
 
-            if (!playerVictory && dialogue != null && ui != null)
-                yield return ui.StartCoroutine(dialogue.PlayDialogue(TutorialDialogueIds.BattleDefeat, null));
+            if (dialogue != null && ui != null)
+            {
+                var dialogueId = playerVictory
+                    ? TutorialDialogueIds.BattleVictory
+                    : TutorialDialogueIds.BattleDefeat;
+                yield return ui.StartCoroutine(dialogue.PlayDialogue(dialogueId, null));
+            }
 
             if (!playerVictory && tutorialDefeatPlaceholder != null)
             {
