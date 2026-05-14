@@ -31,6 +31,12 @@ namespace KingCardsSpire.Core.Events
         public CardAcquiredEvent(string cardId) => CardId = cardId;
     }
 
+    public readonly struct BuffAcquiredEvent : IEvent
+    {
+        public readonly BuffId BuffId;
+        public BuffAcquiredEvent(BuffId buffId) => BuffId = buffId;
+    }
+
     public readonly struct BattleStartedEvent : IEvent { }
 
     public readonly struct BattleStateChangedEvent : IEvent { }

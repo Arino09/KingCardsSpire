@@ -53,6 +53,10 @@ namespace KingCardsSpire.Managers
         /// <summary>本回合指数形态要求的额外弃牌是否已由玩家完成（或无需弃牌）。</summary>
         private bool _playerExponentialSacrificeResolved;
 
+        private readonly List<Card> _pendingChaoticExtraTemplates = new();
+
+        private bool _playerChaoticRandomPlay;
+
         public BattleState CurrentBattle { get; private set; } = new();
 
         public bool IsBattleActive => _phase == Phase.InBattle;
@@ -65,6 +69,33 @@ namespace KingCardsSpire.Managers
 
         /// <summary>玩家已暂存的手牌下标，未选择时为 -1。</summary>
         public int PendingPlayerHandIndex => _pendingPlayerHandIndex;
+
+        /// <summary>混乱战场：本局玩家是否由 UI 随机代出牌（不改变敌方 AI）。</summary>
+        public bool PlayerChaoticRandomPlayThisBattle => _playerChaoticRandomPlay;
+
+        /// <summary>下一场战斗开始前设置：将 <paramref name="templates"/> 复制为开局玩家手牌模板（不入库）；在 <see cref="StartBattleInternal"/> 开头消费并清空。</summary>
+        public void SetPendingChaoticBattleExtras(IReadOnlyList<Card> templates)
+        {
+            _pendingChaoticExtraTemplates.Clear();
+            if (templates == null)
+                return;
+
+            for (var i = 0; i < templates.Count; i++)
+            {
+                var t = templates[i];
+                if (t == null)
+                    continue;
+                _pendingChaoticExtraTemplates.Add(new Card
+                {
+                    Id = t.Id,
+                    Name = t.Name,
+                    Level = t.Level,
+                    Type = t.Type,
+                    EffectDesc = t.EffectDesc,
+                    IsUnique = t.IsUnique
+                });
+            }
+        }
 
         /// <summary>
         /// 该实例是否因「不可连续两次打出同一张牌」规则在本回合不可再出（与 <see cref="IsLegalPlay"/> 一致，用于 UI 置灰）。
@@ -111,8 +142,12 @@ namespace KingCardsSpire.Managers
             var enemyCards = vsBoss ? BuildBossDeckFromTowerOrFallback() : BuildDefaultEnemyDeck();
             var bossAiStrength = vsBoss ? ResolveBossAiStrengthFromTower() : 0;
 
+            var rawXRay = player?.XRayCount ?? 1;
+            if (game != null && game.HasBuff(BuffId.XRayBoost))
+                rawXRay = Mathf.Max(rawXRay, 2);
+
             StartBattleInternal(playerCards, enemyCards, player?.CurrentWeather ?? WeatherType.WarmWind,
-                player?.XRayCount ?? 1, vsBoss, bossAiStrength, null, false);
+                rawXRay, vsBoss, bossAiStrength, null, false);
         }
 
         /// <summary>主角房友谊战：敌方卡组由 <see cref="HeroOpponentDeckGenerator"/> 占位生成，非 BOSS。</summary>
@@ -124,8 +159,12 @@ namespace KingCardsSpire.Managers
             var playerCards = BuildPlayerDeck(player);
             var enemyCards = HeroOpponentDeckGenerator.BuildPlaceholderDeck(heroSlotId);
 
+            var rawXRay = player?.XRayCount ?? 1;
+            if (game != null && game.HasBuff(BuffId.XRayBoost))
+                rawXRay = Mathf.Max(rawXRay, 2);
+
             StartBattleInternal(playerCards, enemyCards, player?.CurrentWeather ?? WeatherType.WarmWind,
-                player?.XRayCount ?? 1, isBossBattle: false, bossAiStrength: 0,
+                rawXRay, isBossBattle: false, bossAiStrength: 0,
                 opponentDisplayNameOverride: opponentDisplayName, tutorialBattle: false);
         }
 
@@ -152,8 +191,13 @@ namespace KingCardsSpire.Managers
             WeatherType weather, int xRayCount, bool isBossBattle = false,
             string opponentDisplayNameOverride = null)
         {
+            var gm = GameManager.Instance;
+            var x = xRayCount;
+            if (gm != null && gm.HasBuff(BuffId.XRayBoost))
+                x = Mathf.Max(x, 2);
+
             var bossAiStrength = isBossBattle ? ResolveBossAiStrengthFromTower() : 0;
-            StartBattleInternal(playerDeck, enemyDeck, weather, xRayCount, isBossBattle,
+            StartBattleInternal(playerDeck, enemyDeck, weather, x, isBossBattle,
                 bossAiStrength, opponentDisplayNameOverride, false);
         }
 
@@ -161,6 +205,9 @@ namespace KingCardsSpire.Managers
             WeatherType weather, int xRayCount, bool isBossBattle, int bossAiStrength,
             string opponentDisplayNameOverride = null, bool tutorialBattle = false)
         {
+            var chaoticExtraSnapshot = new List<Card>(_pendingChaoticExtraTemplates);
+            _pendingChaoticExtraTemplates.Clear();
+
             ResetRuntime();
             _isTutorialBattle = tutorialBattle;
             _isBossBattle = isBossBattle;
@@ -171,8 +218,15 @@ namespace KingCardsSpire.Managers
 
             foreach (var c in playerDeck)
                 _playerHand.Add(CloneForBattle(c));
+            foreach (var c in chaoticExtraSnapshot)
+                _playerHand.Add(CloneForBattle(c));
             foreach (var c in enemyDeck)
                 _enemyHand.Add(CloneForBattle(c));
+
+            ApplyBuffRandomLevelsToPlayerHand();
+
+            var gm = GameManager.Instance;
+            _playerChaoticRandomPlay = !tutorialBattle && gm != null && gm.HasBuff(BuffId.ChaoticBattlefield);
 
             ActivateOpeningEnemyAbilityCards();
 
@@ -238,7 +292,26 @@ namespace KingCardsSpire.Managers
             return true;
         }
 
-        /// <summary>暂存玩家本回合要出的手牌下标（不结算）。需先 <see cref="PrepareEnemyPlay"/>。</summary>
+        /// <summary>收集当前回合在已 Prepare 敌方后，玩家可合法点击的手牌下标（供混乱战场随机代点）。</summary>
+        public void CollectLegalPlayerHandPlayIndices(List<int> dest)
+        {
+            dest?.Clear();
+            if (dest == null || _phase != Phase.InBattle || _pendingEnemyHandIndex < 0 || _pendingPlayerHandIndex >= 0)
+                return;
+
+            for (var i = 0; i < _playerHand.Count; i++)
+            {
+                var playerCard = _playerHand[i];
+                if (!IsLegalPlay(playerCard, _playerHand, _lastPlayerInstanceId))
+                    continue;
+                if (_battleEffects.FinalMomentRestrictionActive && !IsAllowedUnderFinalMoment(playerCard))
+                    continue;
+                dest.Add(i);
+            }
+        }
+
+        /// <summary>
+        /// 暂存玩家本回合要出的手牌下标（不结算）。需先 <see cref="PrepareEnemyPlay"/>。</summary>
         public bool TryStagePlayerCard(int playerHandIndex, out string error)
         {
             error = null;
@@ -332,6 +405,10 @@ namespace KingCardsSpire.Managers
             EventManager.Instance?.Publish(new BattleStateChangedEvent());
             return true;
         }
+
+        /// <summary>指数形态：在无需玩家手选时由 UI/自动化调用，随机弃掉一张非本回合出牌。</summary>
+        public bool TryAutoResolvePlayerExponentialIfNeeded(out string error) =>
+            TryAutoCompletePlayerExponentialSacrifice(out error);
 
         private bool TryAutoCompletePlayerExponentialSacrifice(out string error)
         {
@@ -1088,6 +1165,8 @@ namespace KingCardsSpire.Managers
             _battleEffects.ResetBattle();
             _restrictedNextRound = false;
             _playerExponentialSacrificeResolved = false;
+            _playerChaoticRandomPlay = false;
+            _pendingChaoticExtraTemplates.Clear();
             CurrentBattle = new BattleState();
         }
 
@@ -1132,6 +1211,24 @@ namespace KingCardsSpire.Managers
                 IsUnique = template.IsUnique,
                 BattleInstanceId = Guid.NewGuid().ToString("N")
             };
+        }
+
+        private void ApplyBuffRandomLevelsToPlayerHand()
+        {
+            var gm = GameManager.Instance;
+            if (gm == null)
+                return;
+
+            for (var i = 0; i < _playerHand.Count; i++)
+            {
+                var c = _playerHand[i];
+                if (c == null)
+                    continue;
+                if (gm.HasBuff(BuffId.RandomCommoner) && c.Id == WellKnownCardIds.Commoner)
+                    c.Level = Random.Range(0, 3);
+                if (gm.HasBuff(BuffId.RandomKing) && c.Id == WellKnownCardIds.King)
+                    c.Level = Random.Range(0, 5);
+            }
         }
 
         private static List<Card> BuildPlayerDeck(PlayerData player)

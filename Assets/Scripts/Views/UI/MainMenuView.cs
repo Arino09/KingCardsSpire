@@ -209,7 +209,10 @@ namespace KingCardsSpire.Views.UI
                     ui.Close(UIPanelId.Battle);
 
                     if (playerVictory)
+                    {
+                        yield return RunBuffDraftIfNeeded(view._game, ui);
                         yield return ui.OpenAsync(UIPanelId.MainHub);
+                    }
                     else
                         yield return ui.OpenAsync(UIPanelId.MainMenu);
 
@@ -221,7 +224,21 @@ namespace KingCardsSpire.Views.UI
                 yield break;
             }
 
+            yield return RunBuffDraftIfNeeded(view._game, ui);
             yield return ui.OpenAsync(UIPanelId.MainHub);
+        }
+
+        private static IEnumerator RunBuffDraftIfNeeded(GameManager game, UIManager ui)
+        {
+            if (game == null || ui == null)
+                yield break;
+            if (!game.ShouldOfferBuffDraft())
+                yield break;
+
+            game.TryBuildBuffDraftOffer();
+            yield return ui.OpenAsync(UIPanelId.BuffDraft);
+            while (ui.IsPanelOpen(UIPanelId.BuffDraft))
+                yield return null;
         }
 
         private void OnSettingsClicked()

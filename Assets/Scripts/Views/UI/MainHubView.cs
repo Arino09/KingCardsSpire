@@ -97,6 +97,7 @@ namespace KingCardsSpire.Views.UI
         protected override void OnOpen()
         {
             RefreshAll();
+            StartCoroutine(MaybeOfferBuffDraftAfterFloorRoutine());
         }
 
         private void WireButtons()
@@ -169,6 +170,7 @@ namespace KingCardsSpire.Views.UI
             _events.Subscribe<SaveWrittenEvent>(OnSaveWritten);
             _events.Subscribe<BossRewardOfferedEvent>(OnBossRewardOffered);
             _events.Subscribe<NpcEncounterStartedEvent>(OnNpcEncounterStarted);
+            _events.Subscribe<BuffAcquiredEvent>(OnBuffAcquired);
             _events.Subscribe<GameOverEvent>(OnGameOverForHub);
             _events.Subscribe<GameVictoryEvent>(OnGameVictoryForHub);
         }
@@ -185,6 +187,7 @@ namespace KingCardsSpire.Views.UI
             _events.Unsubscribe<SaveWrittenEvent>(OnSaveWritten);
             _events.Unsubscribe<BossRewardOfferedEvent>(OnBossRewardOffered);
             _events.Unsubscribe<NpcEncounterStartedEvent>(OnNpcEncounterStarted);
+            _events.Unsubscribe<BuffAcquiredEvent>(OnBuffAcquired);
             _events.Unsubscribe<GameOverEvent>(OnGameOverForHub);
             _events.Unsubscribe<GameVictoryEvent>(OnGameVictoryForHub);
         }
@@ -195,6 +198,8 @@ namespace KingCardsSpire.Views.UI
             RefreshVisitNpcButtonAccess();
         }
 
+        private void OnBuffAcquired(BuffAcquiredEvent _) => RefreshStatusTexts();
+
         private void OnGameOverForHub(GameOverEvent _) => RefreshNextDayButtonAccess();
 
         private void OnGameVictoryForHub(GameVictoryEvent _) => RefreshNextDayButtonAccess();
@@ -203,6 +208,23 @@ namespace KingCardsSpire.Views.UI
         {
             RefreshStatusTexts();
             RefreshFloorBackground();
+        }
+
+        private IEnumerator MaybeOfferBuffDraftAfterFloorRoutine()
+        {
+            var gm = _game ?? GameManager.Instance;
+            var ui = UIManager.Instance;
+            if (gm == null || ui == null)
+                yield break;
+            if (!gm.ShouldOfferBuffDraft())
+                yield break;
+
+            gm.TryBuildBuffDraftOffer();
+            yield return ui.OpenAsync(UIPanelId.BuffDraft);
+            while (ui.IsPanelOpen(UIPanelId.BuffDraft))
+                yield return null;
+
+            RefreshStatusTexts();
         }
 
         private void OnGoldChanged(GoldChangedEvent _) => RefreshStatusTexts();
@@ -308,13 +330,33 @@ namespace KingCardsSpire.Views.UI
 
         private void RefreshStatusTexts()
         {
-            var player = _game.PlayerState;
+            var gm = _game ?? GameManager.Instance;
+            var player = gm != null ? gm.PlayerState : null;
+            if (player == null)
+                return;
 
-            levelText.text = $"{player.CurrentFloor}/{GameManager.Instance.GameConfig.TowerFloors}";
-            curDayText.text = $"{player.FloorDay}/{GameManager.Instance.GetMaxDaysPerFloor()}";
+            levelText.text = $"{player.CurrentFloor}/{gm.GameConfig.TowerFloors}";
+            curDayText.text = $"{player.FloorDay}/{gm.GetMaxDaysPerFloor()}";
             weatherText.text = WeatherDisplay.Format(player.CurrentWeather);
             coinText.text = player.Gold.ToString();
-            buffText.text = $"初始Buff：{FormatBuff(player.SelectedBuff)}";
+            buffText.text = $"Buff：{FormatActiveBuffsSummary(player)}";
+        }
+
+        private static string FormatActiveBuffsSummary(PlayerData player)
+        {
+            var arr = player?.ActiveBuffs;
+            if (arr == null || arr.Length == 0)
+                return "无";
+
+            var sb = new StringBuilder();
+            for (var i = 0; i < arr.Length; i++)
+            {
+                if (i > 0)
+                    sb.Append("、");
+                sb.Append(FormatBuff(arr[i]));
+            }
+
+            return sb.ToString();
         }
 
         private void RefreshHistory()
@@ -410,6 +452,9 @@ namespace KingCardsSpire.Views.UI
                 var startId = DialogueController.ResolveBossPreFightStartId(cfg, gm.PlayerState.CurrentFloor, bossId);
                 yield return ui.StartCoroutine(dialogue.PlayDialogue(startId, null));
             }
+
+            if (gm != null && gm.HasBuff(BuffId.ChaoticBattlefield))
+                yield return gm.RunChaoticBattlefieldPreBattlePickRoutine();
 
             ctrl.RequestStartBattle(true);
             yield return ui.OpenAsync(UIPanelId.Battle);

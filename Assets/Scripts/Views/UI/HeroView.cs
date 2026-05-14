@@ -175,6 +175,10 @@ namespace KingCardsSpire.Views.UI
                 yield break;
 
             ui.Close(UIPanelId.HeroRoom);
+            var gm = GameManager.Instance;
+            if (gm != null && gm.HasBuff(BuffId.ChaoticBattlefield))
+                yield return gm.RunChaoticBattlefieldPreBattlePickRoutine();
+
             ctrl.RequestStartHeroDuel(heroSlotId, opponentDisplayName);
             yield return ui.OpenAsync(UIPanelId.Battle);
         }

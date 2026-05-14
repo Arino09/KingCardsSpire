@@ -5,7 +5,7 @@ namespace KingCardsSpire.Models
     [Serializable]
     public class SaveData
     {
-        public int Version = 2;
+        public int Version = 3;
         public PlayerData Player = new();
         public FloorState Floor = new();
         public ShopState Shop = new();

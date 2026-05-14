@@ -49,6 +49,7 @@ namespace KingCardsSpire.Models
         CardReward = 9,
         CardList = 10,
         NpcHub = 11,
-        Dialog = 12
+        Dialog = 12,
+        BuffDraft = 13
     }
 }

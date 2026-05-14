@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Text;
 using KingCardsSpire.Configs;
 using KingCardsSpire.Controllers;
@@ -127,6 +128,8 @@ namespace KingCardsSpire.Views.UI
 
         private Coroutine _tutorialFlowCoroutine;
 
+        private Coroutine _chaoticAutoCoroutine;
+
         private bool _tutorialAllowPrepareEnemyPlay;
 
         private bool _round3PreBattleDialogShown;
@@ -163,6 +166,7 @@ namespace KingCardsSpire.Views.UI
         public override void Dispose()
         {
             StopTutorialFlowCoroutine();
+            StopChaoticAutoCoroutine();
             ExitExponentialSacrificeUi(true);
             UnwireButtons();
             if (_events != null)
@@ -211,11 +215,96 @@ namespace KingCardsSpire.Views.UI
             if (_events != null)
                 _events.Unsubscribe<BattleEndedEvent>(OnTutorialBattleEndedCapture);
 
+            StopChaoticAutoCoroutine();
+
             if (_battle != null && !_battle.IsBattleActive)
-                _battle.RequestStartBattle();
+                StartCoroutine(OpenNonTutorialBattleRoutine());
 
             ExitExponentialSacrificeUi(true);
             RefreshAll();
+            TryScheduleChaoticAutoRound();
+        }
+
+        private IEnumerator OpenNonTutorialBattleRoutine()
+        {
+            var gm = GameManager.Instance;
+            if (gm != null && gm.HasBuff(BuffId.ChaoticBattlefield))
+                yield return gm.RunChaoticBattlefieldPreBattlePickRoutine();
+
+            _battle?.RequestStartBattle();
+        }
+
+        private void StopChaoticAutoCoroutine()
+        {
+            if (_chaoticAutoCoroutine == null)
+                return;
+            StopCoroutine(_chaoticAutoCoroutine);
+            _chaoticAutoCoroutine = null;
+        }
+
+        private void TryScheduleChaoticAutoRound()
+        {
+            var bm = BattleManager.Instance;
+            if (bm == null || !bm.IsBattleActive || bm.IsTutorialBattle || !bm.PlayerChaoticRandomPlayThisBattle)
+                return;
+            if (_roundVisualBusy || _awaitingExponentialSacrifice)
+                return;
+            if (_chaoticAutoCoroutine != null)
+                return;
+            _chaoticAutoCoroutine = StartCoroutine(ChaoticAutoPlayRoundRoutine());
+        }
+
+        private IEnumerator ChaoticAutoPlayRoundRoutine()
+        {
+            yield return new WaitForSeconds(0.12f);
+
+            var bm = BattleManager.Instance;
+            if (_battle == null || bm == null || !bm.IsBattleActive || bm.IsTutorialBattle ||
+                !bm.PlayerChaoticRandomPlayThisBattle || _roundVisualBusy || _awaitingExponentialSacrifice)
+            {
+                _chaoticAutoCoroutine = null;
+                yield break;
+            }
+
+            if (!bm.PrepareEnemyPlay(out _))
+            {
+                _chaoticAutoCoroutine = null;
+                yield break;
+            }
+
+            if (bm.PendingPlayerHandIndex >= 0)
+            {
+                _chaoticAutoCoroutine = null;
+                yield break;
+            }
+
+            var legal = new List<int>();
+            bm.CollectLegalPlayerHandPlayIndices(legal);
+            if (legal.Count == 0)
+            {
+                _chaoticAutoCoroutine = null;
+                yield break;
+            }
+
+            var idx = legal[UnityEngine.Random.Range(0, legal.Count)];
+            if (!_battle.TryStagePlayerCard(idx, out var err))
+            {
+                Debug.LogWarning($"[BattleView] 混乱战场自动出牌: {err}");
+                _chaoticAutoCoroutine = null;
+                yield break;
+            }
+
+            if (_battle.RequiresPlayerExponentialSacrifice())
+            {
+                if (!bm.TryAutoResolvePlayerExponentialIfNeeded(out var e2))
+                    Debug.LogWarning($"[BattleView] 混乱战场指数弃牌: {e2}");
+            }
+
+            _selectedPlayerHandIndex = -1;
+            SyncPlayerHandSelectionVisuals();
+            UpdateConfirmPlayButtonInteractable();
+            _chaoticAutoCoroutine = null;
+            StartCoroutine(RoundVisualSequenceRoutine());
         }
 
         /// <summary>
@@ -234,7 +323,9 @@ namespace KingCardsSpire.Views.UI
                 tutorialKingOk = kingIdx >= 0 && _selectedPlayerHandIndex == kingIdx;
             }
 
-            var canConfirm = _battle != null && _battle.IsBattleActive && !_roundVisualBusy &&
+            var chaoticRandom = BattleManager.Instance is { IsTutorialBattle: false, PlayerChaoticRandomPlayThisBattle: true };
+
+            var canConfirm = !chaoticRandom && _battle != null && _battle.IsBattleActive && !_roundVisualBusy &&
                              !_awaitingExponentialSacrifice && _selectedPlayerHandIndex >= 0 && tutorialKingOk;
             confirmPlayButton.interactable = canConfirm;
         }
@@ -300,6 +391,7 @@ namespace KingCardsSpire.Views.UI
             }
 
             RefreshAll();
+            TryScheduleChaoticAutoRound();
         }
 
         /// <summary>设置按钮占位。</summary>
@@ -589,6 +681,7 @@ namespace KingCardsSpire.Views.UI
             }
 
             var battleRef = _battle;
+            var chaoticPlay = BattleManager.Instance is { IsTutorialBattle: false, PlayerChaoticRandomPlayThisBattle: true };
 
             for (var i = 0; i < n; i++)
             {
@@ -624,10 +717,10 @@ namespace KingCardsSpire.Views.UI
                 if (_tutorialFirstRoundGuideActive)
                 {
                     var kingIdx = FindPlayerHandIndexForCardId(hand, WellKnownCardIds.King);
-                    cv.SetClickInteractionEnabled(!restricted && (kingIdx < 0 || i == kingIdx));
+                    cv.SetClickInteractionEnabled(!restricted && !chaoticPlay && (kingIdx < 0 || i == kingIdx));
                 }
                 else
-                    cv.SetClickInteractionEnabled(!restricted);
+                    cv.SetClickInteractionEnabled(!restricted && !chaoticPlay);
             }
 
             TrimHandTail(playerHandRoot, n);
@@ -845,6 +938,8 @@ namespace KingCardsSpire.Views.UI
             }
 
             RefreshAll();
+            TryScheduleChaoticAutoRound();
+
             TryExitCasualBattleToMainHub();
 
             if (tutorialOutcome.HasValue)
