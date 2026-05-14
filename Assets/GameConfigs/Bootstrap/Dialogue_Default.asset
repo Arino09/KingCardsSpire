@@ -193,33 +193,6 @@ MonoBehaviour:
     isChoice: 0
     nextId: 
     choices: []
-  - id: hero_1_1
-    timingKind: 3
-    backgroundId: 1
-    characterId: Heroine1/1
-    speakerName: "\u53C2\u8D5B\u8005\u4E8C"
-    bodyText: "\u6211\u662F\u4E8C\u53F7\u53C2\u8D5B\u8005\u3002"
-    isChoice: 0
-    nextId: 
-    choices: []
-  - id: hero_2_1
-    timingKind: 3
-    backgroundId: 1
-    characterId: Heroine2/1
-    speakerName: "\u53C2\u8D5B\u8005\u4E09"
-    bodyText: "\u6211\u662F\u4E09\u53F7\u53C2\u8D5B\u8005\u3002"
-    isChoice: 0
-    nextId: 
-    choices: []
-  - id: npc_npc_1_1_1
-    timingKind: 4
-    backgroundId: 2
-    characterId: NPC/Avatar/1_1
-    speakerName: "\u539F\u4F4F\u6C11"
-    bodyText: "\u4F60\u9047\u5230\u4E86\u4E00\u4F4D\u539F\u4F4F\u6C11\u3002"
-    isChoice: 0
-    nextId: 
-    choices: []
   - id: ending_final
     timingKind: 5
     backgroundId: 7
@@ -1274,6 +1247,15 @@ MonoBehaviour:
     characterId: 
     speakerName: "\u94C3\u5B50"
     bodyText: "\u201C\u6765\u5427\u3002\u201D\r\n\r\u201C\u51B3\u6218\u5427\u3002\u201D"
+    isChoice: 0
+    nextId: 
+    choices: []
+  - id: npc_11_1
+    timingKind: 4
+    backgroundId: NPC11/1
+    characterId: 
+    speakerName: 
+    bodyText: "\u4F60\u63A8\u5F00\u5176\u4E2D\u4E00\u6247\u539F\u4F4F\u6C11\u7684\u623F\u95E8\u3002\n\u623F\u95F4\u5185\u90E8\u5341\u5206\u72ED\u7A84\uFF0C\u4E09\u9762\u90FD\u88AB\u77F3\u5899\u5305\u56F4\uFF0C\u5899\u4E0A\u96F6\u96F6\u6563\u6563\u5730\u6302\u7740\u51E0\u652F\u706B\u628A\u3002\n\u4E00\u4E2A\u62AB\u5934\u6563\u53D1\u7684\u7537\u4EBA\u80CC\u5BF9\u7740\u4F60\uFF0C\u6B63\u7AD9\u5728\u5899\u524D\uFF0C\u7528\u77F3\u5934\u523B\u7740\u4EC0\u4E48\u3002\u4ED6\u53F3\u817F\u7684\u88E4\u7BA1\u548C\u5DE6\u81C2\u7684\u8896\u7BA1\u90FD\u7A7A\u8361\u8361\u5730\u5782\u7740\uFF0C\u663E\u7136\u662F\u4E00\u540D\u6B8B\u75BE\u4EBA\u3002"
     isChoice: 0
     nextId: 
     choices: []

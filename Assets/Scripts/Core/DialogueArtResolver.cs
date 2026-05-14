@@ -11,11 +11,14 @@ namespace KingCardsSpire.Core
         {
             if (string.IsNullOrWhiteSpace(backgroundId))
                 return null;
-            var id = backgroundId.Trim();
+            var id = backgroundId.Trim().Replace('\\', '/');
+            var baseAddress = id.Contains("/")
+                ? "Sprites/Character/NPCbg"
+                : "Sprites/UI/FloorBg";
             if (id.EndsWith(".jpg", System.StringComparison.OrdinalIgnoreCase) ||
                 id.EndsWith(".png", System.StringComparison.OrdinalIgnoreCase))
-                return $"Sprites/UI/FloorBg/{id}";
-            return $"Sprites/UI/FloorBg/{id}.jpg";
+                return $"{baseAddress}/{id}";
+            return $"{baseAddress}/{id}.jpg";
         }
 
         public static string ResolveCharacterAddress(string characterId)

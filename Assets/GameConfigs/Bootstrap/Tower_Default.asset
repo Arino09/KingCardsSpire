@@ -19,69 +19,76 @@ MonoBehaviour:
     - king
     - commoner
     npcIds:
-    - npc_1_1
-    - npc_1_2
+    - 11
+    - 12
     rewardCardPoolIds:
     - king
     - commoner
+    bossAiStrength: 0
     goldBonusPerSpareDay: 5
   - bossId: floor_2_boss
     enemyDeckCardIds:
     - king
     - commoner
     npcIds:
-    - npc_2_1
+    - 2
     rewardCardPoolIds:
     - king
     - commoner
+    bossAiStrength: 0
     goldBonusPerSpareDay: 5
   - bossId: floor_3_boss
     enemyDeckCardIds:
     - king
     - commoner
     npcIds:
-    - npc_3_1
+    - 3
     rewardCardPoolIds:
     - king
     - commoner
+    bossAiStrength: 0
     goldBonusPerSpareDay: 5
   - bossId: floor_4_boss
     enemyDeckCardIds:
     - king
     - commoner
     npcIds:
-    - npc_4_1
+    - 4
     rewardCardPoolIds:
     - king
     - commoner
+    bossAiStrength: 0
     goldBonusPerSpareDay: 5
   - bossId: floor_5_boss
     enemyDeckCardIds:
     - king
     - commoner
     npcIds:
-    - npc_5_1
+    - 5
     rewardCardPoolIds:
     - king
     - commoner
+    bossAiStrength: 0
     goldBonusPerSpareDay: 5
   - bossId: floor_6_boss
     enemyDeckCardIds:
     - king
     - commoner
     npcIds:
-    - npc_6_1
+    - 6
     rewardCardPoolIds:
     - king
     - commoner
+    bossAiStrength: 0
     goldBonusPerSpareDay: 5
   - bossId: floor_7_boss
     enemyDeckCardIds:
     - king
     - commoner
     npcIds:
-    - npc_7_1
+    - 7
     rewardCardPoolIds:
     - king
     - commoner
+    bossAiStrength: 0
     goldBonusPerSpareDay: 5

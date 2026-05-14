@@ -13,35 +13,39 @@ MonoBehaviour:
   m_Name: NpcConfig
   m_EditorClassIdentifier: 
   npcs:
-  - npcId: 
-    displayName: 
-    portraitId: 
-    avatarId: 
-  - npcId: 
-    displayName: 
-    portraitId: 
-    avatarId: 
-  - npcId: 
-    displayName: 
-    portraitId: 
-    avatarId: 
-  - npcId: 
-    displayName: 
-    portraitId: 
-    avatarId: 
-  - npcId: 
-    displayName: 
-    portraitId: 
-    avatarId: 
-  - npcId: 
-    displayName: 
-    portraitId: 
-    avatarId: 
-  - npcId: 
-    displayName: 
-    portraitId: 
-    avatarId: 
-  - npcId: 
-    displayName: 
-    portraitId: 
-    avatarId: 
+  - npcId: 11
+    displayName: "\u56DA\u5F92"
+    portraitId: NPC/1_1
+    avatarId: NPC/Avatar/1_1
+  - npcId: 12
+    displayName: "\u5EFA\u7B51\u5E08"
+    portraitId: NPC/1_2
+    avatarId: NPC/Avatar/1_2
+  - npcId: 2
+    displayName: "\u5360\u535C\u5E08"
+    portraitId: NPC/2_1
+    avatarId: NPC/Avatar/2_1
+  - npcId: 3
+    displayName: "\u6570\u5B66\u5BB6"
+    portraitId: NPC/3_1
+    avatarId: NPC/Avatar/3_1
+  - npcId: 41
+    displayName: "\u5C0F\u4E11"
+    portraitId: NPC/4_1
+    avatarId: NPC/Avatar/4_1
+  - npcId: 42
+    displayName: "\u5C0F\u4E11"
+    portraitId: NPC/4_1_1
+    avatarId: NPC/Avatar/4_1_1
+  - npcId: 5
+    displayName: "\u64CD\u7EB5\u8005"
+    portraitId: NPC/5_1
+    avatarId: NPC/Avatar/5_1
+  - npcId: 6
+    displayName: "\u6539\u9769\u8005"
+    portraitId: NPC/6_1
+    avatarId: NPC/Avatar/6_1
+  - npcId: 7
+    displayName: "\u7CBE\u795E\u75C5"
+    portraitId: NPC/7_1
+    avatarId: NPC/Avatar/7_1
