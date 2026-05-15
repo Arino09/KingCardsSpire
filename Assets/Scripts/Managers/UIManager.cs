@@ -5,14 +5,27 @@ using KingCardsSpire.Models;
 using KingCardsSpire.Views.UI;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 namespace KingCardsSpire.Managers
 {
     public sealed class UIManager : PersistentMonoSingleton<UIManager>
     {
+        private const string LoadingViewAddress = "UI/LoadingView";
+
         private readonly Stack<BaseView> _stack = new();
         private readonly Dictionary<UIPanelId, BaseView> _active = new();
         private Transform _uiRoot;
+
+        [Header("Loading 遮罩（仅打开 MainHub / MainView 时）")]
+        [SerializeField] private float _loadingFadeInDuration = 0.15f;
+        [SerializeField] private float _loadingFadeOutDuration = 0.2f;
+        [Tooltip("嵌套 Canvas 的 overrideSorting，保证 Loading 盖过同场景内其它 UI Canvas。")]
+        [SerializeField] private int _loadingOverlayCanvasSortOrder = 32000;
+
+        private GameObject _loadingOverlayRoot;
+        private LoadingView _loadingView;
+        private int _loadingOverlayRefCount;
 
         protected override void Awake()
         {
@@ -70,12 +83,51 @@ namespace KingCardsSpire.Managers
             if (string.IsNullOrEmpty(key))
                 yield break;
 
+            // Loading 仅用于进入主塔 hub（MainView）：主菜单或其它流程打开 MainHub 时遮挡异步实例化间隙。
+            var useMainHubLoading = panelId == UIPanelId.MainHub;
+            if (useMainHubLoading)
+            {
+                _loadingOverlayRefCount++;
+                var isFirstOverlayUser = _loadingOverlayRefCount == 1;
+
+                if (isFirstOverlayUser)
+                {
+                    yield return EnsureLoadingOverlayRoutine();
+                    if (_loadingOverlayRoot != null && _loadingView != null)
+                    {
+                        _loadingOverlayRoot.SetActive(true);
+                        BringLoadingOverlayToFront();
+                        yield return _loadingView.FadeTo(1f, _loadingFadeInDuration);
+                    }
+                }
+                else
+                {
+                    yield return EnsureLoadingOverlayRoutine();
+                    if (_loadingOverlayRoot != null && _loadingView != null)
+                    {
+                        _loadingOverlayRoot.SetActive(true);
+                        BringLoadingOverlayToFront();
+                        if (!Mathf.Approximately(_loadingView.DisplayAlpha, 1f))
+                            yield return _loadingView.FadeTo(1f, _loadingFadeInDuration);
+                    }
+                }
+            }
+
             GameObject go = null;
             yield return AssetManager.Instance.InstantiateAndWait(key, _uiRoot, g => go = g);
-            if (go == null)
-                yield break;
 
-            go.transform.SetAsLastSibling();
+            if (useMainHubLoading && _loadingOverlayRoot != null)
+                BringLoadingOverlayToFront();
+
+            if (go == null)
+            {
+                if (useMainHubLoading)
+                    yield return ReleaseLoadingOverlayRoutine();
+                yield break;
+            }
+
+            if (!useMainHubLoading)
+                go.transform.SetAsLastSibling();
 
             var view = go.GetComponent<BaseView>();
             if (view == null)
@@ -88,8 +140,87 @@ namespace KingCardsSpire.Managers
 
             _active[panelId] = view;
             _stack.Push(view);
+            if (useMainHubLoading && _loadingOverlayRoot != null)
+                BringLoadingOverlayToFront();
             // 给布局与部分子控件一帧完成首帧刷新，减轻「预制体默认态 → 首帧后布局」的跳变感。
             yield return null;
+
+            if (useMainHubLoading && view is MainHubView mainHub)
+                yield return mainHub.WaitForInitialHubPresentationReady();
+
+            // 背景 Sprite 赋值后再留一帧，减轻淡出开始时 Image 尚未完成绘制的闪断。
+            if (useMainHubLoading)
+                yield return null;
+
+            if (useMainHubLoading)
+            {
+                yield return ReleaseLoadingOverlayRoutine();
+                go.transform.SetAsLastSibling();
+            }
+
+            GameAudioDirector.Instance?.RefreshFromUiState();
+        }
+
+        private IEnumerator EnsureLoadingOverlayRoutine()
+        {
+            if (_loadingOverlayRoot != null)
+                yield break;
+
+            if (_uiRoot == null)
+            {
+                Debug.LogWarning("[UIManager] EnsureLoadingOverlay：_uiRoot 未初始化，跳过 Loading。");
+                yield break;
+            }
+
+            GameObject created = null;
+            yield return AssetManager.Instance.InstantiateAndWait(LoadingViewAddress, _uiRoot, g => created = g);
+            if (created == null)
+            {
+                Debug.LogWarning($"[UIManager] LoadingView 实例化失败 address={LoadingViewAddress}");
+                yield break;
+            }
+
+            _loadingOverlayRoot = created;
+            _loadingView = _loadingOverlayRoot.GetComponent<LoadingView>();
+            if (_loadingView == null)
+                _loadingView = _loadingOverlayRoot.AddComponent<LoadingView>();
+
+            _loadingView.ApplyHiddenVisual();
+            BringLoadingOverlayToFront();
+            _loadingOverlayRoot.SetActive(false);
+        }
+
+        /// <summary>
+        /// 将 Loading 置于兄弟节点最末，并配置独立 Canvas 的 <see cref="Canvas.sortingOrder"/>，避免被其它 overrideSorting 的面板压住。
+        /// </summary>
+        private void BringLoadingOverlayToFront()
+        {
+            if (_loadingOverlayRoot == null)
+                return;
+
+            var canvas = _loadingOverlayRoot.GetComponent<Canvas>();
+            if (canvas == null)
+                canvas = _loadingOverlayRoot.AddComponent<Canvas>();
+            canvas.overrideSorting = true;
+            canvas.sortingOrder = _loadingOverlayCanvasSortOrder;
+
+            if (_loadingOverlayRoot.GetComponent<GraphicRaycaster>() == null)
+                _loadingOverlayRoot.AddComponent<GraphicRaycaster>();
+
+            _loadingOverlayRoot.transform.SetAsLastSibling();
+        }
+
+        private IEnumerator ReleaseLoadingOverlayRoutine()
+        {
+            _loadingOverlayRefCount--;
+            if (_loadingOverlayRefCount < 0)
+                _loadingOverlayRefCount = 0;
+
+            if (_loadingOverlayRefCount > 0 || _loadingView == null || _loadingOverlayRoot == null)
+                yield break;
+
+            yield return _loadingView.FadeTo(0f, _loadingFadeOutDuration);
+            _loadingOverlayRoot.SetActive(false);
         }
 
         /// <summary>
@@ -115,6 +246,8 @@ namespace KingCardsSpire.Managers
             _active.Remove(panelId);
             if (_stack.Count > 0 && _stack.Peek() == view)
                 _stack.Pop();
+
+            GameAudioDirector.Instance?.RefreshFromUiState();
         }
 
         public void CloseAll()
@@ -130,7 +263,7 @@ namespace KingCardsSpire.Managers
 
             _active.Clear();
             _stack.Clear();
+            GameAudioDirector.Instance?.RefreshFromUiState();
         }
-
     }
 }

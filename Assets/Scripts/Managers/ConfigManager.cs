@@ -10,6 +10,9 @@ namespace KingCardsSpire.Managers
     public sealed class ConfigManager : PersistentMonoSingleton<ConfigManager>
     {
         private readonly Dictionary<string, CardConfigEntry> _cards = new();
+
+        /// <summary>与卡表资源中 <see cref="CardConfig.Cards"/> 列表顺序一致（多资源时按 Addressables 返回顺序依次追加，同 Id 仅首次出现）。</summary>
+        private readonly List<CardConfigEntry> _cardsInConfigOrder = new();
         private readonly Dictionary<string, BuffConfigEntry> _buffs = new();
         private readonly Dictionary<BuffId, BuffConfigEntry> _buffsByBuffId = new();
         private readonly Dictionary<string, WeatherConfigEntry> _weathers = new();
@@ -93,6 +96,7 @@ namespace KingCardsSpire.Managers
         private void IndexCards(IList<CardConfig> list)
         {
             _cards.Clear();
+            _cardsInConfigOrder.Clear();
             if (list == null)
                 return;
             foreach (var db in list)
@@ -107,8 +111,10 @@ namespace KingCardsSpire.Managers
                     var c = entries[i];
                     if (c == null || string.IsNullOrEmpty(c.Id))
                         continue;
-                    if (!_cards.ContainsKey(c.Id))
-                        _cards.Add(c.Id, c);
+                    if (_cards.ContainsKey(c.Id))
+                        continue;
+                    _cards.Add(c.Id, c);
+                    _cardsInConfigOrder.Add(c);
                 }
             }
         }
@@ -314,6 +320,20 @@ namespace KingCardsSpire.Managers
             dest.Clear();
             foreach (var kv in _cards)
                 dest.Add(kv.Key);
+        }
+
+        /// <summary>将全部已索引卡牌表行写入 <paramref name="dest"/>（先 Clear），顺序与配置表 <see cref="CardConfig.Cards"/> 中条目顺序一致。</summary>
+        public void CopyAllCardEntries(List<CardConfigEntry> dest)
+        {
+            if (dest == null)
+                return;
+            dest.Clear();
+            for (var i = 0; i < _cardsInConfigOrder.Count; i++)
+            {
+                var c = _cardsInConfigOrder[i];
+                if (c != null)
+                    dest.Add(c);
+            }
         }
 
         /// <summary>从卡表行生成运行时 <see cref="Card"/>（参赛者卡组、图鉴等复用）。</summary>

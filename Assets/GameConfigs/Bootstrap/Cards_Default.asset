@@ -111,7 +111,7 @@ MonoBehaviour:
     isUnique: 0
   - id: regicide
     displayName: "\u5F11\u541B\u8005"
-    level: 3
+    level: 1
     type: 0
     icon:
       m_AssetGUID: 4f6668560d3355144857cf821d1dbb9f
@@ -119,11 +119,11 @@ MonoBehaviour:
       m_SubObjectType: UnityEngine.Sprite, UnityEngine.CoreModule, Version=0.0.0.0,
         Culture=neutral, PublicKeyToken=null
       m_EditorAssetChanged: 0
-    description: 
+    description: "\u5F53\u4F60\u624B\u724C\u4E2D\u6CA1\u6709\u56FD\u738B\u65F6\u53D8\u4E3A\u56FD\u738B"
     isUnique: 0
   - id: rebel
     displayName: "\u4E71\u515A"
-    level: 2
+    level: 1
     type: 0
     icon:
       m_AssetGUID: 669a20e72127c1c459cf9c91ae128a3c
@@ -131,7 +131,7 @@ MonoBehaviour:
       m_SubObjectType: UnityEngine.Sprite, UnityEngine.CoreModule, Version=0.0.0.0,
         Culture=neutral, PublicKeyToken=null
       m_EditorAssetChanged: 0
-    description: 
+    description: "\u5F53\u4F60\u624B\u724C\u4E2D\u6CA1\u6709\u5927\u81E3\u65F6\u53D8\u4E3A\u5927\u81E3"
     isUnique: 0
   - id: beggar
     displayName: "\u4E5E\u4E10"
@@ -143,7 +143,7 @@ MonoBehaviour:
       m_SubObjectType: UnityEngine.Sprite, UnityEngine.CoreModule, Version=0.0.0.0,
         Culture=neutral, PublicKeyToken=null
       m_EditorAssetChanged: 0
-    description: 
+    description: "\u5F53\u4F60\u624B\u724C\u4E2D\u6CA1\u6709\u5E73\u6C11\u65F6\u53D8\u4E3A\u5E73\u6C11"
     isUnique: 0
   - id: assassin
     displayName: "\u523A\u5BA2"
@@ -191,7 +191,7 @@ MonoBehaviour:
       m_SubObjectType: UnityEngine.Sprite, UnityEngine.CoreModule, Version=0.0.0.0,
         Culture=neutral, PublicKeyToken=null
       m_EditorAssetChanged: 0
-    description: "\u590D\u5236\u5BF9\u624B\u4E0A\u4E00\u5F20\u51FA\u7684\u724C"
+    description: "\u590D\u5236\u5BF9\u624B\u6253\u51FA\u7684\u4E0A\u4E00\u5F20\u724C"
     isUnique: 0
   - id: fate
     displayName: "\u547D\u8FD0"
@@ -203,7 +203,7 @@ MonoBehaviour:
       m_SubObjectType: UnityEngine.Sprite, UnityEngine.CoreModule, Version=0.0.0.0,
         Culture=neutral, PublicKeyToken=null
       m_EditorAssetChanged: 0
-    description: "\u968F\u673A\u51FA\u724C\uFF0C\u7B49\u7EA7+1"
+    description: "\u51FA\u724C\u65F6\u7B49\u7EA7\u968F\u673A\u53D8\u4E3A1\uFF5E3\u7684\u6574\u6570"
     isUnique: 0
   - id: civilization
     displayName: "\u6587\u660E"
@@ -215,7 +215,7 @@ MonoBehaviour:
       m_SubObjectType: UnityEngine.Sprite, UnityEngine.CoreModule, Version=0.0.0.0,
         Culture=neutral, PublicKeyToken=null
       m_EditorAssetChanged: 0
-    description: "\u672C\u5C40\u5269\u4F59\u5361\u5168\u90E8\u53D8\u4E3A\u56FD\u738B\u7B49\u7EA7(3)"
+    description: "\u6253\u51FA\u540E\uFF0C\u4F60\u7684\u6240\u6709\u624B\u724C\u53D8\u4E3A\u56FD\u738B"
     isUnique: 0
   - id: all_in
     displayName: "\u5B64\u6CE8\u4E00\u63B7"
@@ -227,7 +227,7 @@ MonoBehaviour:
       m_SubObjectType: UnityEngine.Sprite, UnityEngine.CoreModule, Version=0.0.0.0,
         Culture=neutral, PublicKeyToken=null
       m_EditorAssetChanged: 0
-    description: "\u968F\u673A\u5931\u53BB1\u5F20\u724C\uFF0C\u7B49\u7EA7\xD72"
+    description: "\u968F\u673A\u5C06\u53E6\u4E00\u5F20\u624B\u724C\u7684\u7B49\u7EA7X2"
     isUnique: 0
   - id: hope
     displayName: "\u5E0C\u671B"
@@ -239,7 +239,7 @@ MonoBehaviour:
       m_SubObjectType: UnityEngine.Sprite, UnityEngine.CoreModule, Version=0.0.0.0,
         Culture=neutral, PublicKeyToken=null
       m_EditorAssetChanged: 0
-    description: "\u4ECE\u5F03\u724C\u5806\u53EC\u56DE1\u5F20\u968F\u673A\u724C"
+    description: "\u5C061\u5F20\u968F\u673A\u724C\u4ECE\u5F03\u724C\u5806\u653E\u56DE\u624B\u724C"
     isUnique: 0
   - id: demon
     displayName: "\u6076\u9B54"
@@ -263,11 +263,11 @@ MonoBehaviour:
       m_SubObjectType: UnityEngine.Sprite, UnityEngine.CoreModule, Version=0.0.0.0,
         Culture=neutral, PublicKeyToken=null
       m_EditorAssetChanged: 0
-    description: "\u672C\u5C40\u6BCF\u51FA\u724C\u4E00\u6B21\u7B49\u7EA7+0.1"
+    description: "\u6BCF\u6253\u51FA\u4E00\u6B21\uFF0C\u8FD9\u5F20\u724C\u7684\u7B49\u7EA7\u6C38\u4E45+0.1"
     isUnique: 0
   - id: strike_blade
     displayName: "\u6325\u5251"
-    level: 0
+    level: 4
     type: 1
     icon:
       m_AssetGUID: fca6b5c94fa37c74db6f22bdfc005b77
@@ -275,7 +275,7 @@ MonoBehaviour:
       m_SubObjectType: UnityEngine.Sprite, UnityEngine.CoreModule, Version=0.0.0.0,
         Culture=neutral, PublicKeyToken=null
       m_EditorAssetChanged: 0
-    description: "\u672C\u5C40\u6BCF\u51FA\u724C\u4E00\u6B21\u7B49\u7EA7-0.1"
+    description: "\u6BCF\u6253\u51FA\u4E00\u6B21\uFF0C\u8FD9\u5F20\u724C\u7684\u7B49\u7EA7\u6C38\u4E45-0.1"
     isUnique: 0
   - id: four_qinglong
     displayName: "\u56DB\u8C61\u2014\u9752\u9F99"
@@ -287,7 +287,7 @@ MonoBehaviour:
       m_SubObjectType: UnityEngine.Sprite, UnityEngine.CoreModule, Version=0.0.0.0,
         Culture=neutral, PublicKeyToken=null
       m_EditorAssetChanged: 0
-    description: "\u56DB\u8C61\u5168\u90E8\u6218\u80DC\u5BF9\u624B\u76F4\u63A5\u80DC\u5229"
+    description: "\u5728\u672C\u573A\u6218\u6597\uFF0C\u56DB\u8C61\u5168\u90E8\u6218\u80DC\u5BF9\u624B\u4E00\u6B21\u540E\u76F4\u63A5\u80DC\u5229"
     isUnique: 0
   - id: four_baihu
     displayName: "\u56DB\u8C61\u2014\u767D\u864E"
@@ -299,7 +299,7 @@ MonoBehaviour:
       m_SubObjectType: UnityEngine.Sprite, UnityEngine.CoreModule, Version=0.0.0.0,
         Culture=neutral, PublicKeyToken=null
       m_EditorAssetChanged: 0
-    description: "\u56DB\u8C61\u5168\u90E8\u6218\u80DC\u5BF9\u624B\u76F4\u63A5\u80DC\u5229"
+    description: "\u5728\u672C\u573A\u6218\u6597\uFF0C\u56DB\u8C61\u5168\u90E8\u6218\u80DC\u5BF9\u624B\u4E00\u6B21\u540E\u76F4\u63A5\u80DC\u5229"
     isUnique: 0
   - id: four_zhuque
     displayName: "\u56DB\u8C61\u2014\u6731\u96C0"
@@ -311,7 +311,7 @@ MonoBehaviour:
       m_SubObjectType: UnityEngine.Sprite, UnityEngine.CoreModule, Version=0.0.0.0,
         Culture=neutral, PublicKeyToken=null
       m_EditorAssetChanged: 0
-    description: "\u56DB\u8C61\u5168\u90E8\u6218\u80DC\u5BF9\u624B\u76F4\u63A5\u80DC\u5229"
+    description: "\u5728\u672C\u573A\u6218\u6597\uFF0C\u56DB\u8C61\u5168\u90E8\u6218\u80DC\u5BF9\u624B\u4E00\u6B21\u540E\u76F4\u63A5\u80DC\u5229"
     isUnique: 0
   - id: four_xuanwu
     displayName: "\u56DB\u8C61\u2014\u7384\u6B66"
@@ -323,7 +323,7 @@ MonoBehaviour:
       m_SubObjectType: UnityEngine.Sprite, UnityEngine.CoreModule, Version=0.0.0.0,
         Culture=neutral, PublicKeyToken=null
       m_EditorAssetChanged: 0
-    description: "\u56DB\u8C61\u5168\u90E8\u6218\u80DC\u5BF9\u624B\u76F4\u63A5\u80DC\u5229"
+    description: "\u5728\u672C\u573A\u6218\u6597\uFF0C\u56DB\u8C61\u5168\u90E8\u6218\u80DC\u5BF9\u624B\u4E00\u6B21\u540E\u76F4\u63A5\u80DC\u5229"
     isUnique: 0
   - id: warm_day
     displayName: "\u6696\u65E5"
@@ -352,14 +352,14 @@ MonoBehaviour:
   - id: final_moment
     displayName: "\u6700\u7EC8\u65F6\u523B"
     level: 0
-    type: 2
+    type: 1
     icon:
       m_AssetGUID: f5f4f429a3a0ce24680b92a3864152ad
       m_SubObjectName: "20. \u6700\u7EC8\u65F6\u523B"
       m_SubObjectType: UnityEngine.Sprite, UnityEngine.CoreModule, Version=0.0.0.0,
         Culture=neutral, PublicKeyToken=null
       m_EditorAssetChanged: 0
-    description: "\u4E0B\u6B21\u51FA\u724C\u53CC\u65B9\u53EA\u80FD\u51FA\u56FD\u738B/\u5E73\u6C11/\u5927\u81E3"
+    description: "\u6253\u51FA\u540E\u53CC\u65B9\u7ACB\u5373\u5F03\u6389\u624B\u724C\u4E2D\u9664\u56FD\u738B/\u5927\u81E3/\u5E73\u6C11\u5916\u7684\u6240\u6709\u724C"
     isUnique: 0
   - id: even_form
     displayName: "\u5076\u6570\u5F62\u6001"
@@ -395,7 +395,7 @@ MonoBehaviour:
       m_SubObjectType: UnityEngine.Sprite, UnityEngine.CoreModule, Version=0.0.0.0,
         Culture=neutral, PublicKeyToken=null
       m_EditorAssetChanged: 0
-    description: "\u6BCF\u6B21\u51FA\u724C\u989D\u5916\u5931\u53BB1\u5F20\u81EA\u9009\u724C\uFF0C\u724C\u7B49\u7EA7\xB2"
+    description: "\u6BCF\u6B21\u51FA\u724C\u989D\u5916\u5931\u53BB1\u5F20\u81EA\u9009\u724C\uFF0C\u724C\u7B49\u7EA7\u53D8\u4E3A\u5E73\u65B9"
     isUnique: 0
   - id: golden_necklace
     displayName: "\u91D1\u8272\u9879\u94FE"
@@ -419,7 +419,7 @@ MonoBehaviour:
       m_SubObjectType: UnityEngine.Sprite, UnityEngine.CoreModule, Version=0.0.0.0,
         Culture=neutral, PublicKeyToken=null
       m_EditorAssetChanged: 0
-    description: "\u672C\u5C40\u7B49\u7EA7\u8D8A\u4F4E\u6392\u5E8F\u8D8A\u9AD8"
+    description: "\u53CD\u8F6C\u672C\u5C40\u6E38\u620F\u7684\u7B49\u7EA7\u6392\u5E8F"
     isUnique: 0
   - id: daydream
     displayName: "\u767D\u65E5\u68A6"
@@ -431,7 +431,7 @@ MonoBehaviour:
       m_SubObjectType: UnityEngine.Sprite, UnityEngine.CoreModule, Version=0.0.0.0,
         Culture=neutral, PublicKeyToken=null
       m_EditorAssetChanged: 0
-    description: "\u6BCF\u56DE\u54081\u5F20\u624B\u724C\u66FF\u6362\u4E3A\u968F\u673A\u724C"
+    description: "\u6BCF\u56DE\u5408\u5C06\u4F60\u76841\u5F20\u624B\u724C\u66FF\u6362\u4E3A\u968F\u673A\u724C"
     isUnique: 0
   - id: foresight
     displayName: "\u9884\u89C1\u724C"
@@ -455,7 +455,7 @@ MonoBehaviour:
       m_SubObjectType: UnityEngine.Sprite, UnityEngine.CoreModule, Version=0.0.0.0,
         Culture=neutral, PublicKeyToken=null
       m_EditorAssetChanged: 0
-    description: "\u91CD\u65B0\u51FA\u672C\u6B21\u5DF2\u51FA\u7684\u724C"
+    description: "\u4ECE\u5F03\u724C\u5806\u9009\u62E91\u5F20\u724C\u653E\u56DE\u624B\u724C"
     isUnique: 0
   - id: debuff_half
     displayName: "\u51CF0.5\u724C"
@@ -539,5 +539,5 @@ MonoBehaviour:
       m_SubObjectType: UnityEngine.Sprite, UnityEngine.CoreModule, Version=0.0.0.0,
         Culture=neutral, PublicKeyToken=null
       m_EditorAssetChanged: 0
-    description: "\u672C\u56DE\u5408\u8D25\u724C\u4E0D\u653E\u5165\u5F03\u724C\u5806"
+    description: "\u672C\u5C40\u6E38\u620F\u56DE\u5408\u6570\u4E0A\u9650+1"
     isUnique: 0

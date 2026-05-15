@@ -68,6 +68,7 @@ namespace KingCardsSpire.Views.UI
 
         private void OnCloseClicked()
         {
+            UiButtonSfx.PlayDefaultClick();
             UIManager.Instance.Close(UIPanelId.NpcHub);
         }
 
@@ -81,6 +82,22 @@ namespace KingCardsSpire.Views.UI
             yield return ui.StartCoroutine(dialogue.PlayDialogue(startId, null));
             var gm = _game ?? GameManager.Instance;
             gm?.CompleteNpcDialogue(npcId);
+
+            var openedCardReward = false;
+            if (gm != null &&
+                gm.GetNpcDialogueCompletedCount(npcId) >= StoryDialogueRules.MaxNpcStoryCount &&
+                gm.TryPrepareNpcStoryCompletionRewards())
+            {
+                yield return ui.OpenAsync(UIPanelId.CardReward);
+                openedCardReward = true;
+            }
+
+            if (openedCardReward)
+            {
+                while (ui.IsPanelOpen(UIPanelId.CardReward))
+                    yield return null;
+            }
+
             RebuildList();
         }
 
@@ -139,6 +156,7 @@ namespace KingCardsSpire.Views.UI
 
         private void OnNewEncounterClicked()
         {
+            UiButtonSfx.PlayDefaultClick();
             var gm = _game ?? GameManager.Instance;
             if (gm == null)
                 return;
@@ -161,6 +179,7 @@ namespace KingCardsSpire.Views.UI
 
         private void OnMetNpcClicked(string npcId)
         {
+            UiButtonSfx.PlayDefaultClick();
             var gm = _game ?? GameManager.Instance;
             if (gm == null)
                 return;

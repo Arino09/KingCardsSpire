@@ -13,8 +13,9 @@ using UnityEngine.UI;
 namespace KingCardsSpire.Views.UI
 {
     /// <summary>
-    /// 驻守者奖励、常规战胜三选一、主角房友谊赛三选一或「删仓库一张牌」奖励；选项使用与战斗相同的 Card 预制体（<see cref="CardView"/>）。
-    /// 驻守：跳过卡牌按钮领取列表中<strong>全部金币项</strong>（见 <see cref="GameManager.TrySkipBossCardRewardsCollectGoldAndAdvance"/>）。
+    /// 驻守者奖励、原住民剧情完成三选一、常规战胜三选一、主角房友谊赛三选一或「删仓库一张牌」奖励；选项使用与战斗相同的 Card 预制体（<see cref="CardView"/>）。
+    /// 驻守：SpareDay 金币在战胜时已静默发放；跳过表示不领卡并进层（见 <see cref="GameManager.TrySkipBossCardRewardsCollectGoldAndAdvance"/>）。
+    /// 原住民三段剧情完成：三选一基础卡，确认后加入持有，跳过放弃本次奖励；不占驻守、不进层。
     /// 常规 / 友谊赛三选一：跳过表示不获得本次卡牌奖励，仅关闭本面板。
     /// 友谊赛删仓库：跳过仍发放 5 金币且不删牌。
     /// </summary>
@@ -25,7 +26,8 @@ namespace KingCardsSpire.Views.UI
             BossRewards,
             CasualVictory,
             HeroDuelPickThree,
-            HeroDuelRemoveStorage
+            HeroDuelRemoveStorage,
+            NpcStoryCompletion
         }
 
         [SerializeField] private Text titleText;
@@ -85,6 +87,9 @@ namespace KingCardsSpire.Views.UI
             if (bm?.PendingCasualVictoryRewardCardIds != null && bm.PendingCasualVictoryRewardCardIds.Count > 0)
                 return CardRewardSessionKind.CasualVictory;
 
+            if (gm?.PendingNpcStoryCompletionRewards != null && gm.PendingNpcStoryCompletionRewards.Count > 0)
+                return CardRewardSessionKind.NpcStoryCompletion;
+
             return CardRewardSessionKind.BossRewards;
         }
 
@@ -103,6 +108,9 @@ namespace KingCardsSpire.Views.UI
                     return;
                 case CardRewardSessionKind.HeroDuelRemoveStorage:
                     titleText.text = "友谊赛胜利 · 删除仓库中的一张牌";
+                    return;
+                case CardRewardSessionKind.NpcStoryCompletion:
+                    titleText.text = "原住民剧情完成 · 选择一张卡牌";
                     return;
                 default:
                 {
@@ -137,6 +145,12 @@ namespace KingCardsSpire.Views.UI
             if (_sessionKind == CardRewardSessionKind.HeroDuelRemoveStorage)
             {
                 BuildHeroDuelRemoveStorageOptionCards();
+                return;
+            }
+
+            if (_sessionKind == CardRewardSessionKind.NpcStoryCompletion)
+            {
+                BuildNpcStoryCompletionOptionCards();
                 return;
             }
 
@@ -256,6 +270,38 @@ namespace KingCardsSpire.Views.UI
             }
         }
 
+        private void BuildNpcStoryCompletionOptionCards()
+        {
+            var gm = _game ?? GameManager.Instance;
+            var list = gm?.PendingNpcStoryCompletionRewards;
+            var count = list != null ? list.Count : 0;
+
+            for (var i = 0; i < count; i++)
+            {
+                var opt = list[i];
+                if (opt == null)
+                    continue;
+
+                var cv = Instantiate(cardOptionPrefab, cardOptionsRoot, false);
+                cv.SetScale(cardOptionScale);
+                cv.SetFaceDown(false);
+
+                CardConfigEntry cfg = null;
+                if (!opt.IsGold && !string.IsNullOrEmpty(opt.CardId) && _config != null)
+                    _config.TryGetCard(opt.CardId, out cfg);
+
+                var vm = CardViewModel.FromBossRewardOption(opt, cfg);
+                cv.Apply(vm);
+
+                if (cfg != null)
+                    cv.LoadCardArtFromConfig(cfg);
+
+                var idx = i;
+                cv.OverrideClick(() => StartCoroutine(OnNpcStoryCompletionOptionConfirmed(idx)));
+                _spawnedOptionCards.Add(cv);
+            }
+        }
+
         private void BuildHeroDuelRemoveStorageOptionCards()
         {
             var gm = GameManager.Instance;
@@ -319,6 +365,7 @@ namespace KingCardsSpire.Views.UI
 
             _onSkipClicked = () =>
             {
+                UiButtonSfx.PlayDefaultClick();
                 switch (_sessionKind)
                 {
                     case CardRewardSessionKind.BossRewards:
@@ -332,6 +379,9 @@ namespace KingCardsSpire.Views.UI
                         break;
                     case CardRewardSessionKind.HeroDuelRemoveStorage:
                         StartCoroutine(OnHeroDuelRemoveStorageSkipRoutine());
+                        break;
+                    case CardRewardSessionKind.NpcStoryCompletion:
+                        StartCoroutine(OnNpcStoryCompletionSkipRoutine());
                         break;
                 }
             };
@@ -397,6 +447,29 @@ namespace KingCardsSpire.Views.UI
 
             bm.ClearPendingHeroDuelPickThreeOffer();
             ui.Close(UIPanelId.CardReward);
+        }
+
+        private IEnumerator OnNpcStoryCompletionOptionConfirmed(int index)
+        {
+            var gm = GameManager.Instance;
+            var ui = UIManager.Instance;
+            if (gm == null || ui == null)
+                yield break;
+
+            if (!gm.TryApplyNpcStoryCompletionReward(index))
+                yield break;
+
+            ui.Close(UIPanelId.CardReward);
+        }
+
+        private IEnumerator OnNpcStoryCompletionSkipRoutine()
+        {
+            var gm = GameManager.Instance;
+            var ui = UIManager.Instance;
+            gm?.ClearPendingNpcStoryCompletionRewardOffer();
+            if (ui != null)
+                ui.Close(UIPanelId.CardReward);
+            yield break;
         }
 
         private IEnumerator OnHeroDuelRemoveStorageConfirmed(int index)
@@ -467,7 +540,7 @@ namespace KingCardsSpire.Views.UI
             if (gm == null || ui == null || dialogue == null || !gm.IsRunVictory)
                 yield break;
 
-            yield return ui.StartCoroutine(dialogue.PlayDialogue("ending_final", null));
+            yield return ui.StartCoroutine(dialogue.PlayDialogue(WellKnownDialogueIds.EndingFinal, null));
         }
 
         private static void CloseRewardAndBattle(UIManager ui)

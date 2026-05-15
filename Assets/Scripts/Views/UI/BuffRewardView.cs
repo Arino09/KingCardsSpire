@@ -77,6 +77,7 @@ namespace KingCardsSpire.Views.UI
 
         private void OnOptionClicked(int index)
         {
+            UiButtonSfx.PlayDefaultClick();
             if (index < 0 || index >= OptionCount)
                 return;
             var pick = _optionBuffIds[index];

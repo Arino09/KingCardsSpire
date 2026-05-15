@@ -66,6 +66,7 @@ namespace KingCardsSpire.Views.UI
         private bool _wired;
 
         private Coroutine _floorBgRoutine;
+        private Coroutine _buffDraftOfferRoutine;
         private AsyncOperationHandle<Sprite> _floorBgLoadHandle;
         private bool _hasFloorBgLoadHandle;
 
@@ -76,6 +77,15 @@ namespace KingCardsSpire.Views.UI
         private UnityAction<BaseEventData> _weatherPointerExit;
         private UnityAction<BaseEventData> _buffPointerEnter;
         private UnityAction<BaseEventData> _buffPointerExit;
+
+        /// <summary>
+        /// 供 <see cref="UIManager"/> 在淡出 Loading 前等待：当前楼层背景 Addressables 加载协程结束（含 <see cref="OnOpen"/> 内再次触发的刷新）。
+        /// </summary>
+        public IEnumerator WaitForInitialHubPresentationReady()
+        {
+            while (_floorBgRoutine != null)
+                yield return null;
+        }
 
         public override void Initialize()
         {
@@ -93,6 +103,7 @@ namespace KingCardsSpire.Views.UI
 
         public override void Dispose()
         {
+            StopBuffDraftOfferRoutine();
             CancelFloorBackgroundLoad();
             UnwireStatusTooltips();
             UnsubscribeEvents();
@@ -102,6 +113,7 @@ namespace KingCardsSpire.Views.UI
 
         private void OnDestroy()
         {
+            StopBuffDraftOfferRoutine();
             CancelFloorBackgroundLoad();
             UnwireStatusTooltips();
             if (_wired)
@@ -114,7 +126,7 @@ namespace KingCardsSpire.Views.UI
         protected override void OnOpen()
         {
             RefreshAll();
-            StartCoroutine(MaybeOfferBuffDraftAfterFloorRoutine());
+            ScheduleBuffDraftIfNeeded();
         }
 
         private void WireButtons()
@@ -123,11 +135,31 @@ namespace KingCardsSpire.Views.UI
 
             _onDeck = OnDeckClicked;
             _onSettings = OnSettingsClicked;
-            _onBoss = () => StartCoroutine(OpenBossBattleRoutine());
-            _onVisitHero = () => StartCoroutine(OpenPanelRoutine(UIPanelId.HeroRoom));
-            _onVisitNpc = () => StartCoroutine(OpenPanelRoutine(UIPanelId.NpcHub));
-            _onVisitedNpc = () => StartCoroutine(OpenPanelRoutine(UIPanelId.UnlockedDialogues));
-            _onShop = () => StartCoroutine(OpenPanelRoutine(UIPanelId.Shop));
+            _onBoss = () =>
+            {
+                UiButtonSfx.PlayDefaultClick();
+                StartCoroutine(OpenBossBattleRoutine());
+            };
+            _onVisitHero = () =>
+            {
+                UiButtonSfx.PlayDefaultClick();
+                StartCoroutine(OpenPanelRoutine(UIPanelId.HeroRoom));
+            };
+            _onVisitNpc = () =>
+            {
+                UiButtonSfx.PlayDefaultClick();
+                StartCoroutine(OpenPanelRoutine(UIPanelId.NpcHub));
+            };
+            _onVisitedNpc = () =>
+            {
+                UiButtonSfx.PlayDefaultClick();
+                StartCoroutine(OpenPanelRoutine(UIPanelId.NpcRecord));
+            };
+            _onShop = () =>
+            {
+                UiButtonSfx.PlayDefaultClick();
+                StartCoroutine(OpenPanelRoutine(UIPanelId.Shop));
+            };
             _onNextDay = OnNextDayClicked;
 
             AddClick(deckButton, _onDeck);
@@ -228,23 +260,46 @@ namespace KingCardsSpire.Views.UI
             RefreshFloorBackground();
             RefreshVisitNpcButtonAccess();
             RefreshNextDayButtonAccess();
+            // 进层时 MainHub 通常未关闭，OnOpen 不会再次执行，需在此补一次 Buff 弹窗判定
+            ScheduleBuffDraftIfNeeded();
+        }
+
+        private void ScheduleBuffDraftIfNeeded()
+        {
+            StopBuffDraftOfferRoutine();
+            _buffDraftOfferRoutine = StartCoroutine(MaybeOfferBuffDraftAfterFloorRoutine());
+        }
+
+        private void StopBuffDraftOfferRoutine()
+        {
+            if (_buffDraftOfferRoutine == null)
+                return;
+            StopCoroutine(_buffDraftOfferRoutine);
+            _buffDraftOfferRoutine = null;
         }
 
         private IEnumerator MaybeOfferBuffDraftAfterFloorRoutine()
         {
-            var gm = _game ?? GameManager.Instance;
-            var ui = UIManager.Instance;
-            if (gm == null || ui == null)
-                yield break;
-            if (!gm.ShouldOfferBuffDraft())
-                yield break;
+            try
+            {
+                var gm = _game ?? GameManager.Instance;
+                var ui = UIManager.Instance;
+                if (gm == null || ui == null)
+                    yield break;
+                if (!gm.ShouldOfferBuffDraft())
+                    yield break;
 
-            gm.TryBuildBuffDraftOffer();
-            yield return ui.OpenAsync(UIPanelId.BuffRewardView);
-            while (ui.IsPanelOpen(UIPanelId.BuffRewardView))
-                yield return null;
+                gm.TryBuildBuffDraftOffer();
+                yield return ui.OpenAsync(UIPanelId.BuffRewardView);
+                while (ui.IsPanelOpen(UIPanelId.BuffRewardView))
+                    yield return null;
 
-            RefreshStatusTexts();
+                RefreshStatusTexts();
+            }
+            finally
+            {
+                _buffDraftOfferRoutine = null;
+            }
         }
 
         private void OnGoldChanged(GoldChangedEvent _) => RefreshStatusTexts();
@@ -373,24 +428,7 @@ namespace KingCardsSpire.Views.UI
             curDayText.text = $"{player.FloorDay}/{gm.GetMaxDaysPerFloor()}";
             weatherText.text = WeatherDisplay.Format(player.CurrentWeather);
             coinText.text = player.Gold.ToString();
-            buffText.text = FormatActiveBuffsSummary(player);
-        }
-
-        private static string FormatActiveBuffsSummary(PlayerData player)
-        {
-            var arr = player?.ActiveBuffs;
-            if (arr == null || arr.Length == 0)
-                return "无";
-
-            var sb = new StringBuilder();
-            for (var i = 0; i < arr.Length; i++)
-            {
-                if (i > 0)
-                    sb.Append("、");
-                sb.Append( ConfigManager.Instance.ResolveBuffDisplayName(arr[i]));
-            }
-
-            return sb.ToString();
+            buffText.text = "Buff";
         }
 
         private void RefreshHistory()
@@ -418,6 +456,7 @@ namespace KingCardsSpire.Views.UI
 
         private void OnDeckClicked()
         {
+            UiButtonSfx.PlayDefaultClick();
             StartCoroutine(OpenDeckStorageRoutine());
         }
 
@@ -435,6 +474,7 @@ namespace KingCardsSpire.Views.UI
 
         private void OnSettingsClicked()
         {
+            UiButtonSfx.PlayDefaultClick();
             var ui = UIManager.Instance;
             if (ui != null)
                 ui.StartCoroutine(SettingsView.OpenSettingsRoutine());
@@ -443,6 +483,7 @@ namespace KingCardsSpire.Views.UI
         /// <summary>进入下一天：调用 <see cref="GameManager.AdvanceDay"/>，不打开其他界面。</summary>
         private void OnNextDayClicked()
         {
+            UiButtonSfx.PlayDefaultClick();
             var gm = _game ?? GameManager.Instance;
             if (gm == null)
                 return;
@@ -593,7 +634,7 @@ namespace KingCardsSpire.Views.UI
             if (player == null)
                 return;
 
-            var body = BuildWeatherTooltipBody(player.CurrentWeather);
+            var body = WeatherDisplay.BuildTooltipBody(player.CurrentWeather);
             _tooltipView.Show(body, _tooltipParentRect, weatherText.canvas);
         }
 
@@ -615,16 +656,6 @@ namespace KingCardsSpire.Views.UI
         {
             if (_tooltipView != null)
                 _tooltipView.Hide();
-        }
-
-        private static string BuildWeatherTooltipBody(WeatherType weather)
-        {
-            var title = WeatherDisplay.Format(weather);
-            var cfgMgr = ConfigManager.Instance;
-            var desc = cfgMgr != null ? cfgMgr.ResolveWeatherDescription(weather) : string.Empty;
-            if (string.IsNullOrWhiteSpace(desc))
-                return $"{title}\n（配置表中暂无效果说明）";
-            return $"{title}\n{desc}";
         }
 
         private static string BuildBuffTooltipBody(PlayerData player)

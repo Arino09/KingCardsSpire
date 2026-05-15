@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using KingCardsSpire.Models;
 using UnityEngine;
-using Random = UnityEngine.Random;
 
 namespace KingCardsSpire.Core.Battle
 {
@@ -91,14 +90,6 @@ namespace KingCardsSpire.Core.Battle
                 return CloneCard(snap, snap.Level);
             }
 
-            if (string.Equals(stagedPlayerCard.Id, WellKnownCardIds.Fate, StringComparison.OrdinalIgnoreCase)
-                && playerHand != null && playerHand.Count > 0)
-            {
-                var pick = playerHand[Random.Range(0, playerHand.Count)];
-                var baseLv = MorphBaseLevel(pick, true, playerHand, enemyHand);
-                return CloneCard(stagedPlayerCard, baseLv + 1f);
-            }
-
             return stagedPlayerCard;
         }
 
@@ -121,14 +112,6 @@ namespace KingCardsSpire.Core.Battle
                 return CloneCard(snap, snap.Level);
             }
 
-            if (string.Equals(stagedEnemyCard.Id, WellKnownCardIds.Fate, StringComparison.OrdinalIgnoreCase)
-                && enemyHand != null && enemyHand.Count > 0)
-            {
-                var pick = enemyHand[Random.Range(0, enemyHand.Count)];
-                var baseLv = MorphBaseLevel(pick, false, playerHand, enemyHand);
-                return CloneCard(stagedEnemyCard, baseLv + 1f);
-            }
-
             return stagedEnemyCard;
         }
 
@@ -141,17 +124,12 @@ namespace KingCardsSpire.Core.Battle
             IReadOnlyList<Card> enemyHand,
             BattleEffectRuntimeState state,
             int round1Based,
-            int completedRoundsBeforeThisOne,
-            bool applyAllInDouble)
+            int completedRoundsBeforeThisOne)
         {
             if (logicalCard == null)
                 return null;
 
-            var lv = MorphBaseLevel(logicalCard, isPlayerCard, playerHand, enemyHand);
-
-            if (string.Equals(logicalCard.Id, WellKnownCardIds.AllIn, StringComparison.OrdinalIgnoreCase)
-                && applyAllInDouble)
-                lv *= 2f;
+            var lv = BattleMorphRules.GetMorphBaseLevel(logicalCard, isPlayerCard, playerHand, enemyHand);
 
             if (isPlayerCard)
             {
@@ -202,10 +180,6 @@ namespace KingCardsSpire.Core.Battle
                     level += 1f;
                 if (state.PlayerOddFormActive && !even)
                     level += 1f;
-                if (state.PlayerForgeBladeActive)
-                    level += 0.1f * completedRoundsBeforeThisOne;
-                if (state.PlayerStrikeBladeActive)
-                    level -= 0.1f * completedRoundsBeforeThisOne;
             }
             else
             {
@@ -213,10 +187,6 @@ namespace KingCardsSpire.Core.Battle
                     level += 1f;
                 if (state.EnemyOddFormActive && !even)
                     level += 1f;
-                if (state.EnemyForgeBladeActive)
-                    level += 0.1f * completedRoundsBeforeThisOne;
-                if (state.EnemyStrikeBladeActive)
-                    level -= 0.1f * completedRoundsBeforeThisOne;
             }
         }
 
@@ -230,44 +200,6 @@ namespace KingCardsSpire.Core.Battle
             return Mathf.Abs(frac - 0.5f) < 0.06f;
         }
 
-        /// <param name="cardBelongsToPlayer">
-        /// 当前这张「出牌」是否是玩家一侧出的（用于判定对手的手牌在哪一叠）。
-        /// </param>
-        private static float MorphBaseLevel(Card card, bool cardBelongsToPlayer,
-            IReadOnlyList<Card> playerHand,
-            IReadOnlyList<Card> enemyHand)
-        {
-            if (card == null)
-                return 0f;
-
-            var opposingHand = cardBelongsToPlayer ? enemyHand : playerHand;
-
-            if (string.Equals(card.Id, WellKnownCardIds.Regicide, StringComparison.OrdinalIgnoreCase))
-                return ContainsCardId(opposingHand, WellKnownCardIds.King) ? 1f : 3f;
-
-            if (string.Equals(card.Id, WellKnownCardIds.Rebel, StringComparison.OrdinalIgnoreCase))
-                return ContainsCardId(opposingHand, WellKnownCardIds.Minister) ? 1f : 2f;
-
-            if (string.Equals(card.Id, WellKnownCardIds.Beggar, StringComparison.OrdinalIgnoreCase))
-                return ContainsCardId(opposingHand, WellKnownCardIds.Commoner) ? 1f : 1f;
-
-            return card.Level;
-        }
-
-        private static bool ContainsCardId(IReadOnlyList<Card> hand, string id)
-        {
-            if (hand == null || string.IsNullOrEmpty(id))
-                return false;
-            for (var i = 0; i < hand.Count; i++)
-            {
-                var c = hand[i];
-                if (c != null && string.Equals(c.Id, id, StringComparison.OrdinalIgnoreCase))
-                    return true;
-            }
-
-            return false;
-        }
-
         private static Card CloneCard(Card source, float level)
         {
             return new Card
@@ -278,7 +210,8 @@ namespace KingCardsSpire.Core.Battle
                 Type = source.Type,
                 EffectDesc = source.EffectDesc,
                 IsUnique = source.IsUnique,
-                BattleInstanceId = source.BattleInstanceId
+                BattleInstanceId = source.BattleInstanceId,
+                DeckInstanceId = source.DeckInstanceId ?? string.Empty
             };
         }
 
@@ -349,7 +282,8 @@ namespace KingCardsSpire.Core.Battle
                 Type = CardType.Basic,
                 EffectDesc = original.EffectDesc,
                 IsUnique = false,
-                BattleInstanceId = original.BattleInstanceId
+                BattleInstanceId = original.BattleInstanceId,
+                DeckInstanceId = original.DeckInstanceId ?? string.Empty
             };
         }
     }

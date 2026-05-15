@@ -25,6 +25,9 @@ namespace KingCardsSpire.Managers
         /// <summary>击败驻守者后待玩家在界面中确认的奖励选项（与 <see cref="BossRewardOfferedEvent"/> 同步）。</summary>
         private BossRewardOption[] _pendingBossRewards;
 
+        /// <summary>某原住民三段剧情全部完成后，待 <see cref="CardRewardView"/> 展示的三选一（与驻守待选互斥）。</summary>
+        private BossRewardOption[] _pendingNpcStoryCompletionRewards;
+
         /// <summary>上一场玩家胜利且打出金色项链时，下一次驻守金币结算翻倍（领取后清除）。</summary>
         private bool _pendingBossVictoryGoldenNecklaceDoubleGold;
 
@@ -113,12 +116,14 @@ namespace KingCardsSpire.Managers
             _events?.Subscribe<BattleEndedEvent>(OnBattleEnded);
             _events?.Subscribe<BattleStartedEvent>(OnBattleStartedClearNecklaceGoldFlag);
             _events?.Subscribe<GameOverEvent>(OnGameOverNavToTitle);
+            CardAlbumProgressStore.TryMigrateIfEmpty(PersistenceManager.Instance);
         }
 
         private void OnBattleStartedClearNecklaceGoldFlag(BattleStartedEvent _)
         {
             _pendingBossVictoryGoldenNecklaceDoubleGold = false;
             _heroDuelStorageRemovalRewardPending = false;
+            _pendingNpcStoryCompletionRewards = null;
         }
 
         /// <summary>每层允许停留天数上限（配置 MaxDaysPerFloor）。</summary>
@@ -173,11 +178,13 @@ namespace KingCardsSpire.Managers
                 PlayerState.FloorDay = 1;
                 FloorState.FloorIndex = PlayerState.CurrentFloor;
             _pendingBossRewards = null;
+            _pendingNpcStoryCompletionRewards = null;
             NormalizeNpcPersistence(PlayerState);
             NormalizePlayerDeckPartition();
             NormalizePlayerAudioSettings(PlayerState);
             ApplyAudioFromCurrentPlayerState();
             SetDeferOpeningTutorialBattleIntro(false);
+            CardAlbumProgressStore.RegisterDiscoveredFromPlayerCollections(PlayerState);
         }
 
         /// <summary>新开局：重置玩家与第一层 FloorState，并滚动首日天气。</summary>
@@ -224,14 +231,16 @@ namespace KingCardsSpire.Managers
             FloorState = new FloorState { BossDefeated = false };
             ShopState = new ShopState();
             _pendingBossRewards = null;
+            _pendingNpcStoryCompletionRewards = null;
             SyncFloorStateFromTower();
             RollDailyWeather();
             _events?.Publish(new GameStartedEvent());
             ApplyAudioFromCurrentPlayerState();
             SetDeferOpeningTutorialBattleIntro(false);
+            CardAlbumProgressStore.RegisterDiscoveredFromPlayerCollections(PlayerState);
         }
 
-        /// <summary>击败驻守者后进层；返回是否仍在本 Run 内继续（false 可能表示已通关或条件不足）。</summary>
+        /// <summary>击败驻守者后进层；成功进层或触发通关时自动存档；返回是否仍在本 Run 内继续（false 可能表示已通关或条件不足）。</summary>
         public bool EnterNextFloor()
         {
             if (_gameOver || _runVictory)
@@ -246,6 +255,7 @@ namespace KingCardsSpire.Managers
             {
                 _runVictory = true;
                 _events?.Publish(new GameVictoryEvent());
+                PersistCurrentRunToDisk();
                 return true;
             }
 
@@ -267,10 +277,11 @@ namespace KingCardsSpire.Managers
 
             SyncFloorStateFromTower();
             _events?.Publish(new FloorChangedEvent(PlayerState.CurrentFloor));
+            PersistCurrentRunToDisk();
             return true;
         }
 
-        /// <summary>结束当日：天数与本层天数+1，校验失败；滚动次日天气。</summary>
+        /// <summary>结束当日：天数与本层天数+1，校验失败；滚动次日天气；未因超时结束时自动存档。</summary>
         public void AdvanceDay()
         {
             if (_gameOver || _runVictory)
@@ -284,20 +295,15 @@ namespace KingCardsSpire.Managers
 
             _events?.Publish(new DayChangedEvent(PlayerState.CurrentDay));
 
-            if (PlayerState.Gold <= 0)
-            {
-                FailRun("gold_empty");
-                return;
-            }
-
             var maxDays = ResolveGameConfig()?.MaxDaysPerFloor ?? 3;
             if (EvaluateFloorTimeoutAfterAdvanceDay(PlayerState.FloorDay, maxDays, FloorState.BossDefeated))
-                FailRun("floor_timeout");
+                FailRun(GameOverReasons.FloorTimeout);
 
             if (_gameOver)
                 return;
 
             RollDailyWeather();
+            PersistCurrentRunToDisk();
         }
 
         private void ApplyNpcCreditInstallmentAfterAdvanceDay()
@@ -423,6 +429,76 @@ namespace KingCardsSpire.Managers
         /// <summary>供驻守奖励界面读取的待选列表（与最近一次 <see cref="BossRewardOfferedEvent"/> 一致）。</summary>
         public IReadOnlyList<BossRewardOption> PendingBossRewards => _pendingBossRewards;
 
+        /// <summary>供 <see cref="CardRewardView"/> 读取：原住民三段剧情完成后的三选一待选。</summary>
+        public IReadOnlyList<BossRewardOption> PendingNpcStoryCompletionRewards => _pendingNpcStoryCompletionRewards;
+
+        /// <summary>组装并写入待展示的原住民剧情完成卡牌奖励（与友谊赛三选一相同的卡池与分档规则）；无可用候选时返回 false。</summary>
+        public bool TryPrepareNpcStoryCompletionRewards()
+        {
+            if (_gameOver || _runVictory || PlayerState == null)
+                return false;
+
+            var cfgMgr = ConfigManager.Instance;
+            if (cfgMgr == null)
+                return false;
+
+            var offerIds = HeroDuelVictoryRewardPicker.BuildOfferCardIds(cfgMgr, OwnsCardId);
+            if (offerIds == null || offerIds.Count == 0)
+                return false;
+
+            var options = BossRewardPicker.GenerateCardBossRewardOptions(cfgMgr, offerIds);
+            if (options == null || options.Length == 0)
+                return false;
+
+            _pendingNpcStoryCompletionRewards = options;
+            return true;
+        }
+
+        /// <summary>原住民三段剧情全部完成后：从 <see cref="PendingNpcStoryCompletionRewards"/> 领取一项；不占驻守、不进层。</summary>
+        public bool TryApplyNpcStoryCompletionReward(int optionIndex)
+        {
+            if (_gameOver || _runVictory || PlayerState == null)
+                return false;
+            if (_pendingNpcStoryCompletionRewards == null || optionIndex < 0 ||
+                optionIndex >= _pendingNpcStoryCompletionRewards.Length)
+                return false;
+
+            var opt = _pendingNpcStoryCompletionRewards[optionIndex];
+            _pendingNpcStoryCompletionRewards = null;
+
+            if (opt.IsGold)
+            {
+                AddGold(opt.GoldAmount);
+            }
+            else if (!string.IsNullOrEmpty(opt.CardId))
+            {
+                var cfgMgr = ConfigManager.Instance;
+                if (cfgMgr != null && cfgMgr.TryGetCard(opt.CardId, out var cc))
+                {
+                    if (HasBuff(BuffId.SurprisePack))
+                        AppendRandomOwnedCardsFromSurprisePackRoll();
+                    else
+                    {
+                        if (!TryAppendOwnedCard(CardFromConfig(cc)))
+                            Debug.LogWarning("[GameManager] 原住民剧情奖励：持有已达上限，未能领取该卡。");
+                        else
+                            _events?.Publish(new CardAcquiredEvent(cc.Id));
+                    }
+                }
+                else
+                    Debug.LogWarning($"[GameManager] 原住民剧情奖励卡牌配置缺失: {opt.CardId}");
+            }
+
+            PersistCurrentRunToDisk();
+            return true;
+        }
+
+        /// <summary>原住民剧情奖励界面跳过：放弃本次三选一。</summary>
+        public void ClearPendingNpcStoryCompletionRewardOffer()
+        {
+            _pendingNpcStoryCompletionRewards = null;
+        }
+
         /// <summary>玩家确认一项驻守奖励后应用金币/卡牌并 <see cref="EnterNextFloor"/>。</summary>
         /// <returns>是否成功应用并进层（含通关触发）。</returns>
         public bool TryApplyBossRewardChoice(int optionIndex)
@@ -519,8 +595,7 @@ namespace KingCardsSpire.Managers
         }
 
         /// <summary>
-        /// 跳过卡牌奖励：发放本次待选列表中<strong>全部金币项</strong>（每笔单独调用 <see cref="AddGold"/>，雨季增收仍生效），
-        /// 不领取任何卡牌；随后清空待选并进层。
+        /// 驻守奖励界面跳过：不领取卡牌（SpareDay 金币已在战胜时静默发放）；清空待选并进层。
         /// </summary>
         public bool TrySkipBossCardRewardsCollectGoldAndAdvance()
         {
@@ -531,16 +606,6 @@ namespace KingCardsSpire.Managers
             if (_pendingBossRewards == null || _pendingBossRewards.Length == 0)
                 return false;
 
-            var goldMult = _pendingBossVictoryGoldenNecklaceDoubleGold ? 2 : 1;
-            for (var i = 0; i < _pendingBossRewards.Length; i++)
-            {
-                var opt = _pendingBossRewards[i];
-                if (opt == null)
-                    continue;
-                if (opt.IsGold)
-                    AddGold(opt.GoldAmount * goldMult);
-            }
-
             _pendingBossVictoryGoldenNecklaceDoubleGold = false;
             _pendingBossRewards = null;
             EnterNextFloor();
@@ -549,7 +614,7 @@ namespace KingCardsSpire.Managers
 
         private static Card CardFromConfig(CardConfigEntry cc)
         {
-            return new Card
+            var c = new Card
             {
                 Id = cc.Id,
                 Name = string.IsNullOrEmpty(cc.DisplayName) ? cc.Id : cc.DisplayName,
@@ -558,6 +623,8 @@ namespace KingCardsSpire.Managers
                 EffectDesc = cc.Description,
                 IsUnique = cc.IsUnique
             };
+            CardDeckIdentity.EnsureDeckInstanceId(c);
+            return c;
         }
 
         /// <summary>
@@ -646,6 +713,23 @@ namespace KingCardsSpire.Managers
             }
 
             TrimOwnedCollectionsToLimits();
+            EnsureDeckInstanceIdsOnPlayerCollections();
+        }
+
+        private void EnsureDeckInstanceIdsOnPlayerCollections()
+        {
+            if (PlayerState == null)
+                return;
+            EnsureDeckIdsOnArray(PlayerState.HandCards);
+            EnsureDeckIdsOnArray(PlayerState.StoredCards);
+        }
+
+        private static void EnsureDeckIdsOnArray(Card[] cards)
+        {
+            if (cards == null)
+                return;
+            for (var i = 0; i < cards.Length; i++)
+                CardDeckIdentity.EnsureDeckInstanceId(cards[i]);
         }
 
         /// <summary>
@@ -703,6 +787,8 @@ namespace KingCardsSpire.Managers
             if (hand.Count + storage.Count >= MaxTotalOwnedCards)
                 return false;
 
+            CardDeckIdentity.EnsureDeckInstanceId(card);
+
             if (storage.Count < MaxStorageCards)
                 storage.Add(card);
             else if (hand.Count < MaxBattleDeckCards)
@@ -712,6 +798,7 @@ namespace KingCardsSpire.Managers
 
             PlayerState.HandCards = hand.ToArray();
             PlayerState.StoredCards = storage.ToArray();
+            CardAlbumProgressStore.AddDiscoveredCardId(card.Id);
             PersistCurrentRunToDisk();
             return true;
         }
@@ -926,7 +1013,7 @@ namespace KingCardsSpire.Managers
             if (e.IsBossBattle && !e.PlayerVictory)
             {
                 _pendingBossVictoryGoldenNecklaceDoubleGold = false;
-                FailRun("boss_defeat");
+                FailRun(GameOverReasons.BossDefeat);
                 return;
             }
 
@@ -946,7 +1033,17 @@ namespace KingCardsSpire.Managers
 
             var gc = ResolveGameConfig();
             var maxFloors = gc?.TowerFloors ?? 7;
-            // 最后一层驻守者：不弹出卡牌/金币驻守奖励，直接进层（通关）并播放大结局对白。
+            var cfgMgr = ConfigManager.Instance;
+            var maxDays = gc?.MaxDaysPerFloor ?? 3;
+            var spareDays = Mathf.Max(0, maxDays - PlayerState.FloorDay + 1);
+            var silentGold = BossRewardPicker.ComputeSpareDayBossSilentGold(spareDays);
+            if (_pendingBossVictoryGoldenNecklaceDoubleGold)
+                silentGold *= 2;
+            AddGold(silentGold);
+            _pendingBossVictoryGoldenNecklaceDoubleGold = false;
+            PersistCurrentRunToDisk();
+
+            // 最后一层驻守者：不弹出卡牌驻守奖励，直接进层（通关）并播放大结局对白（静默金币已在上方发放）。
             if (PlayerState.CurrentFloor >= maxFloors)
             {
                 _pendingBossRewards = null;
@@ -955,13 +1052,14 @@ namespace KingCardsSpire.Managers
                 return;
             }
 
-            var cfgMgr = ConfigManager.Instance;
-            var maxDays = gc?.MaxDaysPerFloor ?? 3;
-            var spareDays = Mathf.Max(0, maxDays - PlayerState.FloorDay + 1);
-            TowerFloorEntry entry = null;
-            if (cfgMgr != null)
-                cfgMgr.TryGetTowerFloor(PlayerState.CurrentFloor, out entry);
-            var options = BossRewardPicker.Generate(spareDays, entry, cfgMgr, e.BossVictoryRewardCardIds);
+            var options = BossRewardPicker.GenerateCardBossRewardOptions(cfgMgr, e.BossVictoryRewardCardIds);
+            if (options == null || options.Length == 0)
+            {
+                _pendingBossRewards = null;
+                EnterNextFloor();
+                return;
+            }
+
             _pendingBossRewards = options;
             _events?.Publish(new BossRewardOfferedEvent(PlayerState.CurrentFloor, options));
         }
@@ -1010,40 +1108,7 @@ namespace KingCardsSpire.Managers
             if (cfgMgr == null)
                 return null;
 
-            _surpriseRuntimePoolScratch.Clear();
-            cfgMgr.AppendAllCardsAsRuntime(_surpriseRuntimePoolScratch);
-            for (var j = _surpriseRuntimePoolScratch.Count - 1; j >= 0; j--)
-            {
-                var c = _surpriseRuntimePoolScratch[j];
-                if (c != null && c.IsUnique && OwnsCardId(c.Id))
-                    _surpriseRuntimePoolScratch.RemoveAt(j);
-            }
-
-            if (_surpriseRuntimePoolScratch.Count == 0)
-                return null;
-
-            var result = new List<string>(3);
-            for (var t = 0; t < 80 && result.Count < 3; t++)
-            {
-                var pick = _surpriseRuntimePoolScratch[Random.Range(0, _surpriseRuntimePoolScratch.Count)];
-                if (pick == null || string.IsNullOrEmpty(pick.Id))
-                    continue;
-
-                var dup = false;
-                for (var k = 0; k < result.Count; k++)
-                {
-                    if (string.Equals(result[k], pick.Id, StringComparison.OrdinalIgnoreCase))
-                    {
-                        dup = true;
-                        break;
-                    }
-                }
-
-                if (!dup)
-                    result.Add(pick.Id);
-            }
-
-            return result.Count > 0 ? result : null;
+            return HeroDuelVictoryRewardPicker.BuildOfferCardIds(cfgMgr, OwnsCardId);
         }
 
         /// <summary>友谊赛三选一：确认后写入持有（惊喜卡包分支与常规战胜一致）。</summary>
@@ -1142,24 +1207,35 @@ namespace KingCardsSpire.Managers
             if (!IsRunVictory || dialogue == null || ui == null)
                 yield break;
 
-            yield return ui.StartCoroutine(dialogue.PlayDialogue("ending_final", null));
+            yield return ui.StartCoroutine(dialogue.PlayDialogue(WellKnownDialogueIds.EndingFinal, null));
         }
 
         /// <summary>
         /// Run 结束时关闭当前全部面板并回到标题（主菜单）；例如 BOSS 战败、金币耗尽、层内超时等。
         /// </summary>
-        private void OnGameOverNavToTitle(GameOverEvent _)
+        private void OnGameOverNavToTitle(GameOverEvent e)
         {
-            StartCoroutine(ReturnToTitleRoutine());
+            StartCoroutine(ReturnToTitleRoutine(e));
         }
 
-        private static IEnumerator ReturnToTitleRoutine()
+        private static IEnumerator ReturnToTitleRoutine(GameOverEvent e)
         {
             yield return null;
 
             var ui = UIManager.Instance;
             if (ui == null)
                 yield break;
+
+            if (string.Equals(e.Reason, GameOverReasons.BossDefeat, StringComparison.Ordinal))
+            {
+                var battle = ServiceLocator.Get<BattleController>();
+                battle?.RequestEndBattle();
+                ui.Close(UIPanelId.CardReward);
+                ui.Close(UIPanelId.Battle);
+                yield return ui.OpenAsync(UIPanelId.GameOver);
+                while (ui.IsPanelOpen(UIPanelId.GameOver))
+                    yield return null;
+            }
 
             ui.CloseAll();
             yield return ui.OpenAsync(UIPanelId.MainMenu);
@@ -1446,6 +1522,15 @@ namespace KingCardsSpire.Managers
             return 0;
         }
 
+        /// <summary>该 NPC 已完成的剧情段数（与 <see cref="TryPrepareNpcDialogue"/> / 历史记录拼接上限一致）。</summary>
+        public int GetNpcDialogueCompletedCount(string npcId)
+        {
+            if (PlayerState == null || string.IsNullOrEmpty(npcId))
+                return 0;
+            NormalizeStoryPersistence(PlayerState);
+            return GetNpcCompletedCount(npcId);
+        }
+
         private NpcDialogueProgress GetOrCreateNpcDialogueProgress(string npcId)
         {
             var progress = PlayerState.NpcDialogueProgress ?? Array.Empty<NpcDialogueProgress>();
@@ -1646,6 +1731,10 @@ namespace KingCardsSpire.Managers
             return false;
         }
 
+        /// <summary>
+        /// 是否应在当前层弹出 Buff 三选一。
+        /// 约定：首次在第 1 层；之后在第 3、5、7 层开始时（即击败第 2、4、6 层 BOSS 后进层）再各弹一次。
+        /// </summary>
         public bool ShouldOfferBuffDraft()
         {
             if (PlayerState == null)
@@ -1718,6 +1807,7 @@ namespace KingCardsSpire.Managers
             var list = new List<BuffId>(PlayerState.ActiveBuffs ?? Array.Empty<BuffId>()) { pick };
             PlayerState.ActiveBuffs = list.ToArray();
             PlayerState.BuffPicksCompleted = Mathf.Min(4, PlayerState.BuffPicksCompleted + 1);
+            // 下一次：第 1 层选完 → 第 3 层起；第 3/5 层选完 → 第 5/7 层（等价于在第 2/4/6 层 BOSS 战结束并进层后给 Buff）
             PlayerState.NextBuffOfferFloor = Mathf.Min(9, PlayerState.CurrentFloor + 2);
 
             for (var i = 0; i < _buffDraftOfferBuffer.Length; i++)
@@ -1835,6 +1925,7 @@ namespace KingCardsSpire.Managers
             }
 
             player.BuffPicksCompleted = Mathf.Clamp(Mathf.Max(player.BuffPicksCompleted, player.ActiveBuffs.Length), 0, 4);
+            // 与 ApplyBuffChoice 一致：已选 k 次 → 下次至少第 (2k+1) 层（1、3、5、7）
             player.NextBuffOfferFloor = Mathf.Max(player.NextBuffOfferFloor, player.BuffPicksCompleted * 2 + 1);
             if (player.NextBuffOfferFloor <= 0)
                 player.NextBuffOfferFloor = Mathf.Max(1, player.BuffPicksCompleted * 2 + 1);

@@ -15,59 +15,45 @@ MonoBehaviour:
   id: default
   floors:
   - bossId: "\u81EA\u7518\u8005"
-    enemyDeckCardIds:
-    - king
-    - commoner
+    enemyDeckCardIds: []
     npcIds:
     - 11
     - 12
     bossAiStrength: 0
     goldBonusPerSpareDay: 5
   - bossId: "\u8D1F\u5FC3\u8005"
-    enemyDeckCardIds:
-    - king
-    - commoner
+    enemyDeckCardIds: []
     npcIds:
     - 2
     bossAiStrength: 0
     goldBonusPerSpareDay: 5
   - bossId: "\u50B2\u6162\u8005"
-    enemyDeckCardIds:
-    - king
-    - commoner
+    enemyDeckCardIds: []
     npcIds:
     - 3
-    bossAiStrength: 0
+    bossAiStrength: 1
     goldBonusPerSpareDay: 5
   - bossId: "\u72EC\u88C1\u8005"
-    enemyDeckCardIds:
-    - king
-    - commoner
+    enemyDeckCardIds: []
     npcIds:
     - 4
-    bossAiStrength: 0
+    bossAiStrength: 1
     goldBonusPerSpareDay: 5
   - bossId: "\u6781\u6076\u8005"
-    enemyDeckCardIds:
-    - king
-    - commoner
+    enemyDeckCardIds: []
     npcIds:
     - 5
-    bossAiStrength: 0
+    bossAiStrength: 1
     goldBonusPerSpareDay: 5
   - bossId: "\u8D85\u80FD\u8005"
-    enemyDeckCardIds:
-    - king
-    - commoner
+    enemyDeckCardIds: []
     npcIds:
     - 6
-    bossAiStrength: 0
+    bossAiStrength: 2
     goldBonusPerSpareDay: 5
   - bossId: "\u56FD\u738B"
-    enemyDeckCardIds:
-    - king
-    - commoner
+    enemyDeckCardIds: []
     npcIds:
     - 7
-    bossAiStrength: 0
+    bossAiStrength: 3
     goldBonusPerSpareDay: 5

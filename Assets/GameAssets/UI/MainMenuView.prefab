@@ -356,7 +356,7 @@ MonoBehaviour:
   newGameButton: {fileID: 4486536059251929349}
   cardAlbumButton: {fileID: 7830655014017716989}
   settingsButton: {fileID: 3395373705594506930}
-  exitButton: {fileID: 3395373705594506930}
+  exitButton: {fileID: 0}
 --- !u!1001 &1692035036473246278
 PrefabInstance:
   m_ObjectHideFlags: 0

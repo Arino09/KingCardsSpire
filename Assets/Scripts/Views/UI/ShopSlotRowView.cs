@@ -46,6 +46,7 @@ namespace KingCardsSpire.Views.UI
 
         private void WrappedBuy()
         {
+            UiButtonSfx.PlayDefaultClick();
             _wrappedBuy?.Invoke();
         }
 

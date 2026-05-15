@@ -49,6 +49,10 @@ namespace KingCardsSpire.Models
         Dialog = 12,
         BuffRewardView = 13,
         DeckStorage = 14,
-        Settings = 15
+        Settings = 15,
+        NpcRecord = 16,
+        DialogueRecord = 17,
+        Album = 18,
+        GameOver = 19
     }
 }

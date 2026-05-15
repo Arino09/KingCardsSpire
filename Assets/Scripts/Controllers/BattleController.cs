@@ -77,6 +77,26 @@ namespace KingCardsSpire.Controllers
 
         public bool IsBattleActive => BattleManager.Instance != null && BattleManager.Instance.IsBattleActive;
 
+        public bool AwaitingRegretPick =>
+            BattleManager.Instance != null && BattleManager.Instance.AwaitingRegretPick;
+
+        public bool TryCompleteRegretPick(int playerDiscardIndex, out string error)
+        {
+            error = null;
+            if (BattleManager.Instance == null)
+            {
+                error = "BattleManager 未就绪";
+                return false;
+            }
+
+            return BattleManager.Instance.TryCompleteRegretPick(playerDiscardIndex, out error);
+        }
+
+        public void CancelAwaitingRegretPick()
+        {
+            BattleManager.Instance?.CancelAwaitingRegretPick();
+        }
+
         public int PendingEnemyHandIndex =>
             BattleManager.Instance != null ? BattleManager.Instance.PendingEnemyHandIndex : -1;
 

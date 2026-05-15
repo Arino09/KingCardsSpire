@@ -8,7 +8,7 @@ namespace KingCardsSpire.Core.Battle
 {
     /// <summary>
     /// 常规战斗胜利：从本局敌方手牌与弃牌中筛选可奖励 CardId（排除国王/平民），去重后随机至多 3 项。
-    /// 驻守 BOSS 战胜：同上规则至多 5 项，见 <see cref="BuildBossVictoryOfferCardIds"/>。
+    /// 驻守 BOSS 战胜：从敌方<strong>手牌 + 弃牌堆</strong>汇总（即本局进场后曾出现过的全部敌方牌所在集合，排除国王/平民），去重后随机至多 5 项，见 <see cref="BuildBossVictoryOfferCardIds"/>。
     /// </summary>
     public static class CasualVictoryRewardPicker
     {
@@ -45,7 +45,7 @@ namespace KingCardsSpire.Core.Battle
         }
 
         /// <summary>
-        /// 构建驻守者卡牌奖励待展示列表；若无可用卡牌则返回 <c>null</c>。
+        /// 构建驻守者卡牌奖励待展示列表（敌方手牌 ∪ 弃牌堆，排除国王/平民）；若无可用卡牌则返回 <c>null</c>。
         /// </summary>
         public static string[] BuildBossVictoryOfferCardIds(IReadOnlyList<Card> enemyHand,
             IReadOnlyList<Card> enemyDiscard)

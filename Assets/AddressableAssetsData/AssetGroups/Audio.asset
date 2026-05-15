@@ -16,7 +16,57 @@ MonoBehaviour:
   m_Data:
     m_SerializedData: []
   m_GUID: 32a7a56c8f913b940a827223fd6e7064
-  m_SerializeEntries: []
+  m_SerializeEntries:
+  - m_GUID: 3dbe93d8874f9cb40b795b4bcd5cef94
+    m_Address: Audio/BGM/Tutorial
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: bd1819c0f8693d14f9edd7b97646f0c9
+    m_Address: Audio/BGM/MainMenu
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 63eff162bc601e246bea2e820d2357c7
+    m_Address: Audio/BGM/Hub_TierLow
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d8a4c8faa59115f439986f67254a2789
+    m_Address: Audio/BGM/Hub_TierMid
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 21f5b0014e5796a46b884a1738576073
+    m_Address: Audio/BGM/Hub_TierHigh
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 455f1f6e8f0fac8499ed4d6fe3efc07d
+    m_Address: Audio/BGM/Battle
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 1355373acdac6d04a881482da86b7b8a
+    m_Address: Audio/BGM/Ending
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 81931e8a3563c8b49bb7805936f5eff3
+    m_Address: Audio/SFX/UiButton
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 70ca8527266aee44c9eb40e3489c928c
+    m_Address: Audio/SFX/ConfirmPlayCard
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: fa9cb33fb7751654eb8f8c6b8d2c5e2b
+    m_Address: Audio/SFX/CardToDiscard
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: 0b8713ba58b57bb49bd9906570780370, type: 2}
   m_SchemaSet:

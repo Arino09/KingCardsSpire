@@ -150,6 +150,7 @@ namespace KingCardsSpire.Views.UI
 
         private void OnConfirmSelectionClicked()
         {
+            UiButtonSfx.PlayDefaultClick();
             if (_model == null || _model.MaxSelectable <= 0)
                 return;
             if (_selectedIndices.Count != _model.MaxSelectable)
@@ -189,7 +190,9 @@ namespace KingCardsSpire.Views.UI
                 Level = src.Level,
                 Type = src.Type,
                 EffectDesc = src.EffectDesc,
-                IsUnique = src.IsUnique
+                IsUnique = src.IsUnique,
+                BattleInstanceId = src.BattleInstanceId,
+                DeckInstanceId = src.DeckInstanceId ?? string.Empty
             };
 
         /// <summary>清空网格内动态生成的卡牌实例。</summary>
@@ -207,6 +210,8 @@ namespace KingCardsSpire.Views.UI
 
         private void OnCloseButtonClicked()
         {
+            UiButtonSfx.PlayDefaultClick();
+            _model?.OnCancelSelection?.Invoke();
             UIManager.Instance?.Close(UIPanelId.CardList);
         }
     }

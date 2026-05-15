@@ -32,6 +32,7 @@ namespace KingCardsSpire.Core
             systems.AddComponent<PersistenceManager>();
             systems.AddComponent<ConfigManager>();
             systems.AddComponent<AudioManager>();
+            systems.AddComponent<GameAudioDirector>();
             systems.AddComponent<UIManager>();
             systems.AddComponent<GameManager>();
             systems.AddComponent<BattleManager>();

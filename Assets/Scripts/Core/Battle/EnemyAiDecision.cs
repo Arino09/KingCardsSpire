@@ -177,6 +177,7 @@ namespace KingCardsSpire.Core.Battle
                 return false;
 
             var bestScore = float.NegativeInfinity;
+            var bestIsAbility = false;
             for (var i = 0; i < enemyHand.Count; i++)
             {
                 var enemyCard = enemyHand[i];
@@ -186,11 +187,28 @@ namespace KingCardsSpire.Core.Battle
 
                 var score = ScoreCandidate(playerCard, enemyCard, playerHand, playerDiscard, enemyHand,
                     enemyDiscard, rule, weather, completedRoundsBeforeThisOne, effectState);
-                if (chosenIndex >= 0 && !(score > bestScore))
+                var isAbility = enemyCard.Type == CardType.Ability;
+                if (chosenIndex < 0)
+                {
+                    bestScore = score;
+                    bestIsAbility = isAbility;
+                    chosenIndex = i;
                     continue;
+                }
 
-                bestScore = score;
-                chosenIndex = i;
+                const float eps = 1e-4f;
+                if (score > bestScore + eps)
+                {
+                    bestScore = score;
+                    bestIsAbility = isAbility;
+                    chosenIndex = i;
+                }
+                else if (Mathf.Abs(score - bestScore) < eps && isAbility && !bestIsAbility)
+                {
+                    bestScore = score;
+                    bestIsAbility = true;
+                    chosenIndex = i;
+                }
             }
 
             return chosenIndex >= 0;
@@ -296,15 +314,12 @@ namespace KingCardsSpire.Core.Battle
             if (BattleCardEffectResolver.EnemyEffectsInactive(enemyLogical, effectState))
                 enemyLogical = BattleCardEffectResolver.StripToNeutralZero(enemyLogical);
 
-            var playerAllIn = IsCardId(playerCard, WellKnownCardIds.AllIn);
-            var enemyAllIn = IsCardId(enemyCard, WellKnownCardIds.AllIn);
             var playerCompare = BattleCardEffectResolver.ToCompareCard(playerLogical, true, playerHand,
-                enemyHand, effectState, round1Based, completedRoundsBeforeThisOne, playerAllIn);
+                enemyHand, effectState, round1Based, completedRoundsBeforeThisOne);
             var enemyCompare = BattleCardEffectResolver.ToCompareCard(enemyLogical, false, playerHand,
-                enemyHand, effectState, round1Based, completedRoundsBeforeThisOne, enemyAllIn);
+                enemyHand, effectState, round1Based, completedRoundsBeforeThisOne);
             var normal = CardBattleRules.Compare(playerCompare, enemyCompare, weather, playerHand, enemyHand,
-                invertNumericRanking: (effectState?.PlayerPerfectMatchActive == true) ^
-                                      (effectState?.EnemyPerfectMatchActive == true));
+                invertNumericRanking: (effectState?.PerfectMatchActivationCount ?? 0) % 2 == 1);
             var special = BattleCardEffectResolver.ResolveSpecialFunctionPriority(playerLogical,
                 enemyLogical, normal);
             if (special != normal)

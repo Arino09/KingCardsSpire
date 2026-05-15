@@ -76,12 +76,14 @@ namespace KingCardsSpire.Views.UI
 
             _onContinue = () =>
             {
+                UiButtonSfx.PlayDefaultClick();
                 var ui = UIManager.Instance;
                 if (ui != null)
                     ui.StartCoroutine(RunContinueThenMainHub(this));
             };
             _onNewGame = () =>
             {
+                UiButtonSfx.PlayDefaultClick();
                 var ui = UIManager.Instance;
                 if (ui != null)
                     ui.StartCoroutine(RunNewGameThenMainHub(this));
@@ -255,6 +257,7 @@ namespace KingCardsSpire.Views.UI
 
         private void OnSettingsClicked()
         {
+            UiButtonSfx.PlayDefaultClick();
             var ui = UIManager.Instance;
             if (ui != null)
                 ui.StartCoroutine(SettingsView.OpenSettingsRoutine());
@@ -262,11 +265,24 @@ namespace KingCardsSpire.Views.UI
 
         private void OnCardAlbumClicked()
         {
-            Debug.Log("[MainMenu] 卡牌图鉴：尚未接入 UI 面板。");
+            UiButtonSfx.PlayDefaultClick();
+            var ui = UIManager.Instance;
+            if (ui != null)
+                ui.StartCoroutine(OpenAlbumRoutine());
+        }
+
+        private static IEnumerator OpenAlbumRoutine()
+        {
+            var ui = UIManager.Instance;
+            if (ui == null)
+                yield break;
+
+            yield return ui.OpenAsync(UIPanelId.Album);
         }
 
         private static void OnExitClicked()
         {
+            UiButtonSfx.PlayDefaultClick();
 #if UNITY_EDITOR
             EditorApplication.isPlaying = false;
 #else

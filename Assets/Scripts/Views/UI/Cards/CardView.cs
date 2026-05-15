@@ -23,6 +23,7 @@ namespace KingCardsSpire.Views.UI.Cards
         [SerializeField] private Button clickTarget;
         [SerializeField] private UnityEvent onClicked;
         [SerializeField] private Image visualRoot;
+        [SerializeField] private Image albumMaskImage;
         [SerializeField] private Color normalTint = Color.white;
         [SerializeField] private Color selectedTint = new(0.85f, 0.95f, 1f, 1f);
         [SerializeField] private Color disabledTint = new(0.55f, 0.55f, 0.55f, 1f);
@@ -113,6 +114,8 @@ namespace KingCardsSpire.Views.UI.Cards
                 return;
             }
 
+            ResetAlbumMaskGraphic();
+
             var sameCardId = string.Equals(vm.CardId, _lastAppliedCardId, StringComparison.Ordinal);
 
             levelBadgeText.text = vm.LevelDisplay;
@@ -163,6 +166,24 @@ namespace KingCardsSpire.Views.UI.Cards
             nameText.gameObject.SetActive(true);
             effectText.gameObject.SetActive(true);
             clickTarget.interactable = true;
+            ResetAlbumMaskGraphic();
+        }
+
+        /// <summary>图鉴：未解锁时在卡面 Mask 上使用 <see cref="disabledTint"/>；已解锁时隐藏遮罩。</summary>
+        public void SetAlbumMaskRevealed(bool revealed)
+        {
+            if (albumMaskImage == null)
+                return;
+
+            albumMaskImage.color = revealed ? new Color(1f, 1f, 1f, 0f) : disabledTint;
+        }
+
+        private void ResetAlbumMaskGraphic()
+        {
+            if (albumMaskImage == null)
+                return;
+
+            albumMaskImage.color = new Color(1f, 1f, 1f, 0f);
         }
 
         /// <summary>

@@ -6,21 +6,18 @@ using UnityEngine;
 namespace KingCardsSpire.Managers
 {
     /// <summary>
-    /// 驻守者奖励：两档 SpareDay 相关金币 + 至多 5 张从本局 BOSS 卡组（手牌+弃牌）筛出的卡牌；卡牌不足时不补金币。卡牌列表由战斗结束事件携带。
+    /// 驻守者卡牌奖励选项（至多 5 张，来自战斗结束事件携带的敌方手牌+弃牌候选 Id）；静默金币为 <see cref="ComputeSpareDayBossSilentGold"/>，不进本列表。
     /// </summary>
     public static class BossRewardPicker
     {
-        public static BossRewardOption[] Generate(int spareDays, TowerFloorEntry floorOrNull,
-            ConfigManager cfg, IReadOnlyList<string> bossVictoryRewardCardIdsOrNull)
-        {
-            var floor = floorOrNull;
-            var goldBase = Mathf.Max(1, floor?.GoldBonusPerSpareDay ?? 5) * Mathf.Max(1, spareDays + 1);
+        /// <summary>驻守战胜静默金币：<c>SpareDay * 5</c>（<paramref name="spareDays"/> 为层内剩余日数语义，由调用方计算）。</summary>
+        public static int ComputeSpareDayBossSilentGold(int spareDays) => Mathf.Max(0, spareDays) * 5;
 
+        public static BossRewardOption[] GenerateCardBossRewardOptions(ConfigManager cfg,
+            IReadOnlyList<string> bossVictoryRewardCardIdsOrNull)
+        {
             var options = new List<BossRewardOption>();
             var usedKeys = new HashSet<string>();
-
-            options.Add(MakeGold(goldBase, usedKeys));
-            options.Add(MakeGold(goldBase + 15, usedKeys));
 
             if (bossVictoryRewardCardIdsOrNull != null && cfg != null)
             {
@@ -43,19 +40,6 @@ namespace KingCardsSpire.Managers
             }
 
             return options.ToArray();
-        }
-
-        private static BossRewardOption MakeGold(int amount, HashSet<string> usedKeys)
-        {
-            var a = amount;
-            var key = "g:" + a;
-            while (!usedKeys.Add(key))
-            {
-                a += 3;
-                key = "g:" + a;
-            }
-
-            return new BossRewardOption { IsGold = true, GoldAmount = a };
         }
     }
 }

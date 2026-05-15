@@ -81,7 +81,7 @@ namespace KingCardsSpire.Core.Events
         }
     }
 
-    /// <summary>新档开场教学战流程结束（含战败对话与占位 UI 后）；由 <see cref="Views.UI.BattleView"/> 发布，<see cref="Views.UI.MainMenuView"/> 等待后分流 Hub / 主菜单。</summary>
+    /// <summary>新档开场教学战流程结束（含战败对白与 GameOverView 等）；由 <see cref="Views.UI.BattleView"/> 发布，<see cref="Views.UI.MainMenuView"/> 等待后分流 Hub / 主菜单。</summary>
     public readonly struct OpeningTutorialBattleFlowCompletedEvent : IEvent
     {
         public readonly bool PlayerVictory;
@@ -118,6 +118,14 @@ namespace KingCardsSpire.Core.Events
     public readonly struct SaveLoadedEvent : IEvent { }
 
     public readonly struct SaveWrittenEvent : IEvent { }
+
+    /// <summary>大结局对白链激活状态（供 BGM 导演层优先播放结局曲）。</summary>
+    public readonly struct EndingStoryBgmActiveEvent : IEvent
+    {
+        public readonly bool Active;
+
+        public EndingStoryBgmActiveEvent(bool active) => Active = active;
+    }
 
     /// <summary>玩家当日 NPC 访问已消耗且进入对话占位流程（对话系统未实装前供 UI 刷新等订阅）。</summary>
     public readonly struct NpcEncounterStartedEvent : IEvent

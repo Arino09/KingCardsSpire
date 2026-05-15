@@ -26,6 +26,12 @@ namespace KingCardsSpire.Managers
         private readonly List<Card> _enemyDiscard = new();
         private readonly List<string> _historyLines = new();
 
+        /// <summary>本局己方已打出（含入弃牌与胜局留在手中的）能力牌效果行，用于战斗手牌悬浮提示。</summary>
+        private readonly List<string> _playerBattleAbilityEffectLines = new();
+
+        /// <summary>本局敌方已打出的能力牌效果行。</summary>
+        private readonly List<string> _enemyBattleAbilityEffectLines = new();
+
         private WeatherType _weather;
         private bool _noRoundLimit;
         private int _maxRounds;
@@ -53,11 +59,14 @@ namespace KingCardsSpire.Managers
 
         private readonly BattleEffectRuntimeState _battleEffects = new();
 
-        /// <summary>「最终时刻」将在下一回合开始时生效。</summary>
-        private bool _restrictedNextRound;
-
         /// <summary>本回合指数形态要求的额外弃牌是否已由玩家完成（或无需弃牌）。</summary>
         private bool _playerExponentialSacrificeResolved;
+
+        /// <summary>消耗「续命」等为本局增加的最大回合数增量。</summary>
+        private int _maxRoundBonusFromConsumables;
+
+        /// <summary>后悔牌：已使用，等待从己方弃牌堆选一张回手。</summary>
+        private bool _awaitingRegretPick;
 
         private readonly List<Card> _pendingChaoticExtraTemplates = new();
 
@@ -90,8 +99,23 @@ namespace KingCardsSpire.Managers
         /// <summary>玩家已暂存的手牌下标，未选择时为 -1。</summary>
         public int PendingPlayerHandIndex => _pendingPlayerHandIndex;
 
+        /// <summary>
+        /// 汇总本局一方已打出的能力牌效果文案（按打出顺序）；无记录时返回说明句。
+        /// </summary>
+        public string BuildPlayedAbilityBattleTooltipBody(bool forPlayerPerspective)
+        {
+            var lines = forPlayerPerspective ? _playerBattleAbilityEffectLines : _enemyBattleAbilityEffectLines;
+            if (lines == null || lines.Count == 0)
+                return forPlayerPerspective ? "本场己方尚未打出能力牌。" : "本场敌方尚未打出能力牌。";
+
+            return string.Join("\n\n", lines);
+        }
+
         /// <summary>混乱战场：本局玩家是否由 UI 随机代出牌（不改变敌方 AI）。</summary>
         public bool PlayerChaoticRandomPlayThisBattle => _playerChaoticRandomPlay;
+
+        /// <summary>后悔牌使用后，需从弃牌堆点选一张回手。</summary>
+        public bool AwaitingRegretPick => _awaitingRegretPick;
 
         /// <summary>下一场战斗开始前设置：将 <paramref name="templates"/> 复制为开局玩家手牌模板（不入库）；在 <see cref="StartBattleInternal"/> 开头消费并清空。</summary>
         public void SetPendingChaoticBattleExtras(IReadOnlyList<Card> templates)
@@ -112,7 +136,8 @@ namespace KingCardsSpire.Managers
                     Level = t.Level,
                     Type = t.Type,
                     EffectDesc = t.EffectDesc,
-                    IsUnique = t.IsUnique
+                    IsUnique = t.IsUnique,
+                    DeckInstanceId = t.DeckInstanceId ?? string.Empty
                 });
             }
         }
@@ -253,14 +278,14 @@ namespace KingCardsSpire.Managers
                 _enemyHand.Add(CloneForBattle(c));
 
             ApplyBuffRandomLevelsToPlayerHand();
+            RefreshMorphBothHands();
 
             var gm = GameManager.Instance;
             _playerChaoticRandomPlay = !tutorialBattle && gm != null && gm.HasBuff(BuffId.ChaoticBattlefield);
 
-            ActivateOpeningEnemyAbilityCards();
-
             _weather = weather;
             _noRoundLimit = weather == WeatherType.WarmWind;
+            _maxRoundBonusFromConsumables = 0;
             _maxRounds = CardBattleRules.ComputeMaxRounds(_playerHand.Count, _enemyHand.Count);
 
             ApplyXRay(Mathf.Min(Mathf.Max(0, xRayCount), _enemyHand.Count));
@@ -317,6 +342,11 @@ namespace KingCardsSpire.Managers
             }
 
             _pendingEnemyHandIndex = enemyIdx;
+            var lockedEnemy = _enemyHand[_pendingEnemyHandIndex];
+            if (lockedEnemy != null &&
+                string.Equals(lockedEnemy.Id, WellKnownCardIds.Fate, StringComparison.OrdinalIgnoreCase))
+                lockedEnemy.Level = Random.Range(1, 4);
+
             _pendingPlayerHandIndex = -1;
             return true;
         }
@@ -334,8 +364,6 @@ namespace KingCardsSpire.Managers
                 if (playerCard != null && playerCard.Type == CardType.Consumable)
                     continue;
                 if (!IsLegalPlay(playerCard, _playerHand, _lastPlayerInstanceId))
-                    continue;
-                if (_battleEffects.FinalMomentRestrictionActive && !IsAllowedUnderFinalMoment(playerCard))
                     continue;
                 dest.Add(i);
             }
@@ -383,12 +411,8 @@ namespace KingCardsSpire.Managers
                 return false;
             }
 
-            if (_battleEffects.FinalMomentRestrictionActive &&
-                !IsAllowedUnderFinalMoment(playerCard))
-            {
-                error = "最终时刻：仅能出国王、平民或大臣";
-                return false;
-            }
+            if (string.Equals(playerCard.Id, WellKnownCardIds.Fate, StringComparison.OrdinalIgnoreCase))
+                playerCard.Level = Random.Range(1, 4);
 
             _pendingPlayerHandIndex = playerHandIndex;
             _playerExponentialSacrificeResolved = !RequiresPlayerExponentialSacrifice();
@@ -397,6 +421,34 @@ namespace KingCardsSpire.Managers
                 SyncBattleState();
                 EventManager.Instance?.Publish(new BattleStateChangedEvent());
             }
+
+            RefreshMorphBothHands();
+            return true;
+        }
+
+        /// <summary>后悔牌：从己方弃牌堆选一张回到手牌。</summary>
+        public bool TryCompleteRegretPick(int playerDiscardIndex, out string error)
+        {
+            error = null;
+            if (!_awaitingRegretPick)
+            {
+                error = "当前无需选择后悔目标";
+                return false;
+            }
+
+            if (playerDiscardIndex < 0 || playerDiscardIndex >= _playerDiscard.Count)
+            {
+                error = "弃牌堆下标无效";
+                return false;
+            }
+
+            var picked = _playerDiscard[playerDiscardIndex];
+            _playerDiscard.RemoveAt(playerDiscardIndex);
+            _playerHand.Add(picked);
+            _awaitingRegretPick = false;
+            RefreshMorphBothHands();
+            SyncBattleState();
+            EventManager.Instance?.Publish(new BattleStateChangedEvent());
             return true;
         }
 
@@ -438,12 +490,18 @@ namespace KingCardsSpire.Managers
                 _pendingPlayerHandIndex--;
 
             _playerExponentialSacrificeResolved = true;
+            RefreshMorphBothHands();
             SyncBattleState();
             EventManager.Instance?.Publish(new BattleStateChangedEvent());
             return true;
         }
 
-        /// <summary>指数形态：在无需玩家手选时由 UI/自动化调用，随机弃掉一张非本回合出牌。</summary>
+        /// <summary>关闭后悔选牌界面时调用：放弃选回（后悔牌已消耗）。</summary>
+        public void CancelAwaitingRegretPick()
+        {
+            _awaitingRegretPick = false;
+        }
+
         public bool TryAutoResolvePlayerExponentialIfNeeded(out string error) =>
             TryAutoCompletePlayerExponentialSacrifice(out error);
 
@@ -481,14 +539,14 @@ namespace KingCardsSpire.Managers
                 return false;
             }
 
-            if (_restrictedNextRound)
-            {
-                _battleEffects.FinalMomentRestrictionActive = true;
-                _restrictedNextRound = false;
-            }
-
             var playerIdx = _pendingPlayerHandIndex;
             var enemyIdx = _pendingEnemyHandIndex;
+
+            if (TryApplyFinalMomentPurgeAndFinishIfNeeded(ref playerIdx, ref enemyIdx))
+            {
+                compareResult = default;
+                return true;
+            }
 
             ApplyPreRoundSpecials(ref playerIdx, ref enemyIdx);
 
@@ -503,9 +561,6 @@ namespace KingCardsSpire.Managers
             ResolveRound(playerIdx, enemyIdx, playerCard, enemyCard, compareResult);
 
             _battleEffects.ClearRoundConsumableFlags();
-
-            if (_battleEffects.FinalMomentRestrictionActive)
-                _battleEffects.FinalMomentRestrictionActive = false;
 
             _pendingEnemyHandIndex = -1;
             _pendingPlayerHandIndex = -1;
@@ -532,7 +587,7 @@ namespace KingCardsSpire.Managers
         /// 累加消耗牌效果（同一回合可多次使用），在下次 <see cref="CommitPendingRound"/> 结算前生效。
         /// </summary>
         public void AddConsumableRoundModifiers(float playerLevelBonusDelta, float enemyLevelBonusDelta,
-            bool disableEnemyFunction, bool disableEnemyAbility, bool surviveLossToHand)
+            bool disableEnemyFunction, bool disableEnemyAbility)
         {
             _battleEffects.ConsumablePlayerLevelBonus += playerLevelBonusDelta;
             _battleEffects.ConsumableEnemyLevelBonus += enemyLevelBonusDelta;
@@ -540,8 +595,6 @@ namespace KingCardsSpire.Managers
                 _battleEffects.DisableEnemyFunctionEffects = true;
             if (disableEnemyAbility)
                 _battleEffects.DisableEnemyAbilityEffects = true;
-            if (surviveLossToHand)
-                _battleEffects.PlayerSurviveLossToHand = true;
         }
 
         public bool TryGetForesightRevealedEnemyCard(out Card snapshot)
@@ -614,7 +667,10 @@ namespace KingCardsSpire.Managers
             }
 
             if (string.Equals(id, WellKnownCardIds.Regret, StringComparison.OrdinalIgnoreCase))
-                TryUnstagePlayerCard(out _, false);
+                _awaitingRegretPick = true;
+
+            if (string.Equals(id, WellKnownCardIds.SurviveRound, StringComparison.OrdinalIgnoreCase))
+                _maxRoundBonusFromConsumables++;
 
             MoveCardAtToDiscard(_playerHand, playerHandIndex, _playerDiscard);
             OnCardDiscardedFromSide(card, true);
@@ -640,23 +696,22 @@ namespace KingCardsSpire.Managers
                 return;
 
             if (string.Equals(id, WellKnownCardIds.DebuffHalf, StringComparison.OrdinalIgnoreCase))
-                AddConsumableRoundModifiers(0f, -0.5f, false, false, false);
+                AddConsumableRoundModifiers(0f, -0.5f, false, false);
             else if (string.Equals(id, WellKnownCardIds.DebuffOne, StringComparison.OrdinalIgnoreCase))
-                AddConsumableRoundModifiers(0f, -1f, false, false, false);
+                AddConsumableRoundModifiers(0f, -1f, false, false);
             else if (string.Equals(id, WellKnownCardIds.BuffHalf, StringComparison.OrdinalIgnoreCase))
-                AddConsumableRoundModifiers(0.5f, 0f, false, false, false);
+                AddConsumableRoundModifiers(0.5f, 0f, false, false);
             else if (string.Equals(id, WellKnownCardIds.BuffOne, StringComparison.OrdinalIgnoreCase))
-                AddConsumableRoundModifiers(1f, 0f, false, false, false);
+                AddConsumableRoundModifiers(1f, 0f, false, false);
             else if (string.Equals(id, WellKnownCardIds.DisableFunction, StringComparison.OrdinalIgnoreCase))
-                AddConsumableRoundModifiers(0f, 0f, true, false, false);
+                AddConsumableRoundModifiers(0f, 0f, true, false);
             else if (string.Equals(id, WellKnownCardIds.DisableAbility, StringComparison.OrdinalIgnoreCase))
-                AddConsumableRoundModifiers(0f, 0f, false, true, false);
-            else if (string.Equals(id, WellKnownCardIds.SurviveRound, StringComparison.OrdinalIgnoreCase))
-                AddConsumableRoundModifiers(0f, 0f, false, false, true);
+                AddConsumableRoundModifiers(0f, 0f, false, true);
         }
 
         public void EndBattle()
         {
+            MergeForgeStrikeLevelsIntoPlayerSave();
             _phase = Phase.Idle;
             ResetRuntime();
             SyncBattleState();
@@ -700,23 +755,11 @@ namespace KingCardsSpire.Managers
             var gm = GameManager.Instance;
             var cfg = ConfigManager.Instance;
             var floor = gm != null ? gm.PlayerState.CurrentFloor : 1;
-            if (cfg != null && cfg.TryGetTowerFloor(floor, out var entry))
+            if (cfg != null)
             {
-                var ids = entry.EnemyDeckCardIds;
-                if (ids != null && ids.Length > 0)
-                {
-                    var list = new List<Card>();
-                    foreach (var id in ids)
-                    {
-                        if (string.IsNullOrEmpty(id))
-                            continue;
-                        if (cfg.TryGetCard(id, out var cc))
-                            list.Add(CardFromConfig(cc));
-                    }
-
-                    if (list.Count > 0)
-                        return list;
-                }
+                var list = BossDeckGenerator.BuildDeck(floor, cfg);
+                if (list != null && list.Count > 0)
+                    return list;
             }
 
             return BuildDefaultEnemyDeck();
@@ -724,7 +767,7 @@ namespace KingCardsSpire.Managers
 
         private static Card CardFromConfig(CardConfigEntry cc)
         {
-            return new Card
+            var card = new Card
             {
                 Id = cc.Id,
                 Name = cc.DisplayName,
@@ -733,6 +776,8 @@ namespace KingCardsSpire.Managers
                 EffectDesc = cc.Description ?? string.Empty,
                 IsUnique = cc.IsUnique
             };
+            CardDeckIdentity.EnsureDeckInstanceId(card);
+            return card;
         }
 
         /// <summary>与原先 <see cref="PickEnemyCard"/> 相同的选取规则，返回手牌下标。</summary>
@@ -751,8 +796,6 @@ namespace KingCardsSpire.Managers
                         continue;
                     if (!IsLegalPlay(c, _enemyHand, _lastEnemyInstanceId))
                         continue;
-                    if (_battleEffects.FinalMomentRestrictionActive && !IsAllowedUnderFinalMoment(c))
-                        continue;
                     index = i;
                     return true;
                 }
@@ -763,8 +806,6 @@ namespace KingCardsSpire.Managers
             {
                 var c = _enemyHand[i];
                 if (!IsLegalPlay(c, _enemyHand, _lastEnemyInstanceId))
-                    continue;
-                if (_battleEffects.FinalMomentRestrictionActive && !IsAllowedUnderFinalMoment(c))
                     continue;
                 candidates.Add(i);
             }
@@ -785,8 +826,24 @@ namespace KingCardsSpire.Managers
                 return true;
             }
 
-            index = candidates[Random.Range(0, candidates.Count)];
+            index = PickEnemyHandIndexPreferringAbility(candidates);
             return true;
+        }
+
+        private int PickEnemyHandIndexPreferringAbility(List<int> candidateIndices)
+        {
+            var abilityIdx = new List<int>();
+            for (var i = 0; i < candidateIndices.Count; i++)
+            {
+                var idx = candidateIndices[i];
+                var c = _enemyHand[idx];
+                if (c != null && c.Type == CardType.Ability)
+                    abilityIdx.Add(idx);
+            }
+
+            if (abilityIdx.Count > 0)
+                return abilityIdx[Random.Range(0, abilityIdx.Count)];
+            return candidateIndices[Random.Range(0, candidateIndices.Count)];
         }
 
         private Card PickEnemyCard()
@@ -815,7 +872,7 @@ namespace KingCardsSpire.Managers
 
             if (!EnemyAiDecisionService.TryChooseBestEnemyHandIndex(_playerHand[playerHandIndex],
                     _playerHand, _playerDiscard, _enemyHand, _enemyDiscard, rule, _weather,
-                    _roundsCompleted, _battleEffects.FinalMomentRestrictionActive, _lastEnemyInstanceId,
+                    _roundsCompleted, false, _lastEnemyInstanceId,
                     _battleEffects, out var chosenIndex))
                 return false;
 
@@ -838,7 +895,7 @@ namespace KingCardsSpire.Managers
             var roundsByHandEmpty = Mathf.Min(_playerHand.Count, _enemyHand.Count);
             var roundsByLimit = int.MaxValue;
             if (!_noRoundLimit && _maxRounds > 0)
-                roundsByLimit = Mathf.Max(0, _maxRounds - _roundsCompleted);
+                roundsByLimit = Mathf.Max(0, _maxRounds + _maxRoundBonusFromConsumables - _roundsCompleted);
 
             return Mathf.Min(roundsByHandEmpty, roundsByLimit);
         }
@@ -871,9 +928,10 @@ namespace KingCardsSpire.Managers
             if (string.Equals(pl.Id, WellKnownCardIds.AllIn, StringComparison.OrdinalIgnoreCase)
                 && _playerHand.Count > 1)
             {
-                var removeAt = RandomOtherIndex(_playerHand.Count, playerIdx);
-                DiscardPlayerCardAt(removeAt);
-                playerIdx = FindHandIndexByInstanceId(_playerHand, playerInst);
+                var other = RandomOtherIndex(_playerHand.Count, playerIdx);
+                var tgt = _playerHand[other];
+                if (tgt != null)
+                    tgt.Level *= 2f;
             }
 
             if (string.Equals(pl.Id, WellKnownCardIds.Hope, StringComparison.OrdinalIgnoreCase)
@@ -908,11 +966,10 @@ namespace KingCardsSpire.Managers
             if (string.Equals(el.Id, WellKnownCardIds.AllIn, StringComparison.OrdinalIgnoreCase)
                 && _enemyHand.Count > 1)
             {
-                var removeAt = RandomOtherIndex(_enemyHand.Count, enemyIdx);
-                DiscardEnemyCardAt(removeAt);
-                enemyIdx = FindHandIndexByInstanceId(_enemyHand, enemyInst);
-                if (enemyIdx < 0)
-                    enemyIdx = 0;
+                var other = RandomOtherIndex(_enemyHand.Count, enemyIdx);
+                var tgt = _enemyHand[other];
+                if (tgt != null)
+                    tgt.Level *= 2f;
             }
 
             if (string.Equals(el.Id, WellKnownCardIds.Hope, StringComparison.OrdinalIgnoreCase)
@@ -961,17 +1018,12 @@ namespace KingCardsSpire.Managers
             if (BattleCardEffectResolver.EnemyEffectsInactive(enemyLogical, _battleEffects))
                 enemyLogical = BattleCardEffectResolver.StripToNeutralZero(enemyLogical);
 
-            var playerAllIn = string.Equals(stagedPlayer.Id, WellKnownCardIds.AllIn,
-                StringComparison.OrdinalIgnoreCase);
-            var enemyAllIn = string.Equals(stagedEnemy.Id, WellKnownCardIds.AllIn,
-                StringComparison.OrdinalIgnoreCase);
-
             var pCompare = BattleCardEffectResolver.ToCompareCard(playerLogical, true, _playerHand,
                 _enemyHand,
-                _battleEffects, round1Based, completedBefore, playerAllIn);
+                _battleEffects, round1Based, completedBefore);
             var eCompare = BattleCardEffectResolver.ToCompareCard(enemyLogical, false, _playerHand,
                 _enemyHand,
-                _battleEffects, round1Based, completedBefore, enemyAllIn);
+                _battleEffects, round1Based, completedBefore);
 
             if (_battleEffects.PlayerMustWinThisRound)
             {
@@ -985,7 +1037,7 @@ namespace KingCardsSpire.Managers
                 return BattleCompareResult.SecondWins;
             }
 
-            var invertNumeric = _battleEffects.PlayerPerfectMatchActive ^ _battleEffects.EnemyPerfectMatchActive;
+            var invertNumeric = (_battleEffects.PerfectMatchActivationCount % 2) == 1;
             var normal = CardBattleRules.Compare(pCompare, eCompare, _weather, _playerHand, _enemyHand,
                 invertNumeric);
             var special =
@@ -1044,22 +1096,17 @@ namespace KingCardsSpire.Managers
                     summary += " [己方胜·敌方牌入弃]";
                     break;
                 case BattleCompareResult.SecondWins:
-                    if (!_battleEffects.PlayerSurviveLossToHand)
-                    {
-                        DiscardPlayerCardAt(playerHandIndex);
-                        summary += " [敌方胜·己方牌入弃]";
-                    }
-                    else
-                    {
-                        summary += " [续命·己方败牌留在手]";
-                    }
-
+                    DiscardPlayerCardAt(playerHandIndex);
+                    summary += " [敌方胜·己方牌入弃]";
                     break;
             }
 
+            RecordPlayedAbilityStayedInHandAfterRound(playerCard, enemyCard, result);
+
+            ApplyForgeStrikePlayAdjustments(playerCard, enemyCard);
+
             ApplyFortuneAndFalseGodChains(playerCard, enemyCard, result);
             ApplyCivilizationIfPlayed(playerCard, enemyCard);
-            ArmFinalMomentNextRound(playerCard, enemyCard, result);
 
             UpdateLastPlayedSnapshots(playerCard, enemyCard);
 
@@ -1068,6 +1115,7 @@ namespace KingCardsSpire.Managers
 
             _roundsCompleted++;
             ApplyDaydreamAfterRoundResolved();
+            RefreshMorphBothHands();
             _historyLines.Add($"第{_roundsCompleted}回合: {summary}");
             CurrentBattle.TurnHistory = _historyLines.ToArray();
 
@@ -1079,15 +1127,6 @@ namespace KingCardsSpire.Managers
                 return;
 
             TryEndByRoundLimit();
-        }
-
-        private static bool IsAllowedUnderFinalMoment(Card c)
-        {
-            if (c == null)
-                return false;
-            return string.Equals(c.Id, WellKnownCardIds.King, StringComparison.OrdinalIgnoreCase)
-                   || string.Equals(c.Id, WellKnownCardIds.Commoner, StringComparison.OrdinalIgnoreCase)
-                   || string.Equals(c.Id, WellKnownCardIds.Minister, StringComparison.OrdinalIgnoreCase);
         }
 
         private static int RandomOtherIndex(int count, int except)
@@ -1131,21 +1170,6 @@ namespace KingCardsSpire.Managers
             OnCardDiscardedFromSide(c, false);
         }
 
-        private void ActivateOpeningEnemyAbilityCards()
-        {
-            for (var i = _enemyHand.Count - 1; i >= 0; i--)
-            {
-                var card = _enemyHand[i];
-                if (card == null || card.Type != CardType.Ability)
-                    continue;
-
-                MoveCardAtToDiscard(_enemyHand, i, _enemyDiscard);
-                OnCardDiscardedFromSide(card, false);
-                if (string.Equals(card.Id, WellKnownCardIds.FinalMoment, StringComparison.OrdinalIgnoreCase))
-                    _battleEffects.FinalMomentRestrictionActive = true;
-            }
-        }
-
         private void OnCardDiscardedFromSide(Card card, bool fromPlayerPerspective)
         {
             if (card == null)
@@ -1163,18 +1187,6 @@ namespace KingCardsSpire.Managers
             if (string.Equals(id, WellKnownCardIds.Snowflake, StringComparison.OrdinalIgnoreCase)
                 && !fromPlayerPerspective)
                 _battleEffects.PlayerSnowflakeActive = true;
-            if (string.Equals(id, WellKnownCardIds.ForgeBlade, StringComparison.OrdinalIgnoreCase)
-                && fromPlayerPerspective)
-                _battleEffects.PlayerForgeBladeActive = true;
-            if (string.Equals(id, WellKnownCardIds.StrikeBlade, StringComparison.OrdinalIgnoreCase)
-                && fromPlayerPerspective)
-                _battleEffects.PlayerStrikeBladeActive = true;
-            if (string.Equals(id, WellKnownCardIds.ForgeBlade, StringComparison.OrdinalIgnoreCase)
-                && !fromPlayerPerspective)
-                _battleEffects.EnemyForgeBladeActive = true;
-            if (string.Equals(id, WellKnownCardIds.StrikeBlade, StringComparison.OrdinalIgnoreCase)
-                && !fromPlayerPerspective)
-                _battleEffects.EnemyStrikeBladeActive = true;
             if (string.Equals(id, WellKnownCardIds.EvenForm, StringComparison.OrdinalIgnoreCase)
                 && fromPlayerPerspective)
                 _battleEffects.PlayerEvenFormActive = true;
@@ -1196,48 +1208,61 @@ namespace KingCardsSpire.Managers
             if (string.Equals(id, WellKnownCardIds.ExponentialForm, StringComparison.OrdinalIgnoreCase)
                 && !fromPlayerPerspective)
                 _battleEffects.EnemyExponentialFormActive = true;
-            if (string.Equals(id, WellKnownCardIds.PerfectMatch, StringComparison.OrdinalIgnoreCase)
-                && fromPlayerPerspective)
-                _battleEffects.PlayerPerfectMatchActive = true;
-            if (string.Equals(id, WellKnownCardIds.PerfectMatch, StringComparison.OrdinalIgnoreCase)
-                && !fromPlayerPerspective)
-                _battleEffects.EnemyPerfectMatchActive = true;
+            if (string.Equals(id, WellKnownCardIds.PerfectMatch, StringComparison.OrdinalIgnoreCase))
+                _battleEffects.PerfectMatchActivationCount++;
             if (string.Equals(id, WellKnownCardIds.Daydream, StringComparison.OrdinalIgnoreCase)
                 && fromPlayerPerspective)
                 _battleEffects.PlayerDaydreamActive = true;
             if (string.Equals(id, WellKnownCardIds.Daydream, StringComparison.OrdinalIgnoreCase)
                 && !fromPlayerPerspective)
                 _battleEffects.EnemyDaydreamActive = true;
+
+            if (card.Type == CardType.Ability)
+                AppendPlayedAbilityBattleLine(card, fromPlayerPerspective);
+        }
+
+        private void AppendPlayedAbilityBattleLine(Card card, bool fromPlayerPerspective)
+        {
+            if (card == null || card.Type != CardType.Ability)
+                return;
+
+            var name = string.IsNullOrWhiteSpace(card.Name) ? card.Id : card.Name;
+            var desc = string.IsNullOrWhiteSpace(card.EffectDesc) ? "（暂无效果说明）" : card.EffectDesc;
+            var line = $"· {name}：{desc}";
+            if (fromPlayerPerspective)
+                _playerBattleAbilityEffectLines.Add(line);
+            else
+                _enemyBattleAbilityEffectLines.Add(line);
+        }
+
+        /// <summary>
+        /// 胜方留在手中的出战能力牌不会入弃牌堆，需在回合结算时单独记入「已打出」列表。
+        /// </summary>
+        private void RecordPlayedAbilityStayedInHandAfterRound(Card playerCard, Card enemyCard,
+            BattleCompareResult result)
+        {
+            if (result == BattleCompareResult.FirstWins && playerCard != null &&
+                playerCard.Type == CardType.Ability)
+                AppendPlayedAbilityBattleLine(playerCard, true);
+
+            if (result == BattleCompareResult.SecondWins && enemyCard != null &&
+                enemyCard.Type == CardType.Ability)
+                AppendPlayedAbilityBattleLine(enemyCard, false);
         }
 
         private void ApplyCivilizationIfPlayed(Card playerCard, Card enemyCard)
         {
+            var cfg = ConfigManager.Instance;
+            if (cfg == null)
+                return;
+
             if (playerCard != null &&
                 string.Equals(playerCard.Id, WellKnownCardIds.Civilization, StringComparison.OrdinalIgnoreCase))
-            {
-                foreach (var c in _playerHand)
-                    c.Level = 3f;
-            }
+                BattleMorphRules.TransformHandToKings(_playerHand, cfg);
 
             if (enemyCard != null &&
                 string.Equals(enemyCard.Id, WellKnownCardIds.Civilization, StringComparison.OrdinalIgnoreCase))
-            {
-                foreach (var c in _enemyHand)
-                    c.Level = 3f;
-            }
-        }
-
-        private void ArmFinalMomentNextRound(Card playerCard, Card enemyCard, BattleCompareResult result)
-        {
-            if (playerCard != null &&
-                string.Equals(playerCard.Id, WellKnownCardIds.FinalMoment, StringComparison.OrdinalIgnoreCase)
-                && result != BattleCompareResult.FirstWins)
-                _restrictedNextRound = true;
-
-            if (enemyCard != null &&
-                string.Equals(enemyCard.Id, WellKnownCardIds.FinalMoment, StringComparison.OrdinalIgnoreCase)
-                && result == BattleCompareResult.FirstWins)
-                _restrictedNextRound = true;
+                BattleMorphRules.TransformHandToKings(_enemyHand, cfg);
         }
 
         private void UpdateLastPlayedSnapshots(Card playerCard, Card enemyCard)
@@ -1258,7 +1283,8 @@ namespace KingCardsSpire.Managers
                 Type = c.Type,
                 EffectDesc = c.EffectDesc,
                 IsUnique = c.IsUnique,
-                BattleInstanceId = c.BattleInstanceId
+                BattleInstanceId = c.BattleInstanceId,
+                DeckInstanceId = c.DeckInstanceId ?? string.Empty
             };
         }
 
@@ -1309,7 +1335,8 @@ namespace KingCardsSpire.Managers
                 return false;
             if (_maxRounds <= 0)
                 return false;
-            if (_roundsCompleted < _maxRounds)
+            var effectiveMax = _maxRounds + _maxRoundBonusFromConsumables;
+            if (_roundsCompleted < effectiveMax)
                 return false;
 
             var pSum = CardBattleRules.SumTotalHandLevel(_playerHand, _weather);
@@ -1321,16 +1348,12 @@ namespace KingCardsSpire.Managers
                 return true;
             }
 
-            // 总手牌等级低的一方获胜（§2.2.5）；天作之合单方生效时反转该方在比和时的优劣。
+            var invert = (_battleEffects.PerfectMatchActivationCount % 2) == 1;
             bool playerWins;
-            var pPm = _battleEffects.PlayerPerfectMatchActive;
-            var ePm = _battleEffects.EnemyPerfectMatchActive;
-            if (pPm == ePm)
+            if (!invert)
                 playerWins = pSum < eSum;
-            else if (pPm)
-                playerWins = pSum > eSum;
             else
-                playerWins = eSum > pSum;
+                playerWins = pSum > eSum;
 
             FinishBattle(playerWins, BattleEndReason.RoundLimitByTotalHandLevel);
             return true;
@@ -1338,6 +1361,7 @@ namespace KingCardsSpire.Managers
 
         private void FinishBattle(bool playerVictory, BattleEndReason reason)
         {
+            MergeForgeStrikeLevelsIntoPlayerSave();
             _phase = Phase.Idle;
             _pendingEnemyHandIndex = -1;
             _pendingPlayerHandIndex = -1;
@@ -1437,6 +1461,140 @@ namespace KingCardsSpire.Managers
             CurrentBattle.EnemyVisible = visible;
         }
 
+        private void RefreshMorphBothHands()
+        {
+            var cfg = ConfigManager.Instance;
+            if (cfg == null)
+                return;
+            BattleMorphRules.ApplyMorphTransformsOnHand(_playerHand, cfg);
+            BattleMorphRules.ApplyMorphTransformsOnHand(_enemyHand, cfg);
+        }
+
+        private bool TryApplyFinalMomentPurgeAndFinishIfNeeded(ref int playerIdx, ref int enemyIdx)
+        {
+            var pc = _playerHand[playerIdx];
+            var ec = _enemyHand[enemyIdx];
+            if (pc == null || ec == null)
+                return false;
+
+            var pFm = string.Equals(pc.Id, WellKnownCardIds.FinalMoment, StringComparison.OrdinalIgnoreCase);
+            var eFm = string.Equals(ec.Id, WellKnownCardIds.FinalMoment, StringComparison.OrdinalIgnoreCase);
+            if (!pFm && !eFm)
+                return false;
+
+            var pInst = pc.BattleInstanceId;
+            var eInst = ec.BattleInstanceId;
+            PurgeHandKeepTriOrStaged(_playerHand, pInst);
+            PurgeHandKeepTriOrStaged(_enemyHand, eInst);
+
+            playerIdx = FindHandIndexByInstanceId(_playerHand, pInst);
+            enemyIdx = FindHandIndexByInstanceId(_enemyHand, eInst);
+            if (playerIdx < 0 && _playerHand.Count > 0)
+                playerIdx = 0;
+            if (enemyIdx < 0 && _enemyHand.Count > 0)
+                enemyIdx = 0;
+
+            if (_playerHand.Count == 0 && _enemyHand.Count == 0)
+            {
+                FinishBattle(false, BattleEndReason.FinalMomentBothHandsEmpty);
+                return true;
+            }
+
+            if (_playerHand.Count == 0)
+            {
+                FinishBattle(false, BattleEndReason.FinalMomentPlayerHandEmpty);
+                return true;
+            }
+
+            if (_enemyHand.Count == 0)
+            {
+                FinishBattle(true, BattleEndReason.FinalMomentEnemyHandEmpty);
+                return true;
+            }
+
+            return false;
+        }
+
+        private static void PurgeHandKeepTriOrStaged(List<Card> hand, string stagedBattleInstanceId)
+        {
+            for (var i = hand.Count - 1; i >= 0; i--)
+            {
+                var c = hand[i];
+                if (c == null)
+                    continue;
+                if (c.BattleInstanceId == stagedBattleInstanceId)
+                    continue;
+                if (BattleMorphRules.IsTriCoreId(c.Id))
+                    continue;
+                hand.RemoveAt(i);
+            }
+        }
+
+        private void ApplyForgeStrikePlayAdjustments(Card playerCard, Card enemyCard)
+        {
+            AdjustForgeStrikeLevelOnPlayedCard(playerCard);
+            AdjustForgeStrikeLevelOnPlayedCard(enemyCard);
+        }
+
+        private static void AdjustForgeStrikeLevelOnPlayedCard(Card c)
+        {
+            if (c == null)
+                return;
+            if (string.Equals(c.Id, WellKnownCardIds.ForgeBlade, StringComparison.OrdinalIgnoreCase))
+                c.Level += 0.1f;
+            else if (string.Equals(c.Id, WellKnownCardIds.StrikeBlade, StringComparison.OrdinalIgnoreCase))
+                c.Level -= 0.1f;
+        }
+
+        private void MergeForgeStrikeLevelsIntoPlayerSave()
+        {
+            var gm = GameManager.Instance;
+            var p = gm?.PlayerState;
+            if (p == null)
+                return;
+
+            var levels = new Dictionary<string, float>(StringComparer.Ordinal);
+            void collect(IReadOnlyList<Card> list)
+            {
+                if (list == null)
+                    return;
+                for (var i = 0; i < list.Count; i++)
+                {
+                    var c = list[i];
+                    if (c == null || string.IsNullOrEmpty(c.DeckInstanceId))
+                        continue;
+                    if (!IsForgeStrikeId(c.Id))
+                        continue;
+                    levels[c.DeckInstanceId] = c.Level;
+                }
+            }
+
+            collect(_playerHand);
+            collect(_playerDiscard);
+
+            ApplyForgeStrikeLevelsToArray(p.HandCards, levels);
+            ApplyForgeStrikeLevelsToArray(p.StoredCards, levels);
+        }
+
+        private static bool IsForgeStrikeId(string id) =>
+            string.Equals(id, WellKnownCardIds.ForgeBlade, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(id, WellKnownCardIds.StrikeBlade, StringComparison.OrdinalIgnoreCase);
+
+        private static void ApplyForgeStrikeLevelsToArray(Card[] cards, Dictionary<string, float> levels)
+        {
+            if (cards == null)
+                return;
+            for (var i = 0; i < cards.Length; i++)
+            {
+                var c = cards[i];
+                if (c == null || string.IsNullOrEmpty(c.DeckInstanceId))
+                    continue;
+                if (!levels.TryGetValue(c.DeckInstanceId, out var lv))
+                    continue;
+                c.Level = lv;
+            }
+        }
+
         private void SyncBattleState()
         {
             CurrentBattle.PlayerHand = _playerHand.ToArray();
@@ -1444,7 +1602,7 @@ namespace KingCardsSpire.Managers
             CurrentBattle.PlayerDiscard = _playerDiscard.ToArray();
             CurrentBattle.EnemyDiscard = _enemyDiscard.ToArray();
             CurrentBattle.Round = _roundsCompleted;
-            CurrentBattle.MaxRound = _noRoundLimit ? 0 : _maxRounds;
+            CurrentBattle.MaxRound = _noRoundLimit ? 0 : _maxRounds + _maxRoundBonusFromConsumables;
             CurrentBattle.NoRoundLimit = _noRoundLimit;
             CurrentBattle.BattleWeather = _weather;
             CurrentBattle.OpponentDisplayName = _opponentDisplayName ?? string.Empty;
@@ -1459,6 +1617,8 @@ namespace KingCardsSpire.Managers
             _playerDiscard.Clear();
             _enemyDiscard.Clear();
             _historyLines.Clear();
+            _playerBattleAbilityEffectLines.Clear();
+            _enemyBattleAbilityEffectLines.Clear();
             _roundsCompleted = 0;
             _lastPlayerInstanceId = null;
             _lastEnemyInstanceId = null;
@@ -1471,8 +1631,9 @@ namespace KingCardsSpire.Managers
             _pendingEnemyHandIndex = -1;
             _pendingPlayerHandIndex = -1;
             _battleEffects.ResetBattle();
-            _restrictedNextRound = false;
             _playerExponentialSacrificeResolved = false;
+            _awaitingRegretPick = false;
+            _maxRoundBonusFromConsumables = 0;
             _playerChaoticRandomPlay = false;
             _pendingChaoticExtraTemplates.Clear();
             CurrentBattle = new BattleState();
@@ -1517,6 +1678,7 @@ namespace KingCardsSpire.Managers
                 Type = template.Type,
                 EffectDesc = template.EffectDesc,
                 IsUnique = template.IsUnique,
+                DeckInstanceId = template.DeckInstanceId ?? string.Empty,
                 BattleInstanceId = Guid.NewGuid().ToString("N")
             };
         }

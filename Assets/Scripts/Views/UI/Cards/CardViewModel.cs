@@ -81,6 +81,25 @@ namespace KingCardsSpire.Views.UI.Cards
                 string.Empty);
         }
 
+        /// <summary>图鉴：已解锁用表数据；未解锁隐藏名称/等级/效果文案。</summary>
+        public static CardViewModel FromAlbumEntry(CardConfigEntry config, bool discovered)
+        {
+            if (config == null)
+                throw new ArgumentNullException(nameof(config));
+
+            if (discovered)
+                return FromConfigOnly(config);
+
+            return new CardViewModel(
+                "?",
+                CardTypeLocalization.ToShort(config.Type),
+                "???",
+                "???",
+                null,
+                config.Id,
+                string.Empty);
+        }
+
         /// <summary>
         /// 驻守奖励一条选项：金币展示为「奖励卡」样式；卡牌选项优先用配置表文案与等级。
         /// </summary>

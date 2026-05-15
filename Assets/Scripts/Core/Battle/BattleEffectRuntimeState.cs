@@ -37,7 +37,6 @@ namespace KingCardsSpire.Core.Battle
 
         public bool EnemySnowflakeActive;
 
-
         public bool PlayerEvenFormActive;
 
         public bool PlayerOddFormActive;
@@ -45,14 +44,6 @@ namespace KingCardsSpire.Core.Battle
         public bool EnemyEvenFormActive;
 
         public bool EnemyOddFormActive;
-
-        public bool PlayerForgeBladeActive;
-
-        public bool PlayerStrikeBladeActive;
-
-        public bool EnemyForgeBladeActive;
-
-        public bool EnemyStrikeBladeActive;
 
         public bool PlayerGoldenNecklacePlayed;
 
@@ -66,9 +57,6 @@ namespace KingCardsSpire.Core.Battle
 
         public bool PlayerMustLoseThisRound;
 
-        /// <summary>双方下一回合仅能出国王/平民/大臣（出自「最终时刻」）。</summary>
-        public bool FinalMomentRestrictionActive;
-
         public float ConsumablePlayerLevelBonus;
 
         public float ConsumableEnemyLevelBonus;
@@ -77,21 +65,16 @@ namespace KingCardsSpire.Core.Battle
 
         public bool DisableEnemyAbilityEffects;
 
-        /// <summary>续命牌：己方本回合若败，己方出的牌不进弃牌堆。</summary>
-        public bool PlayerSurviveLossToHand;
-
         /// <summary>预见牌：本回合已向玩家揭示的敌方待出牌快照（结算后清除）。</summary>
         public Card ForesightRevealedEnemyCardSnapshot;
-
-        /// <summary>异能「天作之合」：回合上限时总等级比较反转；单轮比大小数值段反转（见 Compare）。</summary>
-        public bool PlayerPerfectMatchActive;
-
-        public bool EnemyPerfectMatchActive;
 
         /// <summary>异能「白日梦」：每回合随机替换 1 张手牌。</summary>
         public bool PlayerDaydreamActive;
 
         public bool EnemyDaydreamActive;
+
+        /// <summary>本局每次「天作之合」异能进入弃牌触发后 +1；奇数时数值比大小与比和反转（国王/平民链不变）。</summary>
+        public int PerfectMatchActivationCount;
 
         public void ClearRoundConsumableFlags()
         {
@@ -99,7 +82,6 @@ namespace KingCardsSpire.Core.Battle
             ConsumableEnemyLevelBonus = 0f;
             DisableEnemyFunctionEffects = false;
             DisableEnemyAbilityEffects = false;
-            PlayerSurviveLossToHand = false;
             ForesightRevealedEnemyCardSnapshot = null;
         }
 
@@ -115,20 +97,14 @@ namespace KingCardsSpire.Core.Battle
             PlayerOddFormActive = false;
             EnemyEvenFormActive = false;
             EnemyOddFormActive = false;
-            PlayerForgeBladeActive = false;
-            PlayerStrikeBladeActive = false;
-            EnemyForgeBladeActive = false;
-            EnemyStrikeBladeActive = false;
             PlayerGoldenNecklacePlayed = false;
             PlayerExponentialFormActive = false;
             EnemyExponentialFormActive = false;
             PlayerMustWinThisRound = false;
             PlayerMustLoseThisRound = false;
-            FinalMomentRestrictionActive = false;
-            PlayerPerfectMatchActive = false;
-            EnemyPerfectMatchActive = false;
             PlayerDaydreamActive = false;
             EnemyDaydreamActive = false;
+            PerfectMatchActivationCount = 0;
             PlayerFourSymbolQinglongRoundWin = false;
             PlayerFourSymbolBaihuRoundWin = false;
             PlayerFourSymbolZhuqueRoundWin = false;

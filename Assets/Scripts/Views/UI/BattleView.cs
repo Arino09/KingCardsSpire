@@ -11,6 +11,7 @@ using KingCardsSpire.Managers;
 using KingCardsSpire.Models;
 using KingCardsSpire.Views.UI.Cards;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.Events;
 using UnityEngine.UI;
 
@@ -40,10 +41,25 @@ namespace KingCardsSpire.Views.UI
         [SerializeField] private Text turnsText;
         [SerializeField] private Text weatherText;
 
+        [Header("天气 · 悬浮提示")]
+        [SerializeField] private GameObject simpleTooltipPrefab;
+        [Tooltip("为空则实例挂到天气 Text 所在 Canvas 根 RectTransform 下")]
+        [SerializeField] private RectTransform weatherTooltipParentOverride;
+
         [Header("手牌")]
         [SerializeField] private CardView cardPrefab;
         [SerializeField] private RectTransform enemyHandRoot;
         [SerializeField] private RectTransform playerHandRoot;
+
+        [Header("能力牌 · 悬浮提示")]
+        [Tooltip("己方手牌区旁「能力」文案 Text；悬停显示本场己方已打出能力牌效果（需在预制体 Inspector 绑定）。")]
+        [SerializeField] private Text playerPlayedAbilityHoverText;
+
+        [Tooltip("敌方手牌区旁「能力」文案 Text；悬停显示本场敌方已打出能力牌效果。")]
+        [SerializeField] private Text enemyPlayedAbilityHoverText;
+
+        [Tooltip("能力牌悬浮提示相对鼠标的屏幕偏移（像素）；X 取正值向右，避免提示框超出屏幕左侧。")]
+        [SerializeField] private Vector2 handAbilityTooltipScreenOffset = new(176f, -16f);
 
         [Tooltip("指数形态弃牌：全屏遮罩（通常为 Mask 节点）；未绑定时仅依赖手牌 Canvas 抬升。")]
         [SerializeField] private GameObject exponentialSacrificeDimmer;
@@ -81,7 +97,7 @@ namespace KingCardsSpire.Views.UI
         [Tooltip("第一回合强引导：全屏暗层；对话结束并显示本遮罩一帧后，再为手牌 Canvas 打开 override sorting 叠在其上。")]
         [SerializeField] private GameObject tutorialHandDimmer;
 
-        [Tooltip("教学战败占位（全屏节点）；未绑定时跳过展示。")]
+        [Tooltip("教学战败时曾用的全屏占位节点；战败流程已改为打开 GameOverView，此处仅确保未激活以免遮挡。")]
         [SerializeField] private GameObject tutorialDefeatPlaceholder;
 
         /// <summary>战斗流程控制器（出牌、比大小、回合提交）。</summary>
@@ -138,6 +154,20 @@ namespace KingCardsSpire.Views.UI
 
         private bool _tutorialFirstRoundGuideActive;
 
+        private SimpleTooltipView _weatherTooltipView;
+        private RectTransform _weatherTooltipParentRect;
+        private bool _battleWeatherTooltipWired;
+        private UnityAction<BaseEventData> _battleWeatherPointerEnter;
+        private UnityAction<BaseEventData> _battleWeatherPointerExit;
+
+        private SimpleTooltipView _handAbilityBattleTooltipView;
+        private RectTransform _handAbilityBattleTooltipParentRect;
+        private bool _handAbilityBattleTooltipWired;
+        private UnityAction<BaseEventData> _handAbilityPlayerPointerEnter;
+        private UnityAction<BaseEventData> _handAbilityPlayerPointerExit;
+        private UnityAction<BaseEventData> _handAbilityEnemyPointerEnter;
+        private UnityAction<BaseEventData> _handAbilityEnemyPointerExit;
+
         /// <summary>
         /// 面板初始化：解析服务、注册按钮；战斗状态订阅在 <see cref="OnOpen"/> 中进行。
         /// </summary>
@@ -153,6 +183,8 @@ namespace KingCardsSpire.Views.UI
 
             DisablePlayerHandCanvasSortingOverride();
             WireButtons();
+            EnsureAndWireBattleWeatherTooltip();
+            EnsureAndWireHandAbilityBattleTooltip();
         }
 
         /// <summary>
@@ -163,6 +195,8 @@ namespace KingCardsSpire.Views.UI
             StopTutorialFlowCoroutine();
             StopChaoticAutoCoroutine();
             ExitExponentialSacrificeUi();
+            UnwireBattleWeatherTooltip();
+            UnwireHandAbilityBattleTooltip();
             UnwireButtons();
             if (_events != null)
             {
@@ -171,6 +205,12 @@ namespace KingCardsSpire.Views.UI
             }
 
             base.Dispose();
+        }
+
+        private void OnDestroy()
+        {
+            UnwireBattleWeatherTooltip();
+            UnwireHandAbilityBattleTooltip();
         }
 
         /// <summary>
@@ -323,8 +363,271 @@ namespace KingCardsSpire.Views.UI
             var chaoticRandom = BattleManager.Instance is { IsTutorialBattle: false, PlayerChaoticRandomPlayThisBattle: true };
 
             var canConfirm = !chaoticRandom && _battle != null && _battle.IsBattleActive && !_roundVisualBusy &&
-                             !_awaitingExponentialSacrifice && _selectedPlayerHandIndex >= 0 && tutorialKingOk;
+                             !_awaitingExponentialSacrifice &&
+                             !(BattleManager.Instance != null && BattleManager.Instance.AwaitingRegretPick) &&
+                             _selectedPlayerHandIndex >= 0 && tutorialKingOk;
             confirmPlayButton.interactable = canConfirm;
+        }
+
+        private void EnsureAndWireBattleWeatherTooltip()
+        {
+            if (_battleWeatherTooltipWired)
+                return;
+
+            if (simpleTooltipPrefab == null || weatherText == null)
+                return;
+
+            var parent = weatherTooltipParentOverride != null
+                ? weatherTooltipParentOverride
+                : weatherText.canvas != null
+                    ? weatherText.canvas.transform as RectTransform
+                    : null;
+            if (parent == null)
+                return;
+
+            var instance = Instantiate(simpleTooltipPrefab, parent);
+            _weatherTooltipView = instance.GetComponent<SimpleTooltipView>();
+            _weatherTooltipParentRect = parent;
+            if (_weatherTooltipView == null)
+            {
+                Debug.LogWarning("[BattleView] SimpleTooltip 预制体根节点缺少 SimpleTooltipView。");
+                Destroy(instance);
+                return;
+            }
+
+            weatherText.raycastTarget = true;
+
+            _battleWeatherPointerEnter = _ => ShowBattleWeatherTooltip();
+            _battleWeatherPointerExit = _ => HideBattleWeatherTooltip();
+
+            RegisterBattleWeatherPointerHover(weatherText.gameObject, _battleWeatherPointerEnter, _battleWeatherPointerExit);
+
+            _battleWeatherTooltipWired = true;
+        }
+
+        private void UnwireBattleWeatherTooltip()
+        {
+            if (!_battleWeatherTooltipWired)
+                return;
+
+            _battleWeatherTooltipWired = false;
+
+            UnregisterBattleWeatherPointerHover(
+                weatherText != null ? weatherText.gameObject : null,
+                _battleWeatherPointerEnter,
+                _battleWeatherPointerExit);
+
+            _battleWeatherPointerEnter = null;
+            _battleWeatherPointerExit = null;
+
+            if (_weatherTooltipView != null)
+            {
+                Destroy(_weatherTooltipView.gameObject);
+                _weatherTooltipView = null;
+            }
+
+            _weatherTooltipParentRect = null;
+        }
+
+        private static void RegisterBattleWeatherPointerHover(
+            GameObject target,
+            UnityAction<BaseEventData> onEnter,
+            UnityAction<BaseEventData> onExit)
+        {
+            if (target == null || onEnter == null || onExit == null)
+                return;
+
+            var trigger = target.GetComponent<EventTrigger>() ?? target.AddComponent<EventTrigger>();
+
+            var enter = new EventTrigger.Entry { eventID = EventTriggerType.PointerEnter };
+            enter.callback.AddListener(onEnter);
+            trigger.triggers.Add(enter);
+
+            var exit = new EventTrigger.Entry { eventID = EventTriggerType.PointerExit };
+            exit.callback.AddListener(onExit);
+            trigger.triggers.Add(exit);
+        }
+
+        private static void UnregisterBattleWeatherPointerHover(
+            GameObject target,
+            UnityAction<BaseEventData> onEnter,
+            UnityAction<BaseEventData> onExit)
+        {
+            if (target == null)
+                return;
+
+            var trigger = target.GetComponent<EventTrigger>();
+            if (trigger == null)
+                return;
+
+            for (var i = trigger.triggers.Count - 1; i >= 0; i--)
+            {
+                var e = trigger.triggers[i];
+                if (e.eventID == EventTriggerType.PointerEnter && onEnter != null)
+                    e.callback.RemoveListener(onEnter);
+                if (e.eventID == EventTriggerType.PointerExit && onExit != null)
+                    e.callback.RemoveListener(onExit);
+            }
+        }
+
+        private void ShowBattleWeatherTooltip()
+        {
+            if (_weatherTooltipView == null || weatherText == null || weatherText.canvas == null || _weatherTooltipParentRect == null)
+                return;
+
+            var bm = BattleManager.Instance;
+            var state = bm != null ? bm.CurrentBattle : null;
+            if (state == null)
+                return;
+
+            var body = WeatherDisplay.BuildTooltipBody(state.BattleWeather);
+            _weatherTooltipView.Show(body, _weatherTooltipParentRect, weatherText.canvas);
+        }
+
+        private void HideBattleWeatherTooltip()
+        {
+            if (_weatherTooltipView != null)
+                _weatherTooltipView.Hide();
+        }
+
+        private bool TryGetBattleTooltipHost(out RectTransform parentRect, out Canvas referenceCanvas)
+        {
+            parentRect = null;
+            referenceCanvas = null;
+
+            if (weatherTooltipParentOverride != null)
+            {
+                parentRect = weatherTooltipParentOverride;
+                referenceCanvas = parentRect.GetComponentInParent<Canvas>();
+                return referenceCanvas != null;
+            }
+
+            if (weatherText != null && weatherText.canvas != null)
+            {
+                parentRect = weatherText.canvas.transform as RectTransform;
+                referenceCanvas = weatherText.canvas;
+                return parentRect != null;
+            }
+
+            var anchor = playerHandRoot != null ? playerHandRoot : enemyHandRoot;
+            if (anchor == null)
+                return false;
+
+            referenceCanvas = anchor.GetComponentInParent<Canvas>();
+            parentRect = referenceCanvas != null ? referenceCanvas.transform as RectTransform : null;
+            return parentRect != null && referenceCanvas != null;
+        }
+
+        private void EnsureAndWireHandAbilityBattleTooltip()
+        {
+            if (_handAbilityBattleTooltipWired)
+                return;
+
+            if (simpleTooltipPrefab == null)
+                return;
+
+            if (playerPlayedAbilityHoverText == null && enemyPlayedAbilityHoverText == null)
+                return;
+
+            if (!TryGetBattleTooltipHost(out var parent, out _))
+                return;
+
+            var instance = Instantiate(simpleTooltipPrefab, parent);
+            _handAbilityBattleTooltipView = instance.GetComponent<SimpleTooltipView>();
+            _handAbilityBattleTooltipParentRect = parent;
+            if (_handAbilityBattleTooltipView == null)
+            {
+                Debug.LogWarning("[BattleView] SimpleTooltip 预制体根节点缺少 SimpleTooltipView（能力牌提示）。");
+                Destroy(instance);
+                return;
+            }
+
+            if (playerPlayedAbilityHoverText != null)
+            {
+                playerPlayedAbilityHoverText.raycastTarget = true;
+                _handAbilityPlayerPointerEnter = _ => ShowPlayerPlayedAbilityBattleTooltip();
+                _handAbilityPlayerPointerExit = _ => HideHandAbilityBattleTooltip();
+                RegisterBattleWeatherPointerHover(playerPlayedAbilityHoverText.gameObject,
+                    _handAbilityPlayerPointerEnter, _handAbilityPlayerPointerExit);
+            }
+
+            if (enemyPlayedAbilityHoverText != null)
+            {
+                enemyPlayedAbilityHoverText.raycastTarget = true;
+                _handAbilityEnemyPointerEnter = _ => ShowEnemyPlayedAbilityBattleTooltip();
+                _handAbilityEnemyPointerExit = _ => HideHandAbilityBattleTooltip();
+                RegisterBattleWeatherPointerHover(enemyPlayedAbilityHoverText.gameObject,
+                    _handAbilityEnemyPointerEnter, _handAbilityEnemyPointerExit);
+            }
+
+            _handAbilityBattleTooltipWired = true;
+        }
+
+        private void UnwireHandAbilityBattleTooltip()
+        {
+            if (!_handAbilityBattleTooltipWired)
+                return;
+
+            _handAbilityBattleTooltipWired = false;
+            HideHandAbilityBattleTooltip();
+
+            UnregisterBattleWeatherPointerHover(
+                playerPlayedAbilityHoverText != null ? playerPlayedAbilityHoverText.gameObject : null,
+                _handAbilityPlayerPointerEnter,
+                _handAbilityPlayerPointerExit);
+            UnregisterBattleWeatherPointerHover(
+                enemyPlayedAbilityHoverText != null ? enemyPlayedAbilityHoverText.gameObject : null,
+                _handAbilityEnemyPointerEnter,
+                _handAbilityEnemyPointerExit);
+
+            _handAbilityPlayerPointerEnter = null;
+            _handAbilityPlayerPointerExit = null;
+            _handAbilityEnemyPointerEnter = null;
+            _handAbilityEnemyPointerExit = null;
+
+            if (_handAbilityBattleTooltipView != null)
+            {
+                Destroy(_handAbilityBattleTooltipView.gameObject);
+                _handAbilityBattleTooltipView = null;
+            }
+
+            _handAbilityBattleTooltipParentRect = null;
+        }
+
+        private void ShowPlayerPlayedAbilityBattleTooltip()
+        {
+            if (_handAbilityBattleTooltipView == null || _handAbilityBattleTooltipParentRect == null ||
+                playerPlayedAbilityHoverText == null || playerPlayedAbilityHoverText.canvas == null)
+                return;
+
+            var bm = BattleManager.Instance;
+            if (bm == null || !bm.IsBattleActive)
+                return;
+
+            var body = bm.BuildPlayedAbilityBattleTooltipBody(true);
+            _handAbilityBattleTooltipView.Show(body, _handAbilityBattleTooltipParentRect,
+                playerPlayedAbilityHoverText.canvas, handAbilityTooltipScreenOffset);
+        }
+
+        private void ShowEnemyPlayedAbilityBattleTooltip()
+        {
+            if (_handAbilityBattleTooltipView == null || _handAbilityBattleTooltipParentRect == null ||
+                enemyPlayedAbilityHoverText == null || enemyPlayedAbilityHoverText.canvas == null)
+                return;
+
+            var bm = BattleManager.Instance;
+            if (bm == null || !bm.IsBattleActive)
+                return;
+
+            var body = bm.BuildPlayedAbilityBattleTooltipBody(false);
+            _handAbilityBattleTooltipView.Show(body, _handAbilityBattleTooltipParentRect,
+                enemyPlayedAbilityHoverText.canvas, handAbilityTooltipScreenOffset);
+        }
+
+        private void HideHandAbilityBattleTooltip()
+        {
+            if (_handAbilityBattleTooltipView != null)
+                _handAbilityBattleTooltipView.Hide();
         }
 
         /// <summary>
@@ -393,6 +696,7 @@ namespace KingCardsSpire.Views.UI
 
         private void OnSettingsClicked()
         {
+            UiButtonSfx.PlayDefaultClick();
             var ui = UIManager.Instance;
             if (ui != null)
                 ui.StartCoroutine(SettingsView.OpenSettingsRoutine());
@@ -401,12 +705,14 @@ namespace KingCardsSpire.Views.UI
         /// <summary>打开卡牌列表面板并展示敌方弃牌堆。</summary>
         private void ShowEnemyDiscardClicked()
         {
+            UiButtonSfx.PlayDefaultClick();
             StartCoroutine(OpenDiscardPanelAsync(true));
         }
 
         /// <summary>打开卡牌列表面板并展示己方弃牌堆。</summary>
         private void ShowPlayerDiscardClicked()
         {
+            UiButtonSfx.PlayDefaultClick();
             StartCoroutine(OpenDiscardPanelAsync(false));
         }
 
@@ -422,6 +728,59 @@ namespace KingCardsSpire.Views.UI
                 var pile = isEnemy ? state.EnemyDiscard : state.PlayerDiscard;
                 view.Apply(new CardListViewModel(isEnemy ? "敌方弃牌堆" : "己方弃牌堆", pile));
             }
+        }
+
+        private IEnumerator RegretPickRoutine()
+        {
+            yield return UIManager.Instance.OpenAsync(UIPanelId.CardList);
+            if (!UIManager.Instance.TryGetView(UIPanelId.CardList, out CardListView view))
+                yield break;
+
+            var pile = BattleManager.Instance != null
+                ? BattleManager.Instance.CurrentBattle.PlayerDiscard
+                : Array.Empty<Card>();
+            view.Apply(new CardListViewModel(
+                "后悔：选择一张弃牌回到手牌",
+                pile,
+                false,
+                1,
+                selected =>
+                {
+                    var bm = BattleManager.Instance;
+                    if (bm == null || selected == null || selected.Count == 0)
+                        return;
+                    var inst = selected[0].BattleInstanceId;
+                    var disc = bm.CurrentBattle.PlayerDiscard;
+                    var idx = -1;
+                    if (disc != null)
+                    {
+                        for (var i = 0; i < disc.Length; i++)
+                        {
+                            var c = disc[i];
+                            if (c != null && c.BattleInstanceId == inst)
+                            {
+                                idx = i;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (idx < 0)
+                    {
+                        Debug.LogWarning("[BattleView] 后悔：无法在弃牌堆定位所选牌");
+                        return;
+                    }
+
+                    if (!bm.TryCompleteRegretPick(idx, out var err))
+                        Debug.LogWarning($"[BattleView] 后悔: {err}");
+                    RefreshAll();
+                },
+                () =>
+                {
+                    BattleManager.Instance?.CancelAwaitingRegretPick();
+                    RefreshAll();
+                },
+                "点选 1 张后按确认"));
         }
 
         /// <summary>
@@ -756,6 +1115,8 @@ namespace KingCardsSpire.Views.UI
                     SyncPlayerHandSelectionVisuals();
                     UpdateConfirmPlayButtonInteractable();
                     RefreshAll();
+                    if (BattleManager.Instance != null && BattleManager.Instance.AwaitingRegretPick)
+                        StartCoroutine(RegretPickRoutine());
                     return;
                 }
             }
@@ -787,6 +1148,7 @@ namespace KingCardsSpire.Views.UI
         /// </summary>
         private void OnConfirmPlayClicked()
         {
+            UiButtonSfx.PlayDefaultClick();
             if (_battle == null || !_battle.IsBattleActive || _roundVisualBusy)
                 return;
 
@@ -799,6 +1161,8 @@ namespace KingCardsSpire.Views.UI
                 Debug.LogWarning($"[BattleView] {err}");
                 return;
             }
+
+            AudioManager.Instance?.PlaySfx(AudioAddressKeys.SfxConfirmPlayCard);
 
             _selectedPlayerHandIndex = -1;
             SyncPlayerHandSelectionVisuals();
@@ -1046,6 +1410,27 @@ namespace KingCardsSpire.Views.UI
                         enemyCard.FlyToRectTransformRoutine(enemyHandRoot));
                     break;
             }
+
+            PlayDiscardPileSfxForRoundResult(result);
+        }
+
+        private static void PlayDiscardPileSfxForRoundResult(BattleCompareResult result)
+        {
+            var am = AudioManager.Instance;
+            if (am == null)
+                return;
+
+            switch (result)
+            {
+                case BattleCompareResult.Draw:
+                    am.PlaySfx(AudioAddressKeys.SfxCardToDiscard);
+                    am.PlaySfx(AudioAddressKeys.SfxCardToDiscard);
+                    break;
+                case BattleCompareResult.FirstWins:
+                case BattleCompareResult.SecondWins:
+                    am.PlaySfx(AudioAddressKeys.SfxCardToDiscard);
+                    break;
+            }
         }
 
         /// <summary>
@@ -1237,11 +1622,14 @@ namespace KingCardsSpire.Views.UI
                 yield return ui.StartCoroutine(dialogue.PlayDialogue(dialogueId, null));
             }
 
-            if (!playerVictory && tutorialDefeatPlaceholder != null)
+            if (!playerVictory && ui != null)
             {
-                tutorialDefeatPlaceholder.SetActive(true);
-                yield return new WaitForSecondsRealtime(0.6f);
-                tutorialDefeatPlaceholder.SetActive(false);
+                if (tutorialDefeatPlaceholder != null)
+                    tutorialDefeatPlaceholder.SetActive(false);
+
+                yield return ui.OpenAsync(UIPanelId.GameOver);
+                while (ui.IsPanelOpen(UIPanelId.GameOver))
+                    yield return null;
             }
 
             if (_events != null)

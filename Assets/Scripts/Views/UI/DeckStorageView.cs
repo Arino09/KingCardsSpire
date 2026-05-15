@@ -150,6 +150,7 @@ namespace KingCardsSpire.Views.UI
 
         private void OnCloseClicked()
         {
+            UiButtonSfx.PlayDefaultClick();
             UIManager.Instance?.Close(UIPanelId.DeckStorage);
         }
     }

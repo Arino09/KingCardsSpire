@@ -770,8 +770,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 1308, y: -50}
-  m_SizeDelta: {x: 276.26, y: 100}
+  m_AnchoredPosition: {x: 1349.24, y: -50}
+  m_SizeDelta: {x: 193.78, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &814083023105076605
 CanvasRenderer:
@@ -814,7 +814,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: "\u521D\u59CBBuff"
+  m_Text: BUFF
 --- !u!1 &4896068092369600518
 GameObject:
   m_ObjectHideFlags: 0

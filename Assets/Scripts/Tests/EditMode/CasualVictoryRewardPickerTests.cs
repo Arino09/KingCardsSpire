@@ -93,7 +93,7 @@ namespace KingCardsSpire.Tests
         }
 
         [Test]
-        public void BuildBossVictory_WhenSixEligible_ReturnsFiveDistinctIds()
+        public void BuildBossVictory_WhenSixEligibleAcrossHandAndDiscard_ReturnsFiveDistinctIds()
         {
             var hand = new List<Card>
             {
@@ -115,6 +115,20 @@ namespace KingCardsSpire.Tests
             Assert.AreEqual(5, result.Length);
             var set = new HashSet<string>(result);
             Assert.AreEqual(5, set.Count);
+        }
+
+        [Test]
+        public void BuildBossVictory_UnionsHandAndDiscard()
+        {
+            var hand = new List<Card> { new Card { Id = WellKnownCardIds.King } };
+            var discard = new List<Card> { new Card { Id = "thief" } };
+
+            Random.InitState(7);
+            var result = CasualVictoryRewardPicker.BuildBossVictoryOfferCardIds(hand, discard);
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual(1, result.Length);
+            Assert.AreEqual("thief", result[0]);
         }
     }
 }

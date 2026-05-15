@@ -114,22 +114,26 @@ namespace KingCardsSpire.Views.UI
 
         private void OnCloseClicked()
         {
+            UiButtonSfx.PlayDefaultClick();
             UIManager.Instance.Close(UIPanelId.HeroRoom);
         }
 
         private void OnHeroSlotClicked(int slotIndex)
         {
+            UiButtonSfx.PlayDefaultClick();
             _selectedSlot = slotIndex;
             choiceDialogRoot.SetActive(true);
         }
 
         private void OnDialogReturnClicked()
         {
+            UiButtonSfx.PlayDefaultClick();
             HideChoiceDialog();
         }
 
         private void OnDialogTalkClicked()
         {
+            UiButtonSfx.PlayDefaultClick();
             if (_selectedSlot < 0)
                 return;
 
@@ -159,6 +163,7 @@ namespace KingCardsSpire.Views.UI
 
         private void OnDialogBattleClicked()
         {
+            UiButtonSfx.PlayDefaultClick();
             if (_selectedSlot < 0)
                 return;
 

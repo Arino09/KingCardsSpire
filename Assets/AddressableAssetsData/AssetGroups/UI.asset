@@ -129,6 +129,36 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 7e6e1bf039d2c4543ac93dcbc6a66276
+    m_Address: UI/NPCRecordView
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - ui_panel
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: aa4865502ef01234f81e4478ad9758b7
+    m_Address: UI/RecordView
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - ui_panel
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 6d4787ad8cbc74f419c71d5d33cc54fb
+    m_Address: UI/AlbumView
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - ui_panel
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 54a43923358251543bfb5cb3af674651
+    m_Address: UI/GameOverView
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - ui_panel
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a12a4be73e3a18f46802087845e6c11e
+    m_Address: UI/LoadingView
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - ui_panel
+    FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: 0b8713ba58b57bb49bd9906570780370, type: 2}
   m_SchemaSet:

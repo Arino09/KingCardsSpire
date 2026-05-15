@@ -106,16 +106,19 @@ namespace KingCardsSpire.Views.UI
 
         private void OnResumeClicked()
         {
+            UiButtonSfx.PlayDefaultClick();
             UIManager.Instance?.Close(UIPanelId.Settings);
         }
 
         private void OnSaveClicked()
         {
+            UiButtonSfx.PlayDefaultClick();
             _viewModel?.TryPersistFromSaveButton();
         }
 
         private void OnTitleClicked()
         {
+            UiButtonSfx.PlayDefaultClick();
             var ui = UIManager.Instance;
             var gm = GameManager.Instance;
             if (ui == null || gm == null)

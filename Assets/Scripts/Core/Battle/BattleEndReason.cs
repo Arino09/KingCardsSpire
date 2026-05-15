@@ -16,7 +16,17 @@ namespace KingCardsSpire.Core.Battle
         FourSymbolsComplete = 5,
 
         /// <summary>敌方四象同上集齐，本局直接判己方败。</summary>
-        FourSymbolsEnemyComplete = 6
+        FourSymbolsEnemyComplete = 6,
+
+        /// <summary>「最终时刻」清场后己方无手牌，己方败。</summary>
+        FinalMomentPlayerHandEmpty = 7,
+
+        /// <summary>「最终时刻」清场后敌方无手牌，己方胜。</summary>
+        FinalMomentEnemyHandEmpty = 8,
+
+        /// <summary>「最终时刻」清场后双方均无手牌，按规则玩家败。</summary>
+        FinalMomentBothHandsEmpty = 9
     }
 }
+
 

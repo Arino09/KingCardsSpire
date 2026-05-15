@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using KingCardsSpire.Configs;
 using KingCardsSpire.Core;
+using KingCardsSpire.Core.Events;
 using KingCardsSpire.Managers;
 using KingCardsSpire.Models;
 using KingCardsSpire.Views.UI;
@@ -15,12 +16,14 @@ namespace KingCardsSpire.Controllers
     /// <summary>对话加载、播放与结束回调（由 UI 协程驱动）。</summary>
     public sealed class DialogueController
     {
+        private readonly EventManager _events;
         private readonly GameManager _game;
 
         public DialogueController(EventManager events, GameManager game)
         {
             if (events == null)
                 Debug.LogWarning("[DialogueController] EventManager 为 null。");
+            _events = events;
             _game = game;
         }
 
@@ -35,158 +38,170 @@ namespace KingCardsSpire.Controllers
                 yield break;
             }
 
-            yield return ui.OpenAsync(UIPanelId.Dialog);
-            if (!ui.TryGetView(UIPanelId.Dialog, out DialogView view))
-            {
-                onCompleted?.Invoke();
-                yield break;
-            }
+            var endingBgm = string.Equals(startId, WellKnownDialogueIds.EndingFinal, StringComparison.Ordinal);
+            if (endingBgm)
+                _events?.Publish(new EndingStoryBgmActiveEvent(true));
 
-            var skipWhole = false;
-            var currentId = startId;
-            AsyncOperationHandle<Sprite> bgHandle = default;
-            AsyncOperationHandle<Sprite> portraitHandle = default;
-            var hasBg = false;
-            var hasPortrait = false;
-            var hasShownFirstLine = false;
-
-            while (!string.IsNullOrEmpty(currentId) && !skipWhole)
+            try
             {
-                if (!cfg.TryGetDialogueLine(currentId, out var line))
+                yield return ui.OpenAsync(UIPanelId.Dialog);
+                if (!ui.TryGetView(UIPanelId.Dialog, out DialogView view))
                 {
-                    Debug.LogWarning($"[DialogueController] 未找到对话行 id={currentId}");
-                    break;
+                    onCompleted?.Invoke();
+                    yield break;
                 }
 
-                _game?.RegisterDialogueLineSeen(line.Id);
+                var skipWhole = false;
+                var currentId = startId;
+                AsyncOperationHandle<Sprite> bgHandle = default;
+                AsyncOperationHandle<Sprite> portraitHandle = default;
+                var hasBg = false;
+                var hasPortrait = false;
+                var hasShownFirstLine = false;
+
+                while (!string.IsNullOrEmpty(currentId) && !skipWhole)
+                {
+                    if (!cfg.TryGetDialogueLine(currentId, out var line))
+                    {
+                        Debug.LogWarning($"[DialogueController] 未找到对话行 id={currentId}");
+                        break;
+                    }
+
+                    _game?.RegisterDialogueLineSeen(line.Id);
+
+                    ReleaseSpriteHandle(ref bgHandle, ref hasBg);
+                    ReleaseSpriteHandle(ref portraitHandle, ref hasPortrait);
+
+                    DialogueLineSpeaker.Resolve(cfg, line, out var speakerName, out var portraitId);
+                    var bgCandidates = DialogueArtResolver.GetBackgroundAddressCandidates(line.BackgroundId);
+                    var portraitAddr = DialogueArtResolver.ResolveCharacterAddress(portraitId);
+                    var needPortrait = !string.IsNullOrEmpty(portraitAddr);
+                    if (bgCandidates.Count > 0)
+                    {
+                        for (var bi = 0; bi < bgCandidates.Count; bi++)
+                        {
+                            AsyncOperationHandle<Sprite> tryHandle = default;
+                            try
+                            {
+                                tryHandle = Addressables.LoadAssetAsync<Sprite>(bgCandidates[bi]);
+                            }
+                            catch (InvalidKeyException)
+                            {
+                                continue;
+                            }
+
+                            yield return tryHandle;
+                            if (tryHandle.Status == AsyncOperationStatus.Succeeded)
+                            {
+                                bgHandle = tryHandle;
+                                hasBg = true;
+                                break;
+                            }
+
+                            if (tryHandle.IsValid())
+                                Addressables.Release(tryHandle);
+                        }
+                    }
+
+                    if (needPortrait)
+                    {
+                        try
+                        {
+                            portraitHandle = Addressables.LoadAssetAsync<Sprite>(portraitAddr);
+                            hasPortrait = true;
+                        }
+                        catch (InvalidKeyException)
+                        {
+                            portraitHandle = default;
+                            hasPortrait = false;
+                        }
+                    }
+
+                    if (hasPortrait)
+                        yield return portraitHandle;
+
+                    if (hasBg)
+                    {
+                        if (bgHandle.Status == AsyncOperationStatus.Succeeded)
+                            view.SetBackgroundSprite(bgHandle.Result);
+                        else
+                            view.SetBackgroundSprite(null);
+                    }
+                    else
+                    {
+                        view.SetBackgroundSprite(null);
+                    }
+
+                    if (hasPortrait)
+                    {
+                        if (portraitHandle.Status == AsyncOperationStatus.Succeeded)
+                            view.SetPortraitSprite(portraitHandle.Result);
+                        else
+                            view.SetPortraitSprite(null);
+                    }
+                    else
+                    {
+                        view.SetPortraitSprite(null);
+                    }
+
+                    view.ApplyTexts(line, speakerName);
+                    view.ConfigureMode(line.IsChoice, line.Choices);
+
+                    if (!hasShownFirstLine)
+                    {
+                        view.SetPresentationReady(true);
+                        hasShownFirstLine = true;
+                    }
+
+                    if (line.IsChoice)
+                    {
+                        yield return WaitForChoice(view);
+                        if (view.SkipRequested)
+                        {
+                            skipWhole = true;
+                            break;
+                        }
+
+                        if (!view.TryConsumeChoice(out var picked) || picked == null)
+                        {
+                            Debug.LogWarning("[DialogueController] 选择支未收到有效选项。");
+                            break;
+                        }
+
+                        currentId = picked.NextDialogueId;
+                        continue;
+                    }
+
+                    yield return WaitForContinueOrSkip(view);
+                    if (view.SkipRequested)
+                    {
+                        if (!TryResolveTerminalLineId(cfg, line.NextId, out var terminalId))
+                        {
+                            skipWhole = true;
+                            break;
+                        }
+
+                        currentId = terminalId;
+                        continue;
+                    }
+
+                    if (string.IsNullOrEmpty(line.NextId))
+                        break;
+
+                    currentId = line.NextId;
+                }
 
                 ReleaseSpriteHandle(ref bgHandle, ref hasBg);
                 ReleaseSpriteHandle(ref portraitHandle, ref hasPortrait);
 
-                ResolveCharacterPresentation(cfg, line, out var speakerName, out var portraitId);
-                var bgCandidates = DialogueArtResolver.GetBackgroundAddressCandidates(line.BackgroundId);
-                var portraitAddr = DialogueArtResolver.ResolveCharacterAddress(portraitId);
-                var needPortrait = !string.IsNullOrEmpty(portraitAddr);
-                if (bgCandidates.Count > 0)
-                {
-                    for (var bi = 0; bi < bgCandidates.Count; bi++)
-                    {
-                        AsyncOperationHandle<Sprite> tryHandle = default;
-                        try
-                        {
-                            tryHandle = Addressables.LoadAssetAsync<Sprite>(bgCandidates[bi]);
-                        }
-                        catch (InvalidKeyException)
-                        {
-                            continue;
-                        }
-
-                        yield return tryHandle;
-                        if (tryHandle.Status == AsyncOperationStatus.Succeeded)
-                        {
-                            bgHandle = tryHandle;
-                            hasBg = true;
-                            break;
-                        }
-
-                        if (tryHandle.IsValid())
-                            Addressables.Release(tryHandle);
-                    }
-                }
-
-                if (needPortrait)
-                {
-                    try
-                    {
-                        portraitHandle = Addressables.LoadAssetAsync<Sprite>(portraitAddr);
-                        hasPortrait = true;
-                    }
-                    catch (InvalidKeyException)
-                    {
-                        portraitHandle = default;
-                        hasPortrait = false;
-                    }
-                }
-
-                if (hasPortrait)
-                    yield return portraitHandle;
-
-                if (hasBg)
-                {
-                    if (bgHandle.Status == AsyncOperationStatus.Succeeded)
-                        view.SetBackgroundSprite(bgHandle.Result);
-                    else
-                        view.SetBackgroundSprite(null);
-                }
-                else
-                {
-                    view.SetBackgroundSprite(null);
-                }
-
-                if (hasPortrait)
-                {
-                    if (portraitHandle.Status == AsyncOperationStatus.Succeeded)
-                        view.SetPortraitSprite(portraitHandle.Result);
-                    else
-                        view.SetPortraitSprite(null);
-                }
-                else
-                {
-                    view.SetPortraitSprite(null);
-                }
-
-                view.ApplyTexts(line, speakerName);
-                view.ConfigureMode(line.IsChoice, line.Choices);
-
-                if (!hasShownFirstLine)
-                {
-                    view.SetPresentationReady(true);
-                    hasShownFirstLine = true;
-                }
-
-                if (line.IsChoice)
-                {
-                    yield return WaitForChoice(view);
-                    if (view.SkipRequested)
-                    {
-                        skipWhole = true;
-                        break;
-                    }
-
-                    if (!view.TryConsumeChoice(out var picked) || picked == null)
-                    {
-                        Debug.LogWarning("[DialogueController] 选择支未收到有效选项。");
-                        break;
-                    }
-
-                    currentId = picked.NextDialogueId;
-                    continue;
-                }
-
-                yield return WaitForContinueOrSkip(view);
-                if (view.SkipRequested)
-                {
-                    if (!TryResolveTerminalLineId(cfg, line.NextId, out var terminalId))
-                    {
-                        skipWhole = true;
-                        break;
-                    }
-
-                    currentId = terminalId;
-                    continue;
-                }
-
-                if (string.IsNullOrEmpty(line.NextId))
-                    break;
-
-                currentId = line.NextId;
+                ui.Close(UIPanelId.Dialog);
+                onCompleted?.Invoke();
             }
-
-            ReleaseSpriteHandle(ref bgHandle, ref hasBg);
-            ReleaseSpriteHandle(ref portraitHandle, ref hasPortrait);
-
-            ui.Close(UIPanelId.Dialog);
-            onCompleted?.Invoke();
+            finally
+            {
+                if (endingBgm)
+                    _events?.Publish(new EndingStoryBgmActiveEvent(false));
+            }
         }
 
         private static IEnumerator WaitForContinueOrSkip(DialogView view)
@@ -281,39 +296,6 @@ namespace KingCardsSpire.Controllers
         public static bool TryParseNpcStoryId(string id, out string npcId, out int storyIndex, out int lineIndex)
         {
             return StoryDialogueRules.TryParseNpcStoryId(id, out npcId, out storyIndex, out lineIndex);
-        }
-
-        private static void ResolveCharacterPresentation(
-            ConfigManager cfg,
-            DialogueLineEntry line,
-            out string speakerName,
-            out string portraitId)
-        {
-            speakerName = line != null ? line.SpeakerName : string.Empty;
-            portraitId = line != null ? line.CharacterId : string.Empty;
-            var characterId = line != null ? line.CharacterId : string.Empty;
-            if (string.IsNullOrWhiteSpace(characterId))
-                return;
-
-            if (characterId == StoryDialogueRules.NarratorCharacterId)
-            {
-                speakerName = string.Empty;
-                portraitId = string.Empty;
-                return;
-            }
-
-            if (cfg != null && cfg.TryGetHero(characterId, out var hero))
-            {
-                speakerName = hero.DisplayName;
-                portraitId = hero.PortraitId;
-                return;
-            }
-
-            if (cfg != null && cfg.TryGetNpc(characterId, out var npc))
-            {
-                speakerName = npc.DisplayName;
-                portraitId = npc.PortraitId;
-            }
         }
 
         private static bool TryResolveTerminalLineId(ConfigManager cfg, string nextId, out string terminalId)

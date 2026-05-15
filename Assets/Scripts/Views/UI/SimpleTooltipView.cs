@@ -44,7 +44,9 @@ namespace KingCardsSpire.Views.UI
         /// <summary>
         /// 在 <paramref name="parentRect"/> 的局部坐标系内，将提示锚定到当前鼠标屏幕位置。
         /// </summary>
-        public void Show(string body, RectTransform parentRect, Canvas referenceCanvas)
+        /// <param name="screenOffsetOverride">非空时覆盖预制体上的 <see cref="screenOffset"/>（例如战斗能力提示需向右避开屏边）。</param>
+        public void Show(string body, RectTransform parentRect, Canvas referenceCanvas,
+            Vector2? screenOffsetOverride = null)
         {
             if (bodyText != null)
                 bodyText.text = body ?? string.Empty;
@@ -58,7 +60,8 @@ namespace KingCardsSpire.Views.UI
                 var cam = referenceCanvas.renderMode == RenderMode.ScreenSpaceOverlay
                     ? null
                     : referenceCanvas.worldCamera;
-                var screenPoint = (Vector2)Input.mousePosition + screenOffset;
+                var offset = screenOffsetOverride ?? screenOffset;
+                var screenPoint = (Vector2)Input.mousePosition + offset;
                 RectTransformUtility.ScreenPointToLocalPointInRectangle(
                     parentRect,
                     screenPoint,

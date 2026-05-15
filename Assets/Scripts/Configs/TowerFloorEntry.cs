@@ -4,7 +4,9 @@ using UnityEngine;
 namespace KingCardsSpire.Configs
 {
     /// <summary>
-    /// 单层塔配置（BOSS、敌方卡组 Id 等）；驻守卡牌奖励由本局 BOSS 卡组动态生成，不再使用 <see cref="TowerFloorEntry.RewardCardPoolIds"/>。
+    /// 单层塔配置（BOSS Id、NPC、驻守金币档位、BOSS AI 强度等）。
+    /// 驻守 BOSS 敌方卡组由 <see cref="KingCardsSpire.Core.Battle.BossDeckGenerator"/> 按层随机生成；
+    /// <see cref="EnemyDeckCardIds"/> 保留供编辑器占位或将来非 BOSS 覆写，运行时 BOSS 战不读取该列表组卡。
     /// </summary>
     [Serializable]
     public class TowerFloorEntry
@@ -14,7 +16,7 @@ namespace KingCardsSpire.Configs
         [SerializeField] private string[] npcIds = Array.Empty<string>();
         [SerializeField] private int bossAiStrength;
 
-        /// <summary>驻守奖励金币档位：按 spareDays 放大时的基数（占位）。</summary>
+        /// <summary>历史字段：驻守静默金币现为代码内 <c>SpareDay * 5</c>，本值当前未参与计算。</summary>
         [SerializeField] private int goldBonusPerSpareDay = 5;
 
         public string BossId => bossId;

@@ -17,24 +17,19 @@ MonoBehaviour:
     weatherType: 0
     displayName: "\u96E8\u5B63"
     description: "\u989D\u5916\u83B7\u5F9750%\u91D1\u5E01\u3002"
-    modifier: 0
   - id: weather_sunny
     weatherType: 1
     displayName: "\u70C8\u65E5"
-    description: "\u6BD4\u5927\u5C0F\u65F6\uFF0C\u5149\u73AF\u5361\u7B49\u7EA7 -0.5\u3002"
-    modifier: 0
+    description: "\u6240\u6709.5\u7B49\u7EA7\u5361\u724C-0.5\u3002"
   - id: weather_hail
     weatherType: 2
     displayName: "\u51B0\u96F9"
-    description: "\u6BD4\u5927\u5C0F\u65F6\uFF0C\u5149\u73AF\u5361\u7B49\u7EA7 +0.5\u3002"
-    modifier: 0
+    description: "\u6240\u6709.5\u7B49\u7EA7\u5361\u724C+0.5\u3002"
   - id: weather_warm_wind
     weatherType: 3
     displayName: "\u6696\u98CE"
     description: "\u6218\u6597\u4E0D\u9650\u56DE\u5408\u6570\u3002"
-    modifier: 0
   - id: weather_ending
     weatherType: 4
     displayName: "\u7EC8\u7109"
-    description: "\u7EC8\u5C40\u5929\u6C14\uFF08\u53EF\u5728\u8868\u4E2D\u8865\u5145\u5177\u4F53\u6548\u679C\uFF09\u3002"
-    modifier: 0
+    description: "\u2026\u2026\u51C6\u5907\u597D\u8FCE\u63A5\u7EC8\u7109\u4E86\u5417"

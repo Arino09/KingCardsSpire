@@ -1,3 +1,4 @@
+using KingCardsSpire.Managers;
 using KingCardsSpire.Models;
 
 namespace KingCardsSpire.Views.UI
@@ -18,6 +19,17 @@ namespace KingCardsSpire.Views.UI
                 WeatherType.Ending => "终焉",
                 _ => w.ToString()
             };
+        }
+
+        /// <summary>悬浮提示用：标题 + 配置表效果说明。</summary>
+        public static string BuildTooltipBody(WeatherType weather)
+        {
+            var title = Format(weather);
+            var cfgMgr = ConfigManager.Instance;
+            var desc = cfgMgr != null ? cfgMgr.ResolveWeatherDescription(weather) : string.Empty;
+            if (string.IsNullOrWhiteSpace(desc))
+                return $"{title}\n（配置表中暂无效果说明）";
+            return $"{title}\n{desc}";
         }
     }
 }
