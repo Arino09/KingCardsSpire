@@ -33,19 +33,42 @@ namespace KingCardsSpire.Tests
         }
 
         [Test]
-        public void ApplyMeanLevelShift_AdjustsToTargetMean()
+        public void ComputeDeckMeanLevel_matchesArithmeticAverage()
         {
             var deck = new List<Card>
             {
                 new Card { Id = "a", Level = 1f, Type = CardType.Basic },
-                new Card { Id = "b", Level = 2f, Type = CardType.Basic },
-                new Card { Id = "c", Level = 3f, Type = CardType.Basic }
+                new Card { Id = "b", Level = 3f, Type = CardType.Basic }
             };
+            Assert.AreEqual(2f, BossDeckGenerator.ComputeDeckMeanLevel(deck), FloatEpsilon);
+        }
 
-            BossDeckGenerator.ApplyMeanLevelShift(deck, 3f);
+        [Test]
+        public void BuildDeck_floor1_whenConfigAvailable_meanNearDeterministicTarget()
+        {
+            var cfg = ConfigManager.Instance;
+            if (cfg == null)
+                Assert.Ignore("ConfigManager 未初始化，跳过集成断言。");
 
-            var mean = deck.Sum(c => c.Level) / deck.Count;
-            Assert.AreEqual(3f, mean, FloatEpsilon);
+            var deck = BossDeckGenerator.BuildDeck(1, cfg, new Random(123));
+            var mean = BossDeckGenerator.ComputeDeckMeanLevel(deck);
+            Assert.Less(Math.Abs(mean - 2f), 0.65f,
+                "第1层目标均值为2（无随机步长），由卡池贪心选牌逼近，允许离散卡池带来的误差。");
+        }
+
+        [Test]
+        public void BuildDeck_eachCardLevelMatchesConfigTemplate()
+        {
+            var cfg = ConfigManager.Instance;
+            if (cfg == null)
+                Assert.Ignore("ConfigManager 未初始化，跳过集成断言。");
+
+            var deck = BossDeckGenerator.BuildDeck(5, cfg, new Random(7));
+            foreach (var c in deck)
+            {
+                Assert.IsTrue(cfg.TryGetCard(c.Id, out var row), $"卡表缺少 Id={c.Id}");
+                Assert.AreEqual(row.Level, c.Level, FloatEpsilon);
+            }
         }
 
         [Test]

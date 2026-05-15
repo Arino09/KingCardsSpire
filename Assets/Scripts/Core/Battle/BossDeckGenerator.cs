@@ -8,7 +8,7 @@ namespace KingCardsSpire.Core.Battle
 {
     /// <summary>
     /// 驻守 BOSS：固定「国王 + 平民」，其余按层目标张数从卡池随机；能力牌不放回（同 Id 至多一张），功能/基础放回抽样。
-    /// 层目标张数 6,6,6,7,8,9,10；目标平均等级由第 1 层基准 + 每层 U(1.5,2.5) 累加，再对整副牌 Level 做平移对齐。
+    /// 层目标张数 6,6,6,7,8,9,10；目标平均等级由第 1 层基准 + 每层 U(1.5,2.5) 累加，再通过从卡池贪心选牌逼近该均值（不修改卡表上的等级数值）。
     /// </summary>
     public static class BossDeckGenerator
     {
@@ -18,7 +18,6 @@ namespace KingCardsSpire.Core.Battle
         private const float Floor1BaseMeanLevel = 2f;
         private const float MeanStepMin = 1.5f;
         private const float MeanStepMax = 2.5f;
-        private const float MinLevelAfterShift = 0.01f;
 
         /// <summary>返回第 <paramref name="floor1Based"/> 层 BOSS 卡组目标张数（层数越界时钳位到 1–7）。</summary>
         public static int GetDeckTargetSize(int floor1Based)
@@ -38,6 +37,7 @@ namespace KingCardsSpire.Core.Battle
                 return new List<Card>();
 
             var deckSize = GetDeckTargetSize(floor1Based);
+            var targetMean = ComputeTargetMeanLevel(floor1Based, rng);
             var randomSlots = Mathf.Max(0, deckSize - 2);
             var deck = new List<Card>(deckSize);
 
@@ -76,24 +76,20 @@ namespace KingCardsSpire.Core.Battle
             }
 
             var fbNeeded = deckSize - deck.Count;
-            AppendRandomWithReplacement(deck, cfg, fbPool, fbNeeded, rng);
+            AppendGreedyTowardTargetMean(deck, cfg, fbPool, fbNeeded, deckSize, targetMean, rng);
 
             if (deck.Count < deckSize)
-                PadDeckToSize(deck, cfg, fbPool, deckSize, rng);
-
-            var targetMean = ComputeTargetMeanLevel(floor1Based, rng);
-            ApplyMeanLevelShift(deck, targetMean);
+                PadDeckToSize(deck, cfg, fbPool, deckSize, targetMean, rng);
 
             ShuffleInPlace(deck, rng);
             return deck;
         }
 
-        /// <summary>将卡组算术平均 Level 平移到 <paramref name="targetMean"/>（各张 Level 同步加减；再不低于 <see cref="MinLevelAfterShift"/>）。</summary>
-        public static void ApplyMeanLevelShift(List<Card> deck, float targetMean)
+        /// <summary>当前卡组（非 null 牌）的算术平均等级。</summary>
+        public static float ComputeDeckMeanLevel(IReadOnlyList<Card> deck)
         {
             if (deck == null || deck.Count == 0)
-                return;
-
+                return 0f;
             float sum = 0f;
             var n = 0;
             for (var i = 0; i < deck.Count; i++)
@@ -105,18 +101,7 @@ namespace KingCardsSpire.Core.Battle
                 n++;
             }
 
-            if (n == 0)
-                return;
-
-            var actualMean = sum / n;
-            var delta = targetMean - actualMean;
-            for (var i = 0; i < deck.Count; i++)
-            {
-                var c = deck[i];
-                if (c == null)
-                    continue;
-                c.Level = Mathf.Max(MinLevelAfterShift, c.Level + delta);
-            }
+            return n > 0 ? sum / n : 0f;
         }
 
         private static float ComputeTargetMeanLevel(int floor1Based, System.Random rng)
@@ -194,30 +179,78 @@ namespace KingCardsSpire.Core.Battle
             string.Equals(id, WellKnownCardIds.King, System.StringComparison.OrdinalIgnoreCase)
             || string.Equals(id, WellKnownCardIds.Commoner, System.StringComparison.OrdinalIgnoreCase);
 
-        private static void AppendRandomWithReplacement(List<Card> deck, ConfigManager cfg,
-            List<CardConfigEntry> pool, int count, System.Random rng)
+        /// <summary>从 <paramref name="pool"/> 放回抽样 <paramref name="count"/> 张，使整副 <paramref name="deckSize"/> 张牌的平均等级逼近 <paramref name="targetMean"/>。</summary>
+        private static void AppendGreedyTowardTargetMean(List<Card> deck, ConfigManager cfg,
+            List<CardConfigEntry> pool, int count, int deckSize, float targetMean, System.Random rng)
         {
-            if (count <= 0 || pool == null || pool.Count == 0)
+            if (count <= 0 || pool == null || pool.Count == 0 || cfg == null)
                 return;
 
-            var targetTotal = deck.Count + count;
-            const int maxAttempts = 4096;
-            var attempts = 0;
-            while (deck.Count < targetTotal && attempts < maxAttempts)
+            for (var i = 0; i < count; i++)
             {
-                attempts++;
-                var idx = NextInt(0, pool.Count, rng);
-                var entry = pool[idx];
+                var lockedSum = SumDeckLevels(deck);
+                var slotsLeft = deckSize - deck.Count;
+                if (slotsLeft <= 0)
+                    break;
+                var desiredTotal = targetMean * deckSize;
+                var remainingSum = desiredTotal - lockedSum;
+                var idealNext = remainingSum / slotsLeft;
+                var entry = PickClosestLevelEntry(pool, idealNext, rng);
                 if (entry == null)
-                    continue;
+                    break;
                 var card = cfg.CreateRuntimeCard(entry);
                 if (card != null)
                     deck.Add(card);
             }
         }
 
+        private static float SumDeckLevels(List<Card> deck)
+        {
+            if (deck == null)
+                return 0f;
+            float sum = 0f;
+            for (var i = 0; i < deck.Count; i++)
+            {
+                var c = deck[i];
+                if (c != null)
+                    sum += c.Level;
+            }
+
+            return sum;
+        }
+
+        private static CardConfigEntry PickClosestLevelEntry(List<CardConfigEntry> pool, float idealLevel,
+            System.Random rng)
+        {
+            if (pool == null || pool.Count == 0)
+                return null;
+
+            var best = float.PositiveInfinity;
+            var ties = new List<int>(4);
+            for (var i = 0; i < pool.Count; i++)
+            {
+                var e = pool[i];
+                if (e == null)
+                    continue;
+                var d = Mathf.Abs(e.Level - idealLevel);
+                if (d < best - 1e-6f)
+                {
+                    best = d;
+                    ties.Clear();
+                    ties.Add(i);
+                }
+                else if (Mathf.Abs(d - best) < 1e-6f)
+                    ties.Add(i);
+            }
+
+            if (ties.Count == 0)
+                return null;
+            var pick = ties[NextInt(0, ties.Count, rng)];
+            return pool[pick];
+        }
+
         private static void PadDeckToSize(List<Card> deck, ConfigManager cfg, List<CardConfigEntry> fbPool,
-            int deckSize, System.Random rng)
+            int deckSize, float targetMean, System.Random rng)
         {
             const int maxAttempts = 8192;
             var attempts = 0;
@@ -226,11 +259,21 @@ namespace KingCardsSpire.Core.Battle
                 attempts++;
                 if (fbPool.Count > 0)
                 {
-                    var idx = NextInt(0, fbPool.Count, rng);
-                    var card = cfg.CreateRuntimeCard(fbPool[idx]);
-                    if (card != null)
-                        deck.Add(card);
-                    continue;
+                    var lockedSum = SumDeckLevels(deck);
+                    var slotsLeft = deckSize - deck.Count;
+                    var desiredTotal = targetMean * deckSize;
+                    var remainingSum = desiredTotal - lockedSum;
+                    var idealNext = remainingSum / Mathf.Max(1, slotsLeft);
+                    var entry = PickClosestLevelEntry(fbPool, idealNext, rng);
+                    if (entry != null)
+                    {
+                        var card = cfg.CreateRuntimeCard(entry);
+                        if (card != null)
+                        {
+                            deck.Add(card);
+                            continue;
+                        }
+                    }
                 }
 
                 if (cfg.TryGetCard(WellKnownCardIds.Minister, out var minister))

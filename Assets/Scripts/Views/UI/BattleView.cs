@@ -36,6 +36,9 @@ namespace KingCardsSpire.Views.UI
         /// <summary>出牌区（比大小回合展示）单卡缩放。</summary>
         private const float PlayAreaCardScale = 0.3f;
 
+        /// <summary>与 <see cref="CardView"/> 内卡面基准宽度一致，用于手牌水平排布。</summary>
+        private const float CardDesignWidth = 842f;
+
         [Header("顶部状态")]
         [SerializeField] private Text opponentNameText;
         [SerializeField] private Text turnsText;
@@ -66,6 +69,41 @@ namespace KingCardsSpire.Views.UI
 
         [Tooltip("己方手牌区 Canvas（一般为 MyHand 上）。预制体上请保持 overrideSorting 关闭；仅在教学遮罩/指数弃牌遮罩时由代码临时开启。")]
         [SerializeField] private Canvas playerHandCanvasOverride;
+
+        [Header("手牌 · 悬停预览")]
+        [Tooltip("悬停时相对手牌基准缩放的倍率（须大于 1）。敌方会再乘以己方/敌方手牌基础缩放比，使悬停后与己方卡面视觉尺寸一致。")]
+        [SerializeField] private float battleHandHoverScaleMultiplier = 1.35f;
+
+        [Tooltip("悬停时 rectRoot 的 anchoredPosition 偏移（通常 Y 为正表示向上抽出）。")]
+        [SerializeField] private Vector2 playerHandHoverAnchoredDelta = new(0f, 100f);
+
+        [Tooltip("敌方透视牌悬停时的 anchoredPosition 偏移。敌方手牌区多在画面上方，Y 建议为负（向下）以免放大后顶出屏幕。")]
+        [SerializeField] private Vector2 enemyHandHoverAnchoredDelta = new(0f, -90f);
+
+        [Header("手牌 · 代码布局")]
+        [Tooltip("己方：相邻两张牌中心水平间距 = 卡宽×缩放 + 本值（负值越大重叠越多）。")]
+        [SerializeField] private float playerHandLayoutSlotSpacingAdd = -95f;
+
+        [Tooltip("己方：相对扇心每偏移 1 张牌时的 Z 轴旋转（度）。")]
+        [SerializeField] private float playerHandLayoutFanDegreesPerSlot = 3.5f;
+
+        [Tooltip("己方手牌竖直偏移（相对手牌区锚点）。")]
+        [SerializeField] private float playerHandLayoutAnchoredYOffset;
+
+        [Tooltip("敌方：相邻两张牌中心水平间距 = 卡宽×缩放 + 本值。")]
+        [SerializeField] private float enemyHandLayoutSlotSpacingAdd = -58f;
+
+        [Tooltip("敌方：相对扇心每偏移 1 张牌时的 Z 轴旋转（度）。")]
+        [SerializeField] private float enemyHandLayoutFanDegreesPerSlot = 4.5f;
+
+        [Tooltip("敌方手牌竖直偏移（相对手牌区锚点）。")]
+        [SerializeField] private float enemyHandLayoutAnchoredYOffset;
+
+        [Tooltip("己方：扇形圆心在手牌区下方时，中间牌相对两侧略「拱起」的竖直幅度（像素，0 则仅旋转）。")]
+        [SerializeField] private float playerHandFanVerticalBulge = 14f;
+
+        [Tooltip("敌方：扇形圆心在手牌区上方时，中间牌相对两侧略「下凹」的竖直幅度（像素）。")]
+        [SerializeField] private float enemyHandFanVerticalBulge = 12f;
 
         [Tooltip("指数形态弃牌时遮罩上方的提示文案（可选）。")]
         [SerializeField] private Text exponentialSacrificeHintText;
@@ -802,14 +840,12 @@ namespace KingCardsSpire.Views.UI
         }
 
         /// <summary>
-        /// 全量刷新：先更新外壳，再在暂时关闭 LayoutGroup 的前提下重建双方手牌，最后布置本回合出牌区。
+        /// 全量刷新：先更新外壳，再重建双方手牌（位置由代码扇形排布），最后布置本回合出牌区。
         /// </summary>
-        /// <remarks>
-        /// 重建手牌时禁用 LayoutGroup，避免每帧布局与 Instantiate/Destroy 交错导致抖动或错误尺寸。
-        /// </remarks>
         private void RefreshAll()
         {
             RefreshBattleChromeOnly();
+            DisableHandRootLayoutGroups();
 
             if (ShouldShowRoundTwoPreBattleDialog())
             {
@@ -817,46 +853,12 @@ namespace KingCardsSpire.Views.UI
                 return;
             }
 
-            LayoutGroup layoutEnemy = null;
-            LayoutGroup layoutPlayer = null;
-            var wasEnemyLayout = false;
-            var wasPlayerLayout = false;
-            if (enemyHandRoot != null)
-            {
-                layoutEnemy = enemyHandRoot.GetComponent<LayoutGroup>();
-                if (layoutEnemy != null)
-                {
-                    wasEnemyLayout = layoutEnemy.enabled;
-                    layoutEnemy.enabled = false;
-                }
-            }
+            var state = BattleManager.Instance.CurrentBattle;
+            if (!_roundVisualBusy && _battle != null && _battle.IsBattleActive)
+                SetupPlayAreaRound();
 
-            if (playerHandRoot != null)
-            {
-                layoutPlayer = playerHandRoot.GetComponent<LayoutGroup>();
-                if (layoutPlayer != null)
-                {
-                    wasPlayerLayout = layoutPlayer.enabled;
-                    layoutPlayer.enabled = false;
-                }
-            }
-
-            try
-            {
-                var state = BattleManager.Instance.CurrentBattle;
-                if (!_roundVisualBusy && _battle != null && _battle.IsBattleActive)
-                    SetupPlayAreaRound();
-
-                RebuildEnemyHand(state?.EnemyHand);
-                RebuildPlayerHand(state?.PlayerHand);
-            }
-            finally
-            {
-                if (layoutEnemy != null && wasEnemyLayout)
-                    layoutEnemy.enabled = true;
-                if (layoutPlayer != null && wasPlayerLayout)
-                    layoutPlayer.enabled = true;
-            }
+            RebuildEnemyHand(state?.EnemyHand);
+            RebuildPlayerHand(state?.PlayerHand);
 
             UpdateConfirmPlayButtonInteractable();
         }
@@ -967,10 +969,8 @@ namespace KingCardsSpire.Views.UI
                 if (hideStagedInPlayArea && i == pendingEnemy)
                     continue;
 
-                CardView cv;
-                if (slot < enemyHandRoot.childCount)
-                    cv = enemyHandRoot.GetChild(slot).GetComponent<CardView>();
-                else
+                CardView cv = FindHandCardViewByHandIndex(enemyHandRoot, slot);
+                if (cv == null)
                 {
                     cv = Instantiate(cardPrefab, enemyHandRoot, false);
                     cv.SetScale(EnemyHandCardScale);
@@ -992,6 +992,13 @@ namespace KingCardsSpire.Views.UI
                     var bmEnemy = BattleManager.Instance;
                     var enemyRestricted = bmEnemy != null && bmEnemy.IsEnemyCardRestrictedByLastPlay(card);
                     cv.SetVisualState(enemyRestricted ? CardVisualState.Disabled : CardVisualState.Normal);
+
+                    var battleRefEnemy = _battle;
+                    cv.ConfigureBattleHandHover(
+                        true,
+                        ResolveEnemyHandHoverScaleMultiplier(),
+                        enemyHandHoverAnchoredDelta,
+                        () => battleRefEnemy != null && battleRefEnemy.IsBattleActive && !_roundVisualBusy);
                 }
                 else
                 {
@@ -999,10 +1006,13 @@ namespace KingCardsSpire.Views.UI
                     cv.SetFaceDown(true);
                 }
 
+                cv.HandIndex = slot;
                 slot++;
             }
 
+            SortHandChildrenByHandIndex(enemyHandRoot, slot);
             TrimHandTail(enemyHandRoot, slot);
+            ApplyManualEnemyHandLayout(slot);
         }
 
         /// <summary>
@@ -1048,10 +1058,8 @@ namespace KingCardsSpire.Views.UI
             for (var i = 0; i < n; i++)
             {
                 var card = hand[i];
-                CardView cv;
-                if (i < playerHandRoot.childCount)
-                    cv = playerHandRoot.GetChild(i).GetComponent<CardView>();
-                else
+                var cv = FindHandCardViewByHandIndex(playerHandRoot, i);
+                if (cv == null)
                 {
                     cv = Instantiate(cardPrefab, playerHandRoot, false);
                     cv.SetScale(PlayerHandCardScale);
@@ -1083,9 +1091,18 @@ namespace KingCardsSpire.Views.UI
                 }
                 else
                     cv.SetClickInteractionEnabled(!restricted && !chaoticPlay);
+
+                var battleRefPlayer = _battle;
+                cv.ConfigureBattleHandHover(
+                    true,
+                    battleHandHoverScaleMultiplier,
+                    playerHandHoverAnchoredDelta,
+                    () => battleRefPlayer != null && battleRefPlayer.IsBattleActive && !_roundVisualBusy);
             }
 
+            SortHandChildrenByHandIndex(playerHandRoot, n);
             TrimHandTail(playerHandRoot, n);
+            ApplyManualPlayerHandLayout(n);
         }
 
         /// <summary>
@@ -1134,7 +1151,7 @@ namespace KingCardsSpire.Views.UI
             var n = playerHandRoot != null ? playerHandRoot.childCount : 0;
             for (var i = 0; i < n; i++)
             {
-                var cv = playerHandRoot.GetChild(i).GetComponent<CardView>();
+                var cv = FindHandCardViewByHandIndex(playerHandRoot, i);
                 if (cv == null)
                     continue;
 
@@ -1226,6 +1243,7 @@ namespace KingCardsSpire.Views.UI
         private IEnumerator RoundVisualSequenceRoutine()
         {
             _roundVisualBusy = true;
+            ForceEndHandCardBattleHovers();
             UpdateConfirmPlayButtonInteractable();
 
             var playerIdx = _battle.PendingPlayerHandIndex;
@@ -1658,6 +1676,33 @@ namespace KingCardsSpire.Views.UI
             return false;
         }
 
+        private void ForceEndHandCardBattleHovers()
+        {
+            ForceEndBattleHandHoversInRoot(playerHandRoot);
+            ForceEndBattleHandHoversInRoot(enemyHandRoot);
+        }
+
+        /// <summary>
+        /// 敌方手牌 <see cref="EnemyHandCardScale"/> 小于己方，用同一 Inspector 倍率时悬停仍显小；
+        /// 按比例放大悬停倍率，使 <c>SetScale</c> 结果与己方悬停一致。
+        /// </summary>
+        private float ResolveEnemyHandHoverScaleMultiplier()
+        {
+            return battleHandHoverScaleMultiplier * (PlayerHandCardScale / EnemyHandCardScale);
+        }
+
+        private static void ForceEndBattleHandHoversInRoot(RectTransform root)
+        {
+            if (root == null)
+                return;
+
+            for (var i = 0; i < root.childCount; i++)
+            {
+                var cv = root.GetChild(i).GetComponent<CardView>();
+                cv?.ForceEndBattleHandHover();
+            }
+        }
+
         private static int FindPlayerHandIndexForCardId(Card[] hand, string cardId)
         {
             if (hand == null || string.IsNullOrEmpty(cardId))
@@ -1690,6 +1735,136 @@ namespace KingCardsSpire.Views.UI
 
             for (var k = 0; k < removeCount; k++)
                 Destroy(toDestroy[k]);
+        }
+
+        private void DisableHandRootLayoutGroups()
+        {
+            DisableLayoutGroupOnRoot(enemyHandRoot);
+            DisableLayoutGroupOnRoot(playerHandRoot);
+        }
+
+        private static void DisableLayoutGroupOnRoot(RectTransform handRoot)
+        {
+            if (handRoot == null)
+                return;
+
+            var lg = handRoot.GetComponent<LayoutGroup>();
+            if (lg != null)
+                lg.enabled = false;
+        }
+
+        private void ApplyManualPlayerHandLayout(int count)
+        {
+            ApplyManualFanHandLayout(
+                playerHandRoot,
+                count,
+                CardDesignWidth,
+                PlayerHandCardScale,
+                playerHandLayoutSlotSpacingAdd,
+                playerHandLayoutFanDegreesPerSlot,
+                playerHandLayoutAnchoredYOffset,
+                invertFanZ: true,
+                playerHandFanVerticalBulge,
+                fanCenterBelowHandZone: true);
+        }
+
+        private void ApplyManualEnemyHandLayout(int count)
+        {
+            ApplyManualFanHandLayout(
+                enemyHandRoot,
+                count,
+                CardDesignWidth,
+                EnemyHandCardScale,
+                enemyHandLayoutSlotSpacingAdd,
+                enemyHandLayoutFanDegreesPerSlot,
+                enemyHandLayoutAnchoredYOffset,
+                invertFanZ: false,
+                enemyHandFanVerticalBulge,
+                fanCenterBelowHandZone: false);
+        }
+
+        /// <summary>
+        /// 手牌区不使用 <see cref="LayoutGroup"/>：水平居中、绕 Z 扇形旋转，并可选竖直抛物线。
+        /// 己方：<paramref name="fanCenterBelowHandZone"/> 为 true 表示圆心在区域下方（弧口朝上）；敌方传 false 表示圆心在区域上方（弧口朝下）。
+        /// </summary>
+        private static void ApplyManualFanHandLayout(
+            RectTransform handRoot,
+            int count,
+            float cardDesignWidth,
+            float cardScale,
+            float slotSpacingAdd,
+            float zDegreesPerSlotFromCenter,
+            float anchoredYOffset,
+            bool invertFanZ,
+            float verticalBulge,
+            bool fanCenterBelowHandZone)
+        {
+            if (handRoot == null || count <= 0)
+                return;
+
+            var slotCenterStep = cardDesignWidth * cardScale + slotSpacingAdd;
+            var totalSpan = slotCenterStep * Mathf.Max(0, count - 1);
+            var zSign = invertFanZ ? -1f : 1f;
+            var maxFrom = (count - 1) * 0.5f;
+
+            for (var i = 0; i < count; i++)
+            {
+                var child = FindHandCardRectByHandIndex(handRoot, i);
+                if (child == null)
+                    continue;
+
+                var fromCenter = i - maxFrom;
+                var x = -totalSpan * 0.5f + i * slotCenterStep;
+                var zRot = zSign * zDegreesPerSlotFromCenter * fromCenter;
+
+                var parab = 0f;
+                if (count > 1 && maxFrom > 0.001f)
+                    parab = 1f - (fromCenter / maxFrom) * (fromCenter / maxFrom);
+
+                var yArc = (fanCenterBelowHandZone ? 1f : -1f) * verticalBulge * parab;
+                var y = anchoredYOffset + yArc;
+
+                child.localEulerAngles = new Vector3(0f, 0f, zRot);
+                child.anchoredPosition = new Vector2(x, y);
+            }
+        }
+
+        /// <summary>悬停置顶会打乱 sibling 顺序，手牌逻辑下标需用 <see cref="CardView.HandIndex"/> 解析。</summary>
+        private static RectTransform FindHandCardRectByHandIndex(RectTransform handRoot, int handIndex)
+        {
+            var cv = FindHandCardViewByHandIndex(handRoot, handIndex);
+            return cv != null ? cv.transform as RectTransform : null;
+        }
+
+        private static CardView FindHandCardViewByHandIndex(RectTransform handRoot, int handIndex)
+        {
+            if (handRoot == null)
+                return null;
+
+            for (var c = 0; c < handRoot.childCount; c++)
+            {
+                var cv = handRoot.GetChild(c).GetComponent<CardView>();
+                if (cv != null && cv.HandIndex == handIndex)
+                    return cv;
+            }
+
+            return null;
+        }
+
+        /// <summary>将 <see cref="CardView.HandIndex"/> 为 0..count-1 的卡牌依次排到子节点前部，便于 <see cref="TrimHandTail"/> 删除多余实例。</summary>
+        private static void SortHandChildrenByHandIndex(RectTransform handRoot, int count)
+        {
+            if (handRoot == null || count <= 0)
+                return;
+
+            for (var target = 0; target < count; target++)
+            {
+                var cv = FindHandCardViewByHandIndex(handRoot, target);
+                if (cv == null)
+                    continue;
+
+                cv.transform.SetSiblingIndex(target);
+            }
         }
     }
 }

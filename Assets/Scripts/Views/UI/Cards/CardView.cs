@@ -1,9 +1,11 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using KingCardsSpire.Configs;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.Events;
+using UnityEngine.EventSystems;
 using UnityEngine.ResourceManagement.AsyncOperations;
 using UnityEngine.UI;
 
@@ -27,7 +29,10 @@ namespace KingCardsSpire.Views.UI.Cards
         [SerializeField] private Color normalTint = Color.white;
         [SerializeField] private Color selectedTint = new(0.85f, 0.95f, 1f, 1f);
         [SerializeField] private Color disabledTint = new(0.55f, 0.55f, 0.55f, 1f);
-        
+
+        [Tooltip("战斗手牌悬停：放大/还原的缓动时长（秒）。")]
+        [SerializeField] private float battleHandHoverTweenDurationSeconds = 0.16f;
+
         private AsyncOperationHandle<Sprite> _artLoadHandle;
         private bool _hasArtHandle;
         private CardVisualState _visualState = CardVisualState.Normal;
@@ -36,6 +41,20 @@ namespace KingCardsSpire.Views.UI.Cards
         private string _lastAppliedCardId = string.Empty;
 
         private bool _faceDown;
+
+        /// <summary>最近一次 <see cref="SetScale"/> 的基准值；悬停放大结束后再设回该值。</summary>
+        private float _handBaseScale = 1f;
+
+        private bool _battleHandHoverEnabled;
+        private float _battleHandHoverScaleMultiplier = 1.35f;
+        private Vector2 _battleHandHoverAnchoredDelta;
+        private Func<bool> _battleHandHoverCanHover;
+        private bool _battleHandHoverActive;
+        private int _battleHandHoverSavedSiblingIndex;
+        private Vector2 _battleHandHoverSavedAnchoredPosition;
+        private Vector3 _battleHandHoverSavedLocalEuler;
+        private EventTrigger _handHoverEventTrigger;
+        private Coroutine _handHoverRoutine;
 
         public int HandIndex { get; set; }
 
@@ -48,6 +67,7 @@ namespace KingCardsSpire.Views.UI.Cards
         {
             clickTarget.onClick.RemoveListener(OnClickTargetInvoked);
 
+            TeardownBattleHandHoverForDestroy();
             ReleaseAddressableArtOnly();
         }
 
@@ -57,6 +77,227 @@ namespace KingCardsSpire.Views.UI.Cards
             rectRoot.sizeDelta = new Vector2(842, 1180) * scale;
             rectBack.localScale = s;
             rectFront.localScale = s;
+            if (!_battleHandHoverActive)
+                _handBaseScale = scale;
+        }
+
+        /// <summary>
+        /// 战斗手牌区：悬停时放大、置顶、旋转归零便于阅读；由 <see cref="BattleView"/> 在重建手牌时配置。手牌位置由战斗界面代码排布。
+        /// </summary>
+        public void ConfigureBattleHandHover(
+            bool enabled,
+            float scaleMultiplier,
+            Vector2 anchoredPositionDelta,
+            Func<bool> canHover)
+        {
+            if (!enabled)
+            {
+                ForceEndBattleHandHover();
+                _battleHandHoverEnabled = false;
+                _battleHandHoverCanHover = null;
+                ClearBattleHandHoverEventTrigger();
+                return;
+            }
+
+            ForceEndBattleHandHover();
+            _battleHandHoverEnabled = true;
+            _battleHandHoverScaleMultiplier = Mathf.Max(1.01f, scaleMultiplier);
+            _battleHandHoverAnchoredDelta = anchoredPositionDelta;
+            _battleHandHoverCanHover = canHover;
+            WireBattleHandHoverEventTrigger();
+        }
+
+        /// <summary>回合动画等占用 <see cref="rectRoot"/> 前调用，立即结束悬停预览并恢复布局。</summary>
+        public void ForceEndBattleHandHover()
+        {
+            SnapBattleHandHoverPreviewEnd();
+        }
+
+        private void TeardownBattleHandHoverForDestroy()
+        {
+            StopHandHoverRoutine();
+            SnapBattleHandHoverPreviewEnd();
+            ClearBattleHandHoverEventTrigger();
+            _battleHandHoverEnabled = false;
+            _battleHandHoverCanHover = null;
+        }
+
+        private void WireBattleHandHoverEventTrigger()
+        {
+            if (clickTarget == null)
+                return;
+
+            var go = clickTarget.gameObject;
+            _handHoverEventTrigger = go.GetComponent<EventTrigger>();
+            if (_handHoverEventTrigger == null)
+                _handHoverEventTrigger = go.AddComponent<EventTrigger>();
+
+            _handHoverEventTrigger.triggers ??= new List<EventTrigger.Entry>();
+            _handHoverEventTrigger.triggers.Clear();
+
+            var enter = new EventTrigger.Entry { eventID = EventTriggerType.PointerEnter };
+            enter.callback.AddListener(OnBattleHandHoverPointerEnter);
+            _handHoverEventTrigger.triggers.Add(enter);
+
+            var exit = new EventTrigger.Entry { eventID = EventTriggerType.PointerExit };
+            exit.callback.AddListener(OnBattleHandHoverPointerExit);
+            _handHoverEventTrigger.triggers.Add(exit);
+        }
+
+        private void ClearBattleHandHoverEventTrigger()
+        {
+            if (_handHoverEventTrigger != null)
+                _handHoverEventTrigger.triggers.Clear();
+        }
+
+        private void OnBattleHandHoverPointerEnter(BaseEventData _)
+        {
+            if (!_battleHandHoverEnabled || _battleHandHoverCanHover == null || !_battleHandHoverCanHover())
+                return;
+
+            BeginBattleHandHoverPreview();
+        }
+
+        private void OnBattleHandHoverPointerExit(BaseEventData _)
+        {
+            StartBattleHandHoverHideTween();
+        }
+
+        private void StopHandHoverRoutine()
+        {
+            if (_handHoverRoutine == null)
+                return;
+
+            StopCoroutine(_handHoverRoutine);
+            _handHoverRoutine = null;
+        }
+
+        private void BeginBattleHandHoverPreview()
+        {
+            if (_battleHandHoverActive || rectRoot == null)
+                return;
+
+            var parent = rectRoot.parent as RectTransform;
+            if (parent == null)
+                return;
+
+            StopHandHoverRoutine();
+
+            _battleHandHoverSavedSiblingIndex = rectRoot.GetSiblingIndex();
+            _battleHandHoverSavedAnchoredPosition = rectRoot.anchoredPosition;
+            _battleHandHoverSavedLocalEuler = rectRoot.localEulerAngles;
+
+            rectRoot.SetAsLastSibling();
+            _battleHandHoverActive = true;
+
+            var startScale = _handBaseScale;
+            var endScale = _handBaseScale * _battleHandHoverScaleMultiplier;
+            var startPos = _battleHandHoverSavedAnchoredPosition;
+            var endPos = _battleHandHoverSavedAnchoredPosition + _battleHandHoverAnchoredDelta;
+            var startEu = _battleHandHoverSavedLocalEuler;
+            var endEu = Vector3.zero;
+
+            _handHoverRoutine = StartCoroutine(HandHoverTweenRoutine(
+                startScale,
+                endScale,
+                startPos,
+                endPos,
+                startEu,
+                endEu,
+                () => { _handHoverRoutine = null; }));
+        }
+
+        private void StartBattleHandHoverHideTween()
+        {
+            if (!_battleHandHoverEnabled || rectRoot == null || !_battleHandHoverActive)
+                return;
+
+            StopHandHoverRoutine();
+
+            var startScale = ReadCurrentHandVisualScale();
+            var endScale = _handBaseScale;
+            var startPos = rectRoot.anchoredPosition;
+            var endPos = _battleHandHoverSavedAnchoredPosition;
+            var startEu = rectRoot.localEulerAngles;
+            var endEu = _battleHandHoverSavedLocalEuler;
+
+            _handHoverRoutine = StartCoroutine(HandHoverTweenRoutine(
+                startScale,
+                endScale,
+                startPos,
+                endPos,
+                startEu,
+                endEu,
+                () =>
+                {
+                    _handHoverRoutine = null;
+                    SnapBattleHandHoverPreviewEnd();
+                }));
+        }
+
+        private float ReadCurrentHandVisualScale()
+        {
+            if (rectRoot == null || rectRoot.sizeDelta.x <= 1f)
+                return _handBaseScale;
+
+            return rectRoot.sizeDelta.x / 842f;
+        }
+
+        private IEnumerator HandHoverTweenRoutine(
+            float startScale,
+            float endScale,
+            Vector2 startPos,
+            Vector2 endPos,
+            Vector3 startEu,
+            Vector3 endEu,
+            Action onComplete)
+        {
+            var dur = Mathf.Max(0.01f, battleHandHoverTweenDurationSeconds);
+            var elapsed = 0f;
+            while (elapsed < dur)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                var t = Mathf.Clamp01(elapsed / dur);
+                var k = t * t * (3f - 2f * t);
+                ApplyHandVisualScale(Mathf.Lerp(startScale, endScale, k));
+                rectRoot.anchoredPosition = Vector2.Lerp(startPos, endPos, k);
+                rectRoot.localEulerAngles = Vector3.Lerp(startEu, endEu, k);
+                yield return null;
+            }
+
+            ApplyHandVisualScale(endScale);
+            rectRoot.anchoredPosition = endPos;
+            rectRoot.localEulerAngles = endEu;
+            onComplete?.Invoke();
+        }
+
+        private void ApplyHandVisualScale(float scale)
+        {
+            var s = Vector3.one * scale;
+            rectRoot.sizeDelta = new Vector2(842, 1180) * scale;
+            rectBack.localScale = s;
+            rectFront.localScale = s;
+        }
+
+        /// <summary>立即结束悬停（无缓动），用于强制刷新或销毁。</summary>
+        private void SnapBattleHandHoverPreviewEnd()
+        {
+            StopHandHoverRoutine();
+
+            if (!_battleHandHoverActive)
+                return;
+
+            _battleHandHoverActive = false;
+
+            if (rectRoot == null)
+                return;
+
+            var parent = rectRoot.parent as RectTransform;
+            var maxIdx = parent != null ? Mathf.Max(0, parent.childCount - 1) : 0;
+            rectRoot.SetSiblingIndex(Mathf.Clamp(_battleHandHoverSavedSiblingIndex, 0, maxIdx));
+            rectRoot.anchoredPosition = _battleHandHoverSavedAnchoredPosition;
+            rectRoot.localEulerAngles = _battleHandHoverSavedLocalEuler;
+            SetScale(_handBaseScale);
         }
 
         /// <summary>
@@ -87,6 +328,7 @@ namespace KingCardsSpire.Views.UI.Cards
             // 卡背仅隐藏正面与禁用点击，不使用 Disabled 色调（否则出牌区翻面前的牌会一直发灰）。
             if (faceDown)
             {
+                ConfigureBattleHandHover(false, 1f, Vector2.zero, null);
                 _visualState = CardVisualState.Normal;
                 ApplyVisualTint();
                 clickTarget.interactable = false;
@@ -167,6 +409,8 @@ namespace KingCardsSpire.Views.UI.Cards
             effectText.gameObject.SetActive(true);
             clickTarget.interactable = true;
             ResetAlbumMaskGraphic();
+
+            ConfigureBattleHandHover(false, 1f, Vector2.zero, null);
         }
 
         /// <summary>图鉴：未解锁时在卡面 Mask 上使用 <see cref="disabledTint"/>；已解锁时隐藏遮罩。</summary>
