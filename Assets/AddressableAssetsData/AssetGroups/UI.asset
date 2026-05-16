@@ -81,36 +81,11 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 2756c1d8e132eae41a20653941106296
-    m_Address: Sprites/Character/Hero
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 49a6a61b61254444f9b977bf88bc2667
-    m_Address: Sprites/Character/Heroine1
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 83ca95ed61d3a1e449413fe7bc878d0b
-    m_Address: Sprites/Character/Heroine2
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: c653ff5720624bd408d10443f8845568
     m_Address: UI/Settings
     m_ReadOnly: 0
     m_SerializedLabels:
     - ui_panel
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: b03632bb2cc0a8345a1c73c525dc326e
-    m_Address: Sprites/Character/NPC
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 069a1e3a0a45bac499492c9e72fbd430
-    m_Address: Sprites/Character/Boss
-    m_ReadOnly: 0
-    m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: d796352e0056eb3408b70337f87b7e02
     m_Address: UI/BuffRewardView
@@ -123,11 +98,6 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels:
     - ui_panel
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 02acaed63deb36648be67688725d6d3a
-    m_Address: Sprites/Character/NPCbg
-    m_ReadOnly: 0
-    m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 7e6e1bf039d2c4543ac93dcbc6a66276
     m_Address: UI/NPCRecordView
