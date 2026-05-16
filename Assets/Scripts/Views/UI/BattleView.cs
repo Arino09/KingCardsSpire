@@ -181,6 +181,9 @@ namespace KingCardsSpire.Views.UI
         /// <summary>翻面与飞行动画进行中；期间忽略手牌点击并延后完整 Refresh。</summary>
         private bool _roundVisualBusy;
 
+        /// <summary>顶部「当前回合」展示值；结算后飞牌动画结束前不随 <see cref="BattleState.Round"/> 递增。</summary>
+        private int _displayedRound = 1;
+
         /// <summary>已确认出牌，指数形态下正等待玩家点击弃掉另一张手牌。</summary>
         private bool _awaitingExponentialSacrifice;
 
@@ -794,17 +797,48 @@ namespace KingCardsSpire.Views.UI
         /// </summary>
         private void RefreshBattleChromeOnly()
         {
-            var state = BattleManager.Instance.CurrentBattle;
+            var state = BattleManager.Instance?.CurrentBattle;
 
             if (state != null)
             {
-                var cap = state.NoRoundLimit ? "∞" : state.MaxRound.ToString();
-                turnsText.text = $"{state.Round} / {cap}";
+                if (!_roundVisualBusy)
+                    SyncDisplayedRoundFromBattleState();
+                else
+                    ApplyTurnsTextFromDisplayedRound(state);
+
                 weatherText.text = WeatherDisplay.Format(state.BattleWeather);
                 opponentNameText.text = string.IsNullOrEmpty(state.OpponentDisplayName)
                     ? "对手"
                     : state.OpponentDisplayName;
             }
+        }
+
+        /// <summary>从战斗状态同步并钳制展示回合（不超过上限）；非动画占用时由 <see cref="RefreshBattleChromeOnly"/> 调用。</summary>
+        private void SyncDisplayedRoundFromBattleState()
+        {
+            var state = BattleManager.Instance?.CurrentBattle;
+            if (state == null)
+                return;
+            _displayedRound = ResolveCappedDisplayRound(state);
+            ApplyTurnsTextFromDisplayedRound(state);
+        }
+
+        private static int ResolveCappedDisplayRound(BattleState state)
+        {
+            if (state == null)
+                return 1;
+            var round = Mathf.Max(1, state.Round);
+            if (!state.NoRoundLimit && state.MaxRound > 0)
+                round = Mathf.Min(round, state.MaxRound);
+            return round;
+        }
+
+        private void ApplyTurnsTextFromDisplayedRound(BattleState state)
+        {
+            if (state == null || turnsText == null)
+                return;
+            var cap = state.NoRoundLimit ? "∞" : state.MaxRound.ToString();
+            turnsText.text = $"{_displayedRound} / {cap}";
         }
 
         /// <summary>
@@ -1310,6 +1344,7 @@ namespace KingCardsSpire.Views.UI
             _enemyPlayCard = null;
             _enemyPlayCardInstanceId = null;
 
+            SyncDisplayedRoundFromBattleState();
             _roundVisualBusy = false;
 
             bool? tutorialOutcome = null;

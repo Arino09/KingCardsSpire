@@ -187,7 +187,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   m_FontData:
-    m_Font: {fileID: 10102, guid: 0000000000000000e000000000000000, type: 0}
+    m_Font: {fileID: 12800000, guid: bd23b304923564b54b09cd026de6e4fa, type: 3}
     m_FontSize: 172
     m_FontStyle: 0
     m_BestFit: 0
@@ -475,8 +475,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 146, y: -73.55072}
-  m_SizeDelta: {x: -313.1299, y: 188}
+  m_AnchoredPosition: {x: 146, y: -63.8}
+  m_SizeDelta: {x: -313.1299, y: 207}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &5985250116111971660
 MonoBehaviour:
@@ -521,11 +521,11 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   m_FontData:
-    m_Font: {fileID: 10102, guid: 0000000000000000e000000000000000, type: 0}
-    m_FontSize: 36
+    m_Font: {fileID: 12800000, guid: bd23b304923564b54b09cd026de6e4fa, type: 3}
+    m_FontSize: 32
     m_FontStyle: 0
     m_BestFit: 0
-    m_MinSize: 3
+    m_MinSize: 0
     m_MaxSize: 41
     m_Alignment: 0
     m_AlignByGeometry: 0
@@ -533,7 +533,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1.2
-  m_Text: "\u6211\u51FA\u751F\u4E8E\u8FD9\u7247\u571F\u5730\u3002\r\n\u81EA\u8BB0\u4E8B\u8D77\uFF0C\u6BCF\u9694\u4E00\u6BB5\u65F6\u95F4\uFF0C\u5929\u9645\u5C3D\u5934\u5C31\u4F1A\u51FA\u73B0\u4E00\u5EA7\u9ED1\u8272\u9AD8\u5854\u3002\r\n\u5B83\u603B\u662F\u9759\u9759\u5730\u7ACB\u5728\u90A3\u91CC\uFF0C\u770B\u5F97\u89C1\uFF0C\u5374\u6C38\u8FDC\u65E0\u6CD5\u9760\u8FD1\u3002\r\n"
+  m_Text: "\u201C\u5B69\u5B50\uFF0C\u4ECA\u5929\u6211\u544A\u8BC9\u4F60\u8FD9\u4E9B\uFF0C\u5C31\u50CF\u5F53\u5E74\u90A3\u4F4D\u524D\u8F88\u544A\u8BC9\u6211\u4E00\u6837\u3002\u4F60\u4E0B\u6B21\u518D\u6765\u65F6\uFF0C\u53EF\u80FD\u5C31\u89C1\u4E0D\u5230\u6211\u4E86\u3002\u5C3D\u7BA1\u5854\u91CC\u7684\u90A3\u4E9B\u5BB6\u4F19\u770B\u4E0D\u8D77\u6211\u4EEC\uFF0C\u4F46\u4ED6\u4EEC\u4E5F\u5FC5\u987B\u9075\u5B88\u5854\u7684\u7ADE\u9009\u89C4\u5219\u3002\u5728\u4F60\u5931\u8D25\u4E4B\u524D\uFF0C\u4ED6\u4EEC\u4E0D\u6562\u4F24\u5BB3\u4F60\u3002\u201D\r\n\u201C\u52A1\u5FC5\u8981\u575A\u6301\u4E0B\u53BB\u3002\u6211\u4EEC\u5E0C\u7FBD\u4EBA\uFF0C\u6C38\u8FDC\u4E0D\u4F1A\u653E\u5F03\uFF01\u201D\n\u201C\u52A1\u5FC5\u8981\u575A\u6301\u4E0B"
 --- !u!1 &4641275207678860780
 GameObject:
   m_ObjectHideFlags: 0
@@ -1025,7 +1025,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   m_FontData:
-    m_Font: {fileID: 10102, guid: 0000000000000000e000000000000000, type: 0}
+    m_Font: {fileID: 12800000, guid: bd23b304923564b54b09cd026de6e4fa, type: 3}
     m_FontSize: 36
     m_FontStyle: 0
     m_BestFit: 1

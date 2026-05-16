@@ -16,7 +16,12 @@ MonoBehaviour:
   m_Data:
     m_SerializedData: []
   m_GUID: add102721c67cc640a87007f6ee72182
-  m_SerializeEntries: []
+  m_SerializeEntries:
+  - m_GUID: bd23b304923564b54b09cd026de6e4fa
+    m_Address: Assets/GameAssets/Font/Songti.ttc
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: 0b8713ba58b57bb49bd9906570780370, type: 2}
   m_SchemaSet:

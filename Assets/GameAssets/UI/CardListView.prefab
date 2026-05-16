@@ -67,7 +67,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   m_FontData:
-    m_Font: {fileID: 10102, guid: 0000000000000000e000000000000000, type: 0}
+    m_Font: {fileID: 12800000, guid: bd23b304923564b54b09cd026de6e4fa, type: 3}
     m_FontSize: 56
     m_FontStyle: 1
     m_BestFit: 0
@@ -560,7 +560,6 @@ MonoBehaviour:
   cardPrefab: {fileID: 6042190764628795243, guid: e4e47986c01e2f246a3717b608d870bf, type: 3}
   closeButton: {fileID: 8877563907178330602}
   confirmSelectionButton: {fileID: 6125400764465573250}
-  cancelSelectionButton: {fileID: 0}
   selectionHintText: {fileID: 2107487297019416107}
 --- !u!1 &6328750615746435869
 GameObject:
@@ -703,7 +702,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   m_FontData:
-    m_Font: {fileID: 10102, guid: 0000000000000000e000000000000000, type: 0}
+    m_Font: {fileID: 12800000, guid: bd23b304923564b54b09cd026de6e4fa, type: 3}
     m_FontSize: 69
     m_FontStyle: 0
     m_BestFit: 0
