@@ -80,14 +80,21 @@ namespace KingCardsSpire.Views.UI
         [SerializeField] private Canvas playerHandCanvasOverride;
 
         [Header("手牌 · 悬停预览")]
-        [Tooltip("悬停时相对手牌基准缩放的倍率（须大于 1）。敌方会再乘以己方/敌方手牌基础缩放比，使悬停后与己方卡面视觉尺寸一致。")]
+        [Tooltip("己方手牌悬停时相对手牌基准缩放的倍率（须大于 1）。")]
         [SerializeField] private float battleHandHoverScaleMultiplier = 1.35f;
 
-        [Tooltip("悬停时 rectRoot 的 anchoredPosition 偏移（通常 Y 为正表示向上抽出）。")]
+        [Tooltip("己方手牌悬停时 rectRoot 的 anchoredPosition 偏移（通常 Y 为正表示向上抽出）。")]
         [SerializeField] private Vector2 playerHandHoverAnchoredDelta = new(0f, 100f);
 
-        [Tooltip("敌方透视牌悬停时的 anchoredPosition 偏移。敌方手牌区多在画面上方，Y 建议为负（向下）以免放大后顶出屏幕。")]
-        [SerializeField] private Vector2 enemyHandHoverAnchoredDelta = new(0f, -90f);
+        [Header("敌方透视牌 · 侧栏悬停预览")]
+        [Tooltip("复制卡面的父节点（建议全屏 Canvas 下的独立层）。为空时使用本界面所在 Canvas 根 RectTransform。")]
+        [SerializeField] private RectTransform enemyRevealedCardHoverPreviewParent;
+
+        [Tooltip("复制卡在父节点下的 anchoredPosition（相对父节点锚点）。确定效果后可改为常量。")]
+        [SerializeField] private Vector2 enemyRevealedCardHoverPreviewAnchoredPosition = new(320f, 0f);
+
+        [Tooltip("复制卡相对预制体基准的缩放。")]
+        [SerializeField] private float enemyRevealedCardHoverPreviewScale = 0.8f;
 
         [Header("手牌 · 代码布局")]
         [Tooltip("己方：相邻两张牌中心水平间距 = 卡宽×缩放 + 本值（负值越大重叠越多）。")]
@@ -213,6 +220,8 @@ namespace KingCardsSpire.Views.UI
         private UnityAction<BaseEventData> _handAbilityEnemyPointerEnter;
         private UnityAction<BaseEventData> _handAbilityEnemyPointerExit;
 
+        private CardView _enemyRevealedHoverPreviewClone;
+
         /// <summary>
         /// 面板初始化：解析服务、注册按钮；战斗状态订阅在 <see cref="OnOpen"/> 中进行。
         /// </summary>
@@ -240,6 +249,7 @@ namespace KingCardsSpire.Views.UI
             StopTutorialFlowCoroutine();
             StopChaoticAutoCoroutine();
             ExitExponentialSacrificeUi();
+            HideEnemyRevealedCardHoverPreview();
             UnwireBattleWeatherTooltip();
             UnwireHandAbilityBattleTooltip();
             UnwireButtons();
@@ -915,6 +925,8 @@ namespace KingCardsSpire.Views.UI
         /// </summary>
         private void RebuildEnemyHand(Card[] hand)
         {
+            HideEnemyRevealedCardHoverPreview();
+
             var n = hand?.Length ?? 0;
             var state = BattleManager.Instance != null ? BattleManager.Instance.CurrentBattle : null;
             var visible = state?.EnemyVisible;
@@ -952,14 +964,19 @@ namespace KingCardsSpire.Views.UI
                     cv.SetVisualState(enemyRestricted ? CardVisualState.Disabled : CardVisualState.Normal);
 
                     var battleRefEnemy = _battle;
-                    cv.ConfigureBattleHandHover(
+                    var previewVm = vm;
+                    var previewCfg = cfg;
+                    var previewVisual = enemyRestricted ? CardVisualState.Disabled : CardVisualState.Normal;
+                    cv.ConfigureBattleHandHover(false, 1f, Vector2.zero, null);
+                    cv.ConfigureExternalHoverPreview(
                         true,
-                        ResolveEnemyHandHoverScaleMultiplier(),
-                        enemyHandHoverAnchoredDelta,
-                        () => battleRefEnemy != null && battleRefEnemy.IsBattleActive && !_roundVisualBusy);
+                        () => battleRefEnemy != null && battleRefEnemy.IsBattleActive && !_roundVisualBusy,
+                        () => ShowEnemyRevealedCardHoverPreview(previewVm, previewCfg, previewVisual),
+                        HideEnemyRevealedCardHoverPreview);
                 }
                 else
                 {
+                    cv.ConfigureExternalHoverPreview(false, null, null, null);
                     cv.Clear();
                     cv.SetFaceDown(true);
                 }
@@ -1341,6 +1358,16 @@ namespace KingCardsSpire.Views.UI
             var ui = UIManager.Instance;
             var bm = BattleManager.Instance;
             var gm = GameManager.Instance;
+
+            var casualDefeat = bm != null && !bm.IsTutorialBattle && bm.CurrentBattle != null &&
+                               !bm.CurrentBattle.IsBossBattle && !bm.LastBattlePlayerVictory;
+            if (casualDefeat && ui != null)
+            {
+                yield return ui.StartCoroutine(
+                    ui.CoShowBattleDefeatHintRoutine(
+                        BattleDefeatHintMessages.GetMessage(bm.LastBattleEndReason)));
+            }
+
             var hasCasualOffer = bm != null && bm.PendingCasualVictoryRewardCardIds != null &&
                                  bm.PendingCasualVictoryRewardCardIds.Count > 0;
             var hasHeroPickThree = bm != null && bm.PendingHeroDuelPickThreeCardIds != null &&
@@ -1664,15 +1691,69 @@ namespace KingCardsSpire.Views.UI
         {
             ForceEndBattleHandHoversInRoot(playerHandRoot);
             ForceEndBattleHandHoversInRoot(enemyHandRoot);
+            HideEnemyRevealedCardHoverPreview();
         }
 
-        /// <summary>
-        /// 敌方手牌 <see cref="EnemyHandCardScale"/> 小于己方，用同一 Inspector 倍率时悬停仍显小；
-        /// 按比例放大悬停倍率，使 <c>SetScale</c> 结果与己方悬停一致。
-        /// </summary>
-        private float ResolveEnemyHandHoverScaleMultiplier()
+        private RectTransform ResolveEnemyRevealedCardHoverPreviewParent()
         {
-            return battleHandHoverScaleMultiplier * (PlayerHandCardScale / EnemyHandCardScale);
+            if (enemyRevealedCardHoverPreviewParent != null)
+                return enemyRevealedCardHoverPreviewParent;
+
+            var canvas = GetComponentInParent<Canvas>();
+            if (canvas != null)
+                return canvas.transform as RectTransform;
+
+            return transform as RectTransform;
+        }
+
+        private void ShowEnemyRevealedCardHoverPreview(
+            CardViewModel vm,
+            CardConfigEntry cfg,
+            CardVisualState visualState)
+        {
+            if (vm == null || cardPrefab == null)
+                return;
+
+            var parent = ResolveEnemyRevealedCardHoverPreviewParent();
+            if (parent == null)
+                return;
+
+            HideEnemyRevealedCardHoverPreview();
+
+            var clone = Instantiate(cardPrefab, parent, false);
+            var rt = clone.transform as RectTransform;
+            if (rt != null)
+            {
+                rt.anchorMin = new Vector2(0.5f, 0.5f);
+                rt.anchorMax = new Vector2(0.5f, 0.5f);
+                rt.pivot = new Vector2(0.5f, 0.5f);
+                rt.anchoredPosition = enemyRevealedCardHoverPreviewAnchoredPosition;
+                rt.localEulerAngles = Vector3.zero;
+                rt.localScale = Vector3.one;
+            }
+
+            clone.SetFaceDown(false);
+            clone.Apply(vm);
+            if (cfg != null)
+                clone.LoadCardArtFromConfig(cfg);
+            clone.SetVisualState(visualState);
+            clone.SetScale(Mathf.Max(0.01f, enemyRevealedCardHoverPreviewScale));
+            clone.OverrideClick(null);
+            clone.SetBlocksPointerEvents(false);
+            clone.ConfigureBattleHandHover(false, 1f, Vector2.zero, null);
+            clone.ConfigureExternalHoverPreview(false, null, null, null);
+            clone.transform.SetAsLastSibling();
+
+            _enemyRevealedHoverPreviewClone = clone;
+        }
+
+        private void HideEnemyRevealedCardHoverPreview()
+        {
+            if (_enemyRevealedHoverPreviewClone == null)
+                return;
+
+            Destroy(_enemyRevealedHoverPreviewClone.gameObject);
+            _enemyRevealedHoverPreviewClone = null;
         }
 
         private static void ForceEndBattleHandHoversInRoot(RectTransform root)
@@ -1811,6 +1892,24 @@ namespace KingCardsSpire.Views.UI
                 child.localEulerAngles = new Vector3(0f, 0f, zRot);
                 child.anchoredPosition = new Vector2(x, y);
             }
+
+            ApplyHandCardSiblingDrawOrder(handRoot, count);
+        }
+
+        /// <summary>
+        /// 右侧牌压在左侧牌上层：HandIndex 越大 sibling 越高（从右到左依次 SetSiblingIndex，避免打乱顺序）。
+        /// </summary>
+        private static void ApplyHandCardSiblingDrawOrder(RectTransform handRoot, int count)
+        {
+            if (handRoot == null || count <= 0)
+                return;
+
+            for (var i = count - 1; i >= 0; i--)
+            {
+                var cv = FindHandCardViewByHandIndex(handRoot, i);
+                if (cv != null)
+                    cv.transform.SetSiblingIndex(i);
+            }
         }
 
         /// <summary>悬停置顶会打乱 sibling 顺序，手牌逻辑下标需用 <see cref="CardView.HandIndex"/> 解析。</summary>
@@ -1838,17 +1937,7 @@ namespace KingCardsSpire.Views.UI
         /// <summary>将 <see cref="CardView.HandIndex"/> 为 0..count-1 的卡牌依次排到子节点前部，便于 <see cref="TrimHandTail"/> 删除多余实例。</summary>
         private static void SortHandChildrenByHandIndex(RectTransform handRoot, int count)
         {
-            if (handRoot == null || count <= 0)
-                return;
-
-            for (var target = 0; target < count; target++)
-            {
-                var cv = FindHandCardViewByHandIndex(handRoot, target);
-                if (cv == null)
-                    continue;
-
-                cv.transform.SetSiblingIndex(target);
-            }
+            ApplyHandCardSiblingDrawOrder(handRoot, count);
         }
     }
 }

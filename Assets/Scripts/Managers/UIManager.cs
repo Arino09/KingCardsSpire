@@ -13,6 +13,7 @@ namespace KingCardsSpire.Managers
     public sealed class UIManager : PersistentMonoSingleton<UIManager>
     {
         private const string LoadingViewAddress = "UI/LoadingView";
+        private const string HintTipAddress = "UI/HintTip";
 
         private readonly Stack<BaseView> _stack = new();
         private readonly Dictionary<UIPanelId, BaseView> _active = new();
@@ -23,6 +24,9 @@ namespace KingCardsSpire.Managers
         [SerializeField] private float _loadingFadeOutDuration = 0.2f;
         [Tooltip("嵌套 Canvas 的 overrideSorting，保证 Loading 盖过同场景内其它 UI Canvas。")]
         [SerializeField] private int _loadingOverlayCanvasSortOrder = 32000;
+
+        [Header("战败提示")]
+        [SerializeField] private float battleDefeatHintDurationSeconds = 3f;
 
         private GameObject _loadingOverlayRoot;
         private LoadingView _loadingView;
@@ -85,6 +89,43 @@ namespace KingCardsSpire.Managers
         /// 是否已有 MainHub 用的 Loading 遮罩引用（例如 <see cref="OpenAsync"/> 打开 MainHub 过程中）。
         /// </summary>
         public bool IsMainHubLoadingMaskHeld => _loadingOverlayRefCount > 0;
+
+        /// <summary>战败 HintTip 展示时长（秒）。</summary>
+        public float BattleDefeatHintDurationSeconds => battleDefeatHintDurationSeconds;
+
+        /// <summary>
+        /// 通过 Addressables（<c>{HintTipAddress}</c>）实例化战败提示，展示约 <see cref="BattleDefeatHintDurationSeconds"/> 秒后销毁。
+        /// </summary>
+        public IEnumerator CoShowBattleDefeatHintRoutine(string message)
+        {
+            if (string.IsNullOrEmpty(message) || _uiRoot == null)
+                yield break;
+
+            var assets = AssetManager.Instance;
+            if (assets == null)
+            {
+                Debug.LogWarning("[UIManager] AssetManager 未就绪，跳过战败 HintTip。");
+                yield break;
+            }
+
+            GameObject go = null;
+            yield return assets.InstantiateAndWait(HintTipAddress, _uiRoot, g => go = g);
+            if (go == null)
+            {
+                Debug.LogWarning($"[UIManager] HintTip 实例化失败 address={HintTipAddress}");
+                yield break;
+            }
+
+            go.transform.SetAsLastSibling();
+            EnsureMainHubAtBack();
+            if (_loadingOverlayRoot != null)
+                BringLoadingOverlayToFront();
+            var tip = go.GetComponent<HintTipView>();
+            if (tip == null)
+                tip = go.AddComponent<HintTipView>();
+            tip.Show(message, battleDefeatHintDurationSeconds);
+            yield return new WaitForSeconds(battleDefeatHintDurationSeconds);
+        }
 
         /// <summary>
         /// 淡入并抬高 MainHub 专用 Loading 遮罩；与 <see cref="PopMainHubLoadingMaskRoutine"/> 成对使用，支持嵌套 refCount。
@@ -152,7 +193,7 @@ namespace KingCardsSpire.Managers
                 yield return mainHub.WaitForInitialHubPresentationReady();
                 yield return null;
                 yield return StartCoroutine(PopMainHubLoadingMaskRoutine());
-                mainHub.transform.SetAsLastSibling();
+                EnsureMainHubAtBack();
             }
             else
                 yield return StartCoroutine(PopMainHubLoadingMaskRoutine());
@@ -188,7 +229,7 @@ namespace KingCardsSpire.Managers
             }
 
             if (!useMainHubLoading)
-                go.transform.SetAsLastSibling();
+                ApplyPanelSiblingOrder(go.transform, panelId);
 
             var view = go.GetComponent<BaseView>();
             if (view == null)
@@ -216,10 +257,39 @@ namespace KingCardsSpire.Managers
             if (useMainHubLoading)
             {
                 yield return StartCoroutine(PopMainHubLoadingMaskRoutine());
-                go.transform.SetAsLastSibling();
+                ApplyPanelSiblingOrder(go.transform, panelId);
             }
 
             GameAudioDirector.Instance?.RefreshFromUiState();
+        }
+
+        /// <summary>
+        /// MainHub 固定在最底层；其它面板按打开顺序叠在上层（后开在上）。
+        /// Loading 遮罩由 <see cref="BringLoadingOverlayToFront"/> 单独置顶。
+        /// </summary>
+        private void ApplyPanelSiblingOrder(Transform panelTransform, UIPanelId panelId)
+        {
+            if (panelTransform == null)
+                return;
+
+            if (panelId == UIPanelId.MainHub)
+                panelTransform.SetAsFirstSibling();
+            else
+            {
+                panelTransform.SetAsLastSibling();
+                EnsureMainHubAtBack();
+            }
+
+            if (_loadingOverlayRoot != null)
+                BringLoadingOverlayToFront();
+        }
+
+        private void EnsureMainHubAtBack()
+        {
+            if (!_active.TryGetValue(UIPanelId.MainHub, out var hub) || hub == null)
+                return;
+
+            hub.transform.SetAsFirstSibling();
         }
 
         private IEnumerator EnsureLoadingOverlayRoutine()

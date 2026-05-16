@@ -93,6 +93,12 @@ namespace KingCardsSpire.Managers
         /// <summary>当前是否为「开场教学战」（用于 UI 脚本化与第一回合敌出牌锁定）。</summary>
         public bool IsTutorialBattle => _isTutorialBattle;
 
+        /// <summary>最近一场在 <see cref="FinishBattle"/> 中结算的己方是否胜利（教学/驻守/路人战共用）。</summary>
+        public bool LastBattlePlayerVictory { get; private set; }
+
+        /// <summary>与 <see cref="LastBattlePlayerVictory"/> 同时写入，用于战败 Hint 文案。</summary>
+        public BattleEndReason LastBattleEndReason { get; private set; }
+
         /// <summary>本回合已锁定的敌方手牌下标，未准备时为 -1。</summary>
         public int PendingEnemyHandIndex => _pendingEnemyHandIndex;
 
@@ -1398,6 +1404,9 @@ namespace KingCardsSpire.Managers
             if (playerVictory && boss && !_isTutorialBattle)
                 bossVictoryRewardCardIds =
                     CasualVictoryRewardPicker.BuildBossVictoryOfferCardIds(_enemyHand, _enemyDiscard);
+
+            LastBattlePlayerVictory = playerVictory;
+            LastBattleEndReason = reason;
 
             Debug.Log(
                 $"[BattleManager] 战斗结束 己方{(playerVictory ? "胜" : "败")} 原因={reason} BOSS战={boss}");

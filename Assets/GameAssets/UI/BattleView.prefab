@@ -297,14 +297,14 @@ RectTransform:
   m_GameObject: {fileID: 1896118424398262982}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 0.84089, y: 0.84089, z: 0.84089}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1916738462647259579}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0}
   m_AnchorMax: {x: 1, y: 0}
-  m_AnchoredPosition: {x: -91.550415, y: 145}
+  m_AnchoredPosition: {x: -91.550415, y: 151}
   m_SizeDelta: {x: 176.0896, y: 176.09369}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &3114347093082208077
@@ -1087,14 +1087,14 @@ RectTransform:
   m_GameObject: {fileID: 7276883896202727922}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 0.84089, y: 0.84089, z: 0.84089}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1916738462647259579}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -91.550415, y: -187.44684}
+  m_AnchoredPosition: {x: -91.550415, y: -185}
   m_SizeDelta: {x: 176.0896, y: 176.0937}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &8788111376413018481
@@ -1328,11 +1328,11 @@ RectTransform:
   - {fileID: 7117429656996662513}
   - {fileID: 3689065535282988317}
   - {fileID: 4656705647133326160}
-  - {fileID: 305877580249185661}
   - {fileID: 8229691003475971114}
   - {fileID: 7189298998295491769}
   - {fileID: 63094659015531280}
   - {fileID: 4908657407497437520}
+  - {fileID: 305877580249185661}
   - {fileID: 2332648627650075496}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -1408,11 +1408,13 @@ MonoBehaviour:
   enemyPlayedAbilityTooltipBodyText: {fileID: 5076082462696267778}
   exponentialSacrificeDimmer: {fileID: 1222090083939973156}
   playerHandCanvasOverride: {fileID: 6162702257718468690}
-  battleHandHoverScaleMultiplier: 1.35
+  battleHandHoverScaleMultiplier: 1.75
   playerHandHoverAnchoredDelta: {x: 0, y: 100}
-  enemyHandHoverAnchoredDelta: {x: 0, y: 70}
-  playerHandLayoutSlotSpacingAdd: -95
-  playerHandLayoutFanDegreesPerSlot: 3.5
+  enemyRevealedCardHoverPreviewParent: {fileID: 0}
+  enemyRevealedCardHoverPreviewAnchoredPosition: {x: -600, y: 0}
+  enemyRevealedCardHoverPreviewScale: 0.75
+  playerHandLayoutSlotSpacingAdd: -65
+  playerHandLayoutFanDegreesPerSlot: 4
   playerHandLayoutAnchoredYOffset: 0
   enemyHandLayoutSlotSpacingAdd: -58
   enemyHandLayoutFanDegreesPerSlot: 4.5

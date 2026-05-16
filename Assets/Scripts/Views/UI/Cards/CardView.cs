@@ -49,8 +49,10 @@ namespace KingCardsSpire.Views.UI.Cards
         private float _battleHandHoverScaleMultiplier = 1.35f;
         private Vector2 _battleHandHoverAnchoredDelta;
         private Func<bool> _battleHandHoverCanHover;
+        private bool _externalHoverEnabled;
+        private Action _externalHoverEnter;
+        private Action _externalHoverExit;
         private bool _battleHandHoverActive;
-        private int _battleHandHoverSavedSiblingIndex;
         private Vector2 _battleHandHoverSavedAnchoredPosition;
         private Vector3 _battleHandHoverSavedLocalEuler;
         private EventTrigger _handHoverEventTrigger;
@@ -94,17 +96,52 @@ namespace KingCardsSpire.Views.UI.Cards
             {
                 ForceEndBattleHandHover();
                 _battleHandHoverEnabled = false;
-                _battleHandHoverCanHover = null;
-                ClearBattleHandHoverEventTrigger();
+                if (!_externalHoverEnabled)
+                {
+                    _battleHandHoverCanHover = null;
+                    ClearHandPointerHoverEventTrigger();
+                }
+
                 return;
             }
 
             ForceEndBattleHandHover();
+            _externalHoverEnabled = false;
+            _externalHoverEnter = null;
+            _externalHoverExit = null;
             _battleHandHoverEnabled = true;
             _battleHandHoverScaleMultiplier = Mathf.Max(1.01f, scaleMultiplier);
             _battleHandHoverAnchoredDelta = anchoredPositionDelta;
             _battleHandHoverCanHover = canHover;
-            WireBattleHandHoverEventTrigger();
+            WireHandPointerHoverEventTrigger();
+        }
+
+        /// <summary>
+        /// 战斗：悬停时不改手牌原位姿，由外部（如 <see cref="BattleView"/>）在固定区域展示复制卡面。
+        /// </summary>
+        public void ConfigureExternalHoverPreview(bool enabled, Func<bool> canHover, Action onEnter, Action onExit)
+        {
+            if (!enabled)
+            {
+                _externalHoverEnabled = false;
+                _externalHoverEnter = null;
+                _externalHoverExit = null;
+                if (!_battleHandHoverEnabled)
+                {
+                    _battleHandHoverCanHover = null;
+                    ClearHandPointerHoverEventTrigger();
+                }
+
+                return;
+            }
+
+            ForceEndBattleHandHover();
+            _battleHandHoverEnabled = false;
+            _externalHoverEnabled = true;
+            _battleHandHoverCanHover = canHover;
+            _externalHoverEnter = onEnter;
+            _externalHoverExit = onExit;
+            WireHandPointerHoverEventTrigger();
         }
 
         /// <summary>回合动画等占用 <see cref="rectRoot"/> 前调用，立即结束悬停预览并恢复布局。</summary>
@@ -117,12 +154,15 @@ namespace KingCardsSpire.Views.UI.Cards
         {
             StopHandHoverRoutine();
             SnapBattleHandHoverPreviewEnd();
-            ClearBattleHandHoverEventTrigger();
+            ClearHandPointerHoverEventTrigger();
             _battleHandHoverEnabled = false;
+            _externalHoverEnabled = false;
+            _externalHoverEnter = null;
+            _externalHoverExit = null;
             _battleHandHoverCanHover = null;
         }
 
-        private void WireBattleHandHoverEventTrigger()
+        private void WireHandPointerHoverEventTrigger()
         {
             if (clickTarget == null)
                 return;
@@ -136,31 +176,45 @@ namespace KingCardsSpire.Views.UI.Cards
             _handHoverEventTrigger.triggers.Clear();
 
             var enter = new EventTrigger.Entry { eventID = EventTriggerType.PointerEnter };
-            enter.callback.AddListener(OnBattleHandHoverPointerEnter);
+            enter.callback.AddListener(OnHandPointerHoverEnter);
             _handHoverEventTrigger.triggers.Add(enter);
 
             var exit = new EventTrigger.Entry { eventID = EventTriggerType.PointerExit };
-            exit.callback.AddListener(OnBattleHandHoverPointerExit);
+            exit.callback.AddListener(OnHandPointerHoverExit);
             _handHoverEventTrigger.triggers.Add(exit);
         }
 
-        private void ClearBattleHandHoverEventTrigger()
+        private void ClearHandPointerHoverEventTrigger()
         {
             if (_handHoverEventTrigger != null)
                 _handHoverEventTrigger.triggers.Clear();
         }
 
-        private void OnBattleHandHoverPointerEnter(BaseEventData _)
+        private void OnHandPointerHoverEnter(BaseEventData _)
         {
-            if (!_battleHandHoverEnabled || _battleHandHoverCanHover == null || !_battleHandHoverCanHover())
+            if (_battleHandHoverCanHover == null || !_battleHandHoverCanHover())
                 return;
 
-            BeginBattleHandHoverPreview();
+            if (_externalHoverEnabled)
+            {
+                _externalHoverEnter?.Invoke();
+                return;
+            }
+
+            if (_battleHandHoverEnabled)
+                BeginBattleHandHoverPreview();
         }
 
-        private void OnBattleHandHoverPointerExit(BaseEventData _)
+        private void OnHandPointerHoverExit(BaseEventData _)
         {
-            StartBattleHandHoverHideTween();
+            if (_externalHoverEnabled)
+            {
+                _externalHoverExit?.Invoke();
+                return;
+            }
+
+            if (_battleHandHoverEnabled)
+                StartBattleHandHoverHideTween();
         }
 
         private void StopHandHoverRoutine()
@@ -183,7 +237,6 @@ namespace KingCardsSpire.Views.UI.Cards
 
             StopHandHoverRoutine();
 
-            _battleHandHoverSavedSiblingIndex = rectRoot.GetSiblingIndex();
             _battleHandHoverSavedAnchoredPosition = rectRoot.anchoredPosition;
             _battleHandHoverSavedLocalEuler = rectRoot.localEulerAngles;
 
@@ -253,6 +306,8 @@ namespace KingCardsSpire.Views.UI.Cards
             Action onComplete)
         {
             var dur = Mathf.Max(0.01f, battleHandHoverTweenDurationSeconds);
+            var startRot = Quaternion.Euler(startEu);
+            var endRot = Quaternion.Euler(endEu);
             var elapsed = 0f;
             while (elapsed < dur)
             {
@@ -261,13 +316,13 @@ namespace KingCardsSpire.Views.UI.Cards
                 var k = t * t * (3f - 2f * t);
                 ApplyHandVisualScale(Mathf.Lerp(startScale, endScale, k));
                 rectRoot.anchoredPosition = Vector2.Lerp(startPos, endPos, k);
-                rectRoot.localEulerAngles = Vector3.Lerp(startEu, endEu, k);
+                rectRoot.localRotation = Quaternion.Slerp(startRot, endRot, k);
                 yield return null;
             }
 
             ApplyHandVisualScale(endScale);
             rectRoot.anchoredPosition = endPos;
-            rectRoot.localEulerAngles = endEu;
+            rectRoot.localRotation = endRot;
             onComplete?.Invoke();
         }
 
@@ -294,7 +349,7 @@ namespace KingCardsSpire.Views.UI.Cards
 
             var parent = rectRoot.parent as RectTransform;
             var maxIdx = parent != null ? Mathf.Max(0, parent.childCount - 1) : 0;
-            rectRoot.SetSiblingIndex(Mathf.Clamp(_battleHandHoverSavedSiblingIndex, 0, maxIdx));
+            rectRoot.SetSiblingIndex(Mathf.Clamp(HandIndex, 0, maxIdx));
             rectRoot.anchoredPosition = _battleHandHoverSavedAnchoredPosition;
             rectRoot.localEulerAngles = _battleHandHoverSavedLocalEuler;
             SetScale(_handBaseScale);
@@ -329,6 +384,7 @@ namespace KingCardsSpire.Views.UI.Cards
             if (faceDown)
             {
                 ConfigureBattleHandHover(false, 1f, Vector2.zero, null);
+                ConfigureExternalHoverPreview(false, null, null, null);
                 _visualState = CardVisualState.Normal;
                 ApplyVisualTint();
                 clickTarget.interactable = false;
@@ -346,6 +402,22 @@ namespace KingCardsSpire.Views.UI.Cards
                 return;
 
             clickTarget.interactable = enabled;
+        }
+
+        /// <summary>
+        /// 预览克隆体：关闭射线检测与交互，避免挡住原手牌导致 PointerExit/Enter 闪烁。
+        /// </summary>
+        public void SetBlocksPointerEvents(bool blocks)
+        {
+            var cg = GetComponent<CanvasGroup>();
+            if (cg == null)
+                cg = gameObject.AddComponent<CanvasGroup>();
+
+            cg.blocksRaycasts = blocks;
+            cg.interactable = blocks;
+
+            if (clickTarget != null)
+                clickTarget.interactable = blocks && !_faceDown;
         }
 
         public void Apply(CardViewModel vm)
@@ -411,6 +483,7 @@ namespace KingCardsSpire.Views.UI.Cards
             ResetAlbumMaskGraphic();
 
             ConfigureBattleHandHover(false, 1f, Vector2.zero, null);
+            ConfigureExternalHoverPreview(false, null, null, null);
         }
 
         /// <summary>图鉴：未解锁时在卡面 Mask 上使用 <see cref="disabledTint"/>；已解锁时隐藏遮罩。</summary>

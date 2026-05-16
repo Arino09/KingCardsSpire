@@ -391,8 +391,6 @@ namespace KingCardsSpire.Views.UI
             yield return null;
 
             yield return ui.StartCoroutine(ui.PopMainHubLoadingMaskRoutine());
-            if (this != null)
-                transform.SetAsLastSibling();
         }
 
         private void CancelFloorBackgroundLoad()

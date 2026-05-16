@@ -1313,6 +1313,12 @@ namespace KingCardsSpire.Managers
 
             if (string.Equals(e.Reason, GameOverReasons.BossDefeat, StringComparison.Ordinal))
             {
+                var bm = BattleManager.Instance;
+                var defeatHint = bm != null && !bm.IsTutorialBattle
+                    ? BattleDefeatHintMessages.GetMessage(bm.LastBattleEndReason)
+                    : "本局战败。";
+                yield return ui.StartCoroutine(ui.CoShowBattleDefeatHintRoutine(defeatHint));
+
                 var battle = ServiceLocator.Get<BattleController>();
                 battle?.RequestEndBattle();
                 ui.Close(UIPanelId.CardReward);
