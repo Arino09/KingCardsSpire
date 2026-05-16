@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using KingCardsSpire.Controllers;
 using KingCardsSpire.Core;
 using KingCardsSpire.Models;
 using KingCardsSpire.Views.UI;
@@ -74,6 +75,91 @@ namespace KingCardsSpire.Managers
         public bool IsPanelOpen(UIPanelId panelId) =>
             panelId != UIPanelId.None && _active.ContainsKey(panelId);
 
+        /// <summary>
+        /// 战斗或驻守奖励等全屏层仍打开时，不在 MainHub 内单独推 Loading（由关闭面板前的衔接协程处理）。
+        /// </summary>
+        public bool IsBlockingPanelAboveMainHub() =>
+            IsPanelOpen(UIPanelId.Battle) || IsPanelOpen(UIPanelId.CardReward);
+
+        /// <summary>
+        /// 是否已有 MainHub 用的 Loading 遮罩引用（例如 <see cref="OpenAsync"/> 打开 MainHub 过程中）。
+        /// </summary>
+        public bool IsMainHubLoadingMaskHeld => _loadingOverlayRefCount > 0;
+
+        /// <summary>
+        /// 淡入并抬高 MainHub 专用 Loading 遮罩；与 <see cref="PopMainHubLoadingMaskRoutine"/> 成对使用，支持嵌套 refCount。
+        /// </summary>
+        public IEnumerator PushMainHubLoadingMaskRoutine()
+        {
+            _loadingOverlayRefCount++;
+            var isFirstOverlayUser = _loadingOverlayRefCount == 1;
+
+            if (isFirstOverlayUser)
+            {
+                yield return EnsureLoadingOverlayRoutine();
+                if (_loadingOverlayRoot != null && _loadingView != null)
+                {
+                    _loadingOverlayRoot.SetActive(true);
+                    BringLoadingOverlayToFront();
+                    yield return _loadingView.FadeTo(1f, _loadingFadeInDuration);
+                }
+            }
+            else
+            {
+                yield return EnsureLoadingOverlayRoutine();
+                if (_loadingOverlayRoot != null && _loadingView != null)
+                {
+                    _loadingOverlayRoot.SetActive(true);
+                    BringLoadingOverlayToFront();
+                    if (!Mathf.Approximately(_loadingView.DisplayAlpha, 1f))
+                        yield return _loadingView.FadeTo(1f, _loadingFadeInDuration);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 与 <see cref="PushMainHubLoadingMaskRoutine"/> 成对：ref 归零时淡出并隐藏遮罩。
+        /// </summary>
+        public IEnumerator PopMainHubLoadingMaskRoutine()
+        {
+            _loadingOverlayRefCount--;
+            if (_loadingOverlayRefCount < 0)
+                _loadingOverlayRefCount = 0;
+
+            if (_loadingOverlayRefCount > 0 || _loadingView == null || _loadingOverlayRoot == null)
+                yield break;
+
+            yield return _loadingView.FadeTo(0f, _loadingFadeOutDuration);
+            _loadingOverlayRoot.SetActive(false);
+        }
+
+        /// <summary>
+        /// 先遮罩，再关闭驻守奖励与战斗，等待 <see cref="MainHubView.WaitForInitialHubPresentationReady"/> 后淡出。
+        /// </summary>
+        /// <param name="requestEndBattleBeforeClosingBattleUi">若提供则在关闭战斗界面前调用 <see cref="Controllers.BattleController.RequestEndBattle"/>（最后一层 BOSS 胜利收尾需要）。</param>
+        public IEnumerator CoCloseBossRewardBattleRevealMainHubRoutine(
+            BattleController requestEndBattleBeforeClosingBattleUi = null)
+        {
+            yield return StartCoroutine(PushMainHubLoadingMaskRoutine());
+
+            Close(UIPanelId.CardReward);
+            if (requestEndBattleBeforeClosingBattleUi != null)
+                requestEndBattleBeforeClosingBattleUi.RequestEndBattle();
+            Close(UIPanelId.Battle);
+
+            if (TryGetView(UIPanelId.MainHub, out MainHubView mainHub))
+            {
+                yield return mainHub.WaitForInitialHubPresentationReady();
+                yield return null;
+                yield return StartCoroutine(PopMainHubLoadingMaskRoutine());
+                mainHub.transform.SetAsLastSibling();
+            }
+            else
+                yield return StartCoroutine(PopMainHubLoadingMaskRoutine());
+
+            GameAudioDirector.Instance?.RefreshFromUiState();
+        }
+
         public IEnumerator OpenAsync(UIPanelId panelId)
         {
             if (panelId == UIPanelId.None || _active.ContainsKey(panelId))
@@ -86,32 +172,7 @@ namespace KingCardsSpire.Managers
             // Loading 仅用于进入主塔 hub（MainView）：主菜单或其它流程打开 MainHub 时遮挡异步实例化间隙。
             var useMainHubLoading = panelId == UIPanelId.MainHub;
             if (useMainHubLoading)
-            {
-                _loadingOverlayRefCount++;
-                var isFirstOverlayUser = _loadingOverlayRefCount == 1;
-
-                if (isFirstOverlayUser)
-                {
-                    yield return EnsureLoadingOverlayRoutine();
-                    if (_loadingOverlayRoot != null && _loadingView != null)
-                    {
-                        _loadingOverlayRoot.SetActive(true);
-                        BringLoadingOverlayToFront();
-                        yield return _loadingView.FadeTo(1f, _loadingFadeInDuration);
-                    }
-                }
-                else
-                {
-                    yield return EnsureLoadingOverlayRoutine();
-                    if (_loadingOverlayRoot != null && _loadingView != null)
-                    {
-                        _loadingOverlayRoot.SetActive(true);
-                        BringLoadingOverlayToFront();
-                        if (!Mathf.Approximately(_loadingView.DisplayAlpha, 1f))
-                            yield return _loadingView.FadeTo(1f, _loadingFadeInDuration);
-                    }
-                }
-            }
+                yield return StartCoroutine(PushMainHubLoadingMaskRoutine());
 
             GameObject go = null;
             yield return AssetManager.Instance.InstantiateAndWait(key, _uiRoot, g => go = g);
@@ -122,7 +183,7 @@ namespace KingCardsSpire.Managers
             if (go == null)
             {
                 if (useMainHubLoading)
-                    yield return ReleaseLoadingOverlayRoutine();
+                    yield return StartCoroutine(PopMainHubLoadingMaskRoutine());
                 yield break;
             }
 
@@ -154,7 +215,7 @@ namespace KingCardsSpire.Managers
 
             if (useMainHubLoading)
             {
-                yield return ReleaseLoadingOverlayRoutine();
+                yield return StartCoroutine(PopMainHubLoadingMaskRoutine());
                 go.transform.SetAsLastSibling();
             }
 
@@ -208,19 +269,6 @@ namespace KingCardsSpire.Managers
                 _loadingOverlayRoot.AddComponent<GraphicRaycaster>();
 
             _loadingOverlayRoot.transform.SetAsLastSibling();
-        }
-
-        private IEnumerator ReleaseLoadingOverlayRoutine()
-        {
-            _loadingOverlayRefCount--;
-            if (_loadingOverlayRefCount < 0)
-                _loadingOverlayRefCount = 0;
-
-            if (_loadingOverlayRefCount > 0 || _loadingView == null || _loadingOverlayRoot == null)
-                yield break;
-
-            yield return _loadingView.FadeTo(0f, _loadingFadeOutDuration);
-            _loadingOverlayRoot.SetActive(false);
         }
 
         /// <summary>

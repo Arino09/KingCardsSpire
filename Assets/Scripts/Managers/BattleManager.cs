@@ -215,7 +215,7 @@ namespace KingCardsSpire.Managers
                 heroRoomDuelSlotIndex: slotIdx);
         }
 
-        /// <summary>开场教学战：双方各 3 张国王/大臣/平民，对手显示名为「花」，暖风、固定透视平民、第一回合敌必出大臣。</summary>
+        /// <summary>开场教学战：双方各 3 张国王/大臣/平民，对手显示名为「花」，晴天（无天气规则）、固定透视平民、第一回合敌必出大臣。</summary>
         public void StartTutorialBattle()
         {
             var playerDeck = new List<Card>
@@ -231,7 +231,7 @@ namespace KingCardsSpire.Managers
                 NewRuntimeCard(WellKnownCardIds.Commoner, "平民", 1f)
             };
 
-            StartBattleInternal(playerDeck, enemyDeck, WeatherType.WarmWind, 1, false, 0, "花", true, false,
+            StartBattleInternal(playerDeck, enemyDeck, WeatherType.Clear, 1, false, 0, "花", true, false,
                 -1);
         }
 
@@ -550,6 +550,13 @@ namespace KingCardsSpire.Managers
 
             ApplyPreRoundSpecials(ref playerIdx, ref enemyIdx);
 
+            // 保底：预结算效果（如敌方「恶魔」等）可能使一侧手牌提前清空，须在取牌比大小前结束战斗，避免越界与卡死。
+            if (_phase == Phase.InBattle && TryEndByHandEmpty())
+            {
+                compareResult = default;
+                return true;
+            }
+
             var playerCard = _playerHand[playerIdx];
             var enemyCard = _enemyHand[enemyIdx];
 
@@ -559,6 +566,10 @@ namespace KingCardsSpire.Managers
                 compareResult);
 
             ResolveRound(playerIdx, enemyIdx, playerCard, enemyCard, compareResult);
+
+            // 保底：回合结算后再次检测手牌为空（与 ResolveRound 内一致），防止漏检导致仍停留在战斗中。
+            if (_phase == Phase.InBattle)
+                TryEndByHandEmpty();
 
             _battleEffects.ClearRoundConsumableFlags();
 
@@ -684,6 +695,10 @@ namespace KingCardsSpire.Managers
             ApplyConsumableNumericAndFlagsById(id);
             SyncBattleState();
             EventManager.Instance?.Publish(new BattleStateChangedEvent());
+
+            // 保底：一次性牌打出后可能清空己方手牌；须立即判负，否则无法继续出牌且战斗不会结束。
+            TryEndByHandEmpty();
+
             return true;
         }
 
@@ -1308,6 +1323,9 @@ namespace KingCardsSpire.Managers
 
         private bool TryEndByHandEmpty()
         {
+            if (_phase != Phase.InBattle)
+                return false;
+
             if (_playerHand.Count == 0 && _enemyHand.Count == 0)
             {
                 FinishBattle(false, BattleEndReason.RoundLimitDraw);
@@ -1331,6 +1349,9 @@ namespace KingCardsSpire.Managers
 
         private bool TryEndByRoundLimit()
         {
+            if (_phase != Phase.InBattle)
+                return false;
+
             if (_noRoundLimit)
                 return false;
             if (_maxRounds <= 0)
@@ -1601,7 +1622,7 @@ namespace KingCardsSpire.Managers
             CurrentBattle.EnemyHand = _enemyHand.ToArray();
             CurrentBattle.PlayerDiscard = _playerDiscard.ToArray();
             CurrentBattle.EnemyDiscard = _enemyDiscard.ToArray();
-            CurrentBattle.Round = _roundsCompleted;
+            CurrentBattle.Round = _roundsCompleted + 1;
             CurrentBattle.MaxRound = _noRoundLimit ? 0 : _maxRounds + _maxRoundBonusFromConsumables;
             CurrentBattle.NoRoundLimit = _noRoundLimit;
             CurrentBattle.BattleWeather = _weather;

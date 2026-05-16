@@ -17,6 +17,7 @@ namespace KingCardsSpire.Views.UI
                 WeatherType.Hail => "冰雹",
                 WeatherType.WarmWind => "暖风",
                 WeatherType.Ending => "终焉",
+                WeatherType.Clear => "晴天",
                 _ => w.ToString()
             };
         }

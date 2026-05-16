@@ -358,14 +358,41 @@ namespace KingCardsSpire.Views.UI
 
         /// <summary>
         /// 按当前楼层从 Addressables 加载 <c>Assets/GameAssets/Sprites/UI/FloorBg/</c> 下对应资源（扩展名按资源实际类型区分）。
+        /// 主界面已可见且无战斗/奖励遮挡时，用 Loading 遮住避免取消旧图时空 Sprite 闪屏。
         /// </summary>
         private void RefreshFloorBackground()
         {
             if (_game == null)
                 return;
 
+            var ui = UIManager.Instance;
+            if (ui != null && !ui.IsBlockingPanelAboveMainHub() && !ui.IsMainHubLoadingMaskHeld)
+            {
+                StartCoroutine(RefreshFloorBackgroundWithOptionalLoadingRoutine());
+                return;
+            }
+
             CancelFloorBackgroundLoad();
             _floorBgRoutine = StartCoroutine(LoadFloorBackgroundRoutine());
+        }
+
+        private IEnumerator RefreshFloorBackgroundWithOptionalLoadingRoutine()
+        {
+            var ui = UIManager.Instance;
+            if (ui == null || _game == null)
+                yield break;
+
+            yield return ui.StartCoroutine(ui.PushMainHubLoadingMaskRoutine());
+
+            CancelFloorBackgroundLoad();
+            _floorBgRoutine = StartCoroutine(LoadFloorBackgroundRoutine());
+
+            yield return WaitForInitialHubPresentationReady();
+            yield return null;
+
+            yield return ui.StartCoroutine(ui.PopMainHubLoadingMaskRoutine());
+            if (this != null)
+                transform.SetAsLastSibling();
         }
 
         private void CancelFloorBackgroundLoad()

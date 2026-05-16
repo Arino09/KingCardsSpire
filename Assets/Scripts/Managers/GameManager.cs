@@ -276,6 +276,7 @@ namespace KingCardsSpire.Managers
             }
 
             SyncFloorStateFromTower();
+            RollDailyWeather();
             _events?.Publish(new FloorChangedEvent(PlayerState.CurrentFloor));
             PersistCurrentRunToDisk();
             return true;
@@ -420,11 +421,82 @@ namespace KingCardsSpire.Managers
 
         public void RollDailyWeather()
         {
-            var values = (WeatherType[])Enum.GetValues(typeof(WeatherType));
-            var w = values[Random.Range(0, values.Length)];
+            if (PlayerState == null)
+                return;
+
+            // 未完成开场教学前：世界天气固定「晴天」（教程专用，不参与随机池）。
+            if (!PlayerState.HasCompletedOpeningTutorial)
+            {
+                PlayerState.CurrentWeather = WeatherType.Clear;
+                _events?.Publish(new WeatherChangedEvent(WeatherType.Clear));
+                return;
+            }
+
+            var maxFloors = ResolveGameConfig()?.TowerFloors ?? 7;
+            WeatherType w;
+            if (maxFloors > 0 && PlayerState.CurrentFloor == maxFloors)
+            {
+                w = WeatherType.Ending;
+            }
+            else
+            {
+                var nonEndingCount = CountWeathersExcludingEnding();
+                if (nonEndingCount <= 0)
+                    w = WeatherType.WarmWind;
+                else
+                {
+                    var pick = Random.Range(0, nonEndingCount);
+                    w = WeatherAtNonEndingOrdinal(pick);
+                }
+            }
+
             PlayerState.CurrentWeather = w;
             _events?.Publish(new WeatherChangedEvent(w));
         }
+
+        /// <summary>参与 <see cref="RollDailyWeather"/> 随机池的天气（不含终焉与教程专用晴天）。</summary>
+        private static bool IsWeatherInDailyRandomPool(WeatherType weather) =>
+            weather != WeatherType.Ending && weather != WeatherType.Clear;
+
+        private static int CountWeathersExcludingEnding()
+        {
+            var values = (WeatherType[])Enum.GetValues(typeof(WeatherType));
+            var n = 0;
+            for (var i = 0; i < values.Length; i++)
+            {
+                if (IsWeatherInDailyRandomPool(values[i]))
+                    n++;
+            }
+
+            return n;
+        }
+
+        private static WeatherType WeatherAtNonEndingOrdinal(int ordinal)
+        {
+            var values = (WeatherType[])Enum.GetValues(typeof(WeatherType));
+            var idx = 0;
+            for (var i = 0; i < values.Length; i++)
+            {
+                if (!IsWeatherInDailyRandomPool(values[i]))
+                    continue;
+                if (idx == ordinal)
+                    return values[i];
+                idx++;
+            }
+
+            return WeatherType.WarmWind;
+        }
+
+        /// <summary>供 EditMode 测试：最后一层是否应固定「终焉」。</summary>
+        internal static bool IsFinalFloorForFixedEndingWeather(int currentFloor1Based, int towerFloors) =>
+            towerFloors > 0 && currentFloor1Based == towerFloors;
+
+        /// <summary>供 EditMode 测试：<see cref="RollDailyWeather"/> 随机池天气种类数（不含终焉与晴天）。</summary>
+        internal static int GetNonEndingWeatherKindCountForTests() => CountWeathersExcludingEnding();
+
+        /// <summary>供 EditMode 测试：按随机池枚举顺序取下标 <paramref name="ordinal"/>（不含终焉与晴天）。</summary>
+        internal static WeatherType GetNonEndingWeatherByOrdinalForTests(int ordinal) =>
+            WeatherAtNonEndingOrdinal(ordinal);
 
         /// <summary>供驻守奖励界面读取的待选列表（与最近一次 <see cref="BossRewardOfferedEvent"/> 一致）。</summary>
         public IReadOnlyList<BossRewardOption> PendingBossRewards => _pendingBossRewards;
@@ -1187,7 +1259,7 @@ namespace KingCardsSpire.Managers
             return true;
         }
 
-        /// <summary>最后一层 BOSS 胜：关闭战斗与可能残留的奖励面板后播放 <c>ending_final</c>（与 <see cref="Views.UI.CardRewardView"/> 非最后一层收尾对齐）。</summary>
+        /// <summary>最后一层 BOSS 胜：关闭战斗与可能残留的奖励面板后播放 <c>ending_final</c>，随后关闭全部 UI 并打开主菜单（与 <see cref="Views.UI.CardRewardView"/> 中带通关对白的路径一致）。</summary>
         private IEnumerator RunFinalBossVictoryStoryRoutine()
         {
             yield return null;
@@ -1197,17 +1269,30 @@ namespace KingCardsSpire.Managers
             var battle = ServiceLocator.Get<BattleController>();
 
             if (ui != null)
-            {
-                ui.Close(UIPanelId.CardReward);
-                if (battle != null)
-                    battle.RequestEndBattle();
-                ui.Close(UIPanelId.Battle);
-            }
+                yield return ui.StartCoroutine(ui.CoCloseBossRewardBattleRevealMainHubRoutine(battle));
 
             if (!IsRunVictory || dialogue == null || ui == null)
                 yield break;
 
             yield return ui.StartCoroutine(dialogue.PlayDialogue(WellKnownDialogueIds.EndingFinal, null));
+
+            if (!IsRunVictory)
+                yield break;
+
+            yield return CoCloseAllUiAndOpenMainMenuRoutine();
+        }
+
+        /// <summary>
+        /// 关闭全部已打开 UI 并打开主菜单；供通关大结局与 <see cref="ReturnToTitleRoutine"/> 共用。
+        /// </summary>
+        public static IEnumerator CoCloseAllUiAndOpenMainMenuRoutine()
+        {
+            var ui = UIManager.Instance;
+            if (ui == null)
+                yield break;
+
+            ui.CloseAll();
+            yield return ui.OpenAsync(UIPanelId.MainMenu);
         }
 
         /// <summary>
@@ -1237,8 +1322,7 @@ namespace KingCardsSpire.Managers
                     yield return null;
             }
 
-            ui.CloseAll();
-            yield return ui.OpenAsync(UIPanelId.MainMenu);
+            yield return CoCloseAllUiAndOpenMainMenuRoutine();
         }
 
         /// <summary>是否仍可访问原住民（主界面按钮与进入 NPCView 的门禁）；仅受剩余配额与可播对话是否存在影响，不限每日次数。</summary>
@@ -1707,12 +1791,13 @@ namespace KingCardsSpire.Managers
             pm.Save(data);
         }
 
-        /// <summary>标记开场教程对话已完成并写盘。</summary>
+        /// <summary>标记开场教学已完成、滚动首日随机天气并写盘。</summary>
         public void SetOpeningTutorialCompletedAndSave()
         {
             if (PlayerState == null)
                 return;
             PlayerState.HasCompletedOpeningTutorial = true;
+            RollDailyWeather();
             PersistCurrentRunToDisk();
         }
 

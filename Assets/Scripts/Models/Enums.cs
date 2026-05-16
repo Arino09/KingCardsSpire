@@ -8,13 +8,17 @@ namespace KingCardsSpire.Models
         Consumable = 3
     }
 
+    /// <summary>战场与世界天气；晴天（Clear）仅新手教程使用，不参与每日天气随机池。</summary>
     public enum WeatherType
     {
         Rainy = 0,
         Sunny = 1,
         Hail = 2,
         WarmWind = 3,
-        Ending = 4
+        Ending = 4,
+
+        /// <summary>晴天：无等级修正；仅教学阶段使用。</summary>
+        Clear = 5
     }
 
     /// <summary>

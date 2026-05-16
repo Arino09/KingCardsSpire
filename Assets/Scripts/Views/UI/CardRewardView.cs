@@ -405,7 +405,7 @@ namespace KingCardsSpire.Views.UI
             if (!gm.TryApplyBossRewardChoice(index))
                 yield break;
 
-            CloseRewardAndBattle(ui);
+            yield return ui.StartCoroutine(ui.CoCloseBossRewardBattleRevealMainHubRoutine());
             yield return RunEndingDialogueIfVictoryRoutine(ui);
         }
 
@@ -495,7 +495,7 @@ namespace KingCardsSpire.Views.UI
             if (!gm.TrySkipBossCardRewardsCollectGoldAndAdvance())
                 yield break;
 
-            CloseRewardAndBattle(ui);
+            yield return ui.StartCoroutine(ui.CoCloseBossRewardBattleRevealMainHubRoutine());
             yield return RunEndingDialogueIfVictoryRoutine(ui);
         }
 
@@ -541,12 +541,11 @@ namespace KingCardsSpire.Views.UI
                 yield break;
 
             yield return ui.StartCoroutine(dialogue.PlayDialogue(WellKnownDialogueIds.EndingFinal, null));
-        }
 
-        private static void CloseRewardAndBattle(UIManager ui)
-        {
-            ui.Close(UIPanelId.CardReward);
-            ui.Close(UIPanelId.Battle);
+            if (!gm.IsRunVictory)
+                yield break;
+
+            yield return GameManager.CoCloseAllUiAndOpenMainMenuRoutine();
         }
     }
 }

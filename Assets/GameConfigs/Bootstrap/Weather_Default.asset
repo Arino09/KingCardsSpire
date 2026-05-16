@@ -33,3 +33,7 @@ MonoBehaviour:
     weatherType: 4
     displayName: "\u7EC8\u7109"
     description: "\u2026\u2026\u51C6\u5907\u597D\u8FCE\u63A5\u7EC8\u7109\u4E86\u5417"
+  - id: weather_clear
+    weatherType: 5
+    displayName: "\u6674\u5929"
+    description: "\u65E0\u7279\u6B8A\u6548\u679C\u3002"

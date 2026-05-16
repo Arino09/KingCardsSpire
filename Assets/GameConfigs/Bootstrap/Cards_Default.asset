@@ -359,7 +359,7 @@ MonoBehaviour:
       m_SubObjectType: UnityEngine.Sprite, UnityEngine.CoreModule, Version=0.0.0.0,
         Culture=neutral, PublicKeyToken=null
       m_EditorAssetChanged: 0
-    description: "\u6253\u51FA\u540E\u53CC\u65B9\u7ACB\u5373\u5F03\u6389\u624B\u724C\u4E2D\u9664\u56FD\u738B/\u5927\u81E3/\u5E73\u6C11\u5916\u7684\u6240\u6709\u724C"
+    description: "\u6253\u51FA\u540E\u53CC\u65B9\u7ACB\u5373\u5F03\u6389\u624B\u724C\u4E2D\u9664\u56FD\u738B/\u5927\u81E3/\u5E73\u6C11\u5916\u7684\u6240\u6709\u724C\uFF08\u6253\u51FA\u7684\u724C\u9664\u5916\uFF09\u3002"
     isUnique: 0
   - id: even_form
     displayName: "\u5076\u6570\u5F62\u6001"

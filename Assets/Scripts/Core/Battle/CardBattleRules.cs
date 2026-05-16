@@ -20,7 +20,7 @@ namespace KingCardsSpire.Core.Battle
             c != null && string.Equals(c.Id, WellKnownCardIds.Commoner, StringComparison.OrdinalIgnoreCase);
 
         /// <summary>
-        /// 烈日：所有带 .5 小数的等级 ±0.5（§2.3）；冰雹：+0.5；暖风/雨季/终焉：本场数值不变。
+        /// 烈日：所有带 .5 小数的等级 ±0.5（§2.3）；冰雹：+0.5；暖风/雨季/终焉/晴天（教程）：本场数值不变。
         /// </summary>
         public static float GetEffectiveLevel(Card card, WeatherType weather)
         {
