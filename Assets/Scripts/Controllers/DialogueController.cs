@@ -155,6 +155,8 @@ namespace KingCardsSpire.Controllers
 
                     if (line.IsChoice)
                     {
+                        yield return WaitForTypewriter(view);
+                        view.ShowChoiceRoot();
                         yield return WaitForChoice(view);
                         if (view.SkipRequested)
                         {
@@ -213,11 +215,24 @@ namespace KingCardsSpire.Controllers
                 {
                     if (skipAll)
                         yield break;
+
+                    if (view.IsTypewriterRunning)
+                    {
+                        view.CompleteTypewriter();
+                        continue;
+                    }
+
                     yield break;
                 }
 
                 yield return null;
             }
+        }
+
+        private static IEnumerator WaitForTypewriter(DialogView view)
+        {
+            while (view.IsTypewriterRunning)
+                yield return null;
         }
 
         private static IEnumerator WaitForChoice(DialogView view)

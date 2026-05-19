@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using KingCardsSpire.Configs;
 using KingCardsSpire.Models;
@@ -19,6 +20,9 @@ namespace KingCardsSpire.Views.UI
         [SerializeField] private Text speakerNameText;
         [SerializeField] private Text bodyText;
 
+        [Header("Typewriter")]
+        [SerializeField] private float typewriterCharsPerSecond = 35f;
+
         [Header("操作")]
         [SerializeField] private Button continueButton;
         [SerializeField] private Button skipButton;
@@ -35,11 +39,16 @@ namespace KingCardsSpire.Views.UI
         private bool _continueRequested;
         private bool _skipRequested;
         private DialogueChoiceEntry _pendingChoice;
+        private Coroutine _typewriterCoroutine;
+        private string _fullBodyText = string.Empty;
+        private bool _isTypewriterRunning;
 
         private UnityAction _onContinue;
         private UnityAction _onSkip;
 
         public bool SkipRequested => _skipRequested;
+
+        public bool IsTypewriterRunning => _isTypewriterRunning;
 
         /// <summary>是否已点选某一选项、尚未被 <see cref="TryConsumeChoice"/> 取走。</summary>
         public bool HasPendingChoice => _pendingChoice != null;
@@ -115,7 +124,7 @@ namespace KingCardsSpire.Views.UI
             var resolvedName = speakerName ?? string.Empty;
             speakerNameText.text = resolvedName;
             speakerNameObj.SetActive(resolvedName != string.Empty);
-            bodyText.text = line != null ? line.BodyText : string.Empty;
+            StartTypewriter(line != null ? line.BodyText : string.Empty);
         }
 
         public void SetBackgroundSprite(Sprite sprite)
@@ -143,7 +152,7 @@ namespace KingCardsSpire.Views.UI
                 return;
             }
 
-            choiceRoot.gameObject.SetActive(true);
+            choiceRoot.gameObject.SetActive(!IsTypewriterRunning);
             if (choices == null || choices.Count == 0)
                 return;
 
@@ -245,6 +254,21 @@ namespace KingCardsSpire.Views.UI
             return ok;
         }
 
+        public void CompleteTypewriter()
+        {
+            if (!_isTypewriterRunning)
+                return;
+
+            if (_typewriterCoroutine != null)
+            {
+                StopCoroutine(_typewriterCoroutine);
+                _typewriterCoroutine = null;
+            }
+
+            bodyText.text = _fullBodyText;
+            _isTypewriterRunning = false;
+        }
+
         public bool TryConsumeChoice(out DialogueChoiceEntry choice)
         {
             choice = _pendingChoice;
@@ -267,6 +291,40 @@ namespace KingCardsSpire.Views.UI
         private void OnChoiceClicked(DialogueChoiceEntry entry)
         {
             _pendingChoice = entry;
+        }
+
+        private void StartTypewriter(string text)
+        {
+            if (_typewriterCoroutine != null)
+            {
+                StopCoroutine(_typewriterCoroutine);
+                _typewriterCoroutine = null;
+            }
+
+            _fullBodyText = text ?? string.Empty;
+            bodyText.text = string.Empty;
+            _isTypewriterRunning = _fullBodyText.Length > 0;
+
+            if (!_isTypewriterRunning)
+                return;
+
+            _typewriterCoroutine = StartCoroutine(TypewriterRoutine());
+        }
+
+        private IEnumerator TypewriterRoutine()
+        {
+            var delay = typewriterCharsPerSecond > 0f ? 1f / typewriterCharsPerSecond : 0f;
+            for (var i = 1; i <= _fullBodyText.Length; i++)
+            {
+                bodyText.text = _fullBodyText.Substring(0, i);
+                if (delay > 0f)
+                    yield return new WaitForSecondsRealtime(delay);
+                else
+                    yield return null;
+            }
+
+            _typewriterCoroutine = null;
+            _isTypewriterRunning = false;
         }
 
         private void ClearChoices()
